@@ -720,15 +720,9 @@ pub fn main() -> i64 {
 fn references_find_schema_variant_constructors_and_patterns() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-    let main_text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active
-    match state {
-        QuestState::Active => { return 1 }
-        QuestState::Done => { return 2 }
-    }
-    return 0
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-unit-variants.vela"
+    );
     let schema_text = "pub fn Active() { return 1 }\npub fn Done() { return 2 }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),

@@ -559,30 +559,17 @@ fn formatting_ir_preserves_comments_and_blank_line_groups() {
 
 #[test]
 fn formatting_formats_container_type_hint_example() {
-    let source = "\
-fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
-
-fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"xp\":5};let tags:Set < String > = set::from_array([\"daily\",\"vip\"]);return score(scores,rewards,tags).unwrap_or(0)}
-";
+    let source = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/formatting/container-hints.input.vela"
+    );
     let edits = format_source(source);
     let formatted = apply_edits(source, &edits);
 
     assert_eq!(
         formatted,
-        "\
-fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
-    return result::ok(rewards)
-}
-
-fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let rewards: Map<String, i64> = {
-        \"xp\": 5
-    };
-    let tags: Set<String> = set::from_array([\"daily\", \"vip\"]);
-    return score(scores, rewards, tags).unwrap_or(0)
-}
-"
+        include_str!(
+            "../../../../tests/lsp_matrix/fixtures/sources/local/formatting/container-hints.expected.vela"
+        )
     );
 }
 

@@ -416,19 +416,7 @@ fn assert_source_struct_field_navigation(method: &str) {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Cell {
-    value: i64,
-}
-
-fn assign_cell(cell: Cell, value) {
-    cell.value = value;
-    return cell.value;
-}
-
-fn main() {
-    let cell: Cell = Cell { value: 1 };
-    return assign_cell(cell, "bad");
-}"#;
+    let text = include_str!("../../tests/fixtures/definition/struct-field.vela");
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -490,18 +478,9 @@ fn assert_source_trait_default_method_navigation_on_source_function_return_recei
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"trait Rewardable {
-    #[doc("Preview reward")]
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-}
-struct Player {
-    level: i64,
-}
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    return current_player().preview(1)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/function-default-trait.vela"
+    );
     let call_line = text
         .lines()
         .nth(10)

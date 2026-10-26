@@ -1,0 +1,8 @@
+use game::types::Player
+pub fn first(player: Player) -> i64 {
+    return player.grant(1)
+}
+
+pub fn second(player: Player) -> i64 {
+    return player.grant(2)
+}

@@ -484,24 +484,9 @@ fn lsp_semantic_tokens_classify_script_members() {
         | token_modifier_bit(token_modifiers, "definition")
         | source;
 
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub enum Progress {
-    Started
-    Active { quest_id: String }
-    Finished(result: String)
-}
-
-pub trait Scored {
-    fn score(value: Reward) -> i64
-}
-
-impl Reward {
-    fn bonus(value: Reward) -> i64 { return 1 }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/script-members.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -610,18 +595,9 @@ fn lsp_semantic_tokens_classify_script_member_uses() {
         .expect("semantic token legend should list token modifiers");
     let source = token_modifier_bit(token_modifiers, "source");
 
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    fn bonus(value: Reward) -> i64 { return value.amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount + reward.bonus()
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/typed-member-uses.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

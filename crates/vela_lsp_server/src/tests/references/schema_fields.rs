@@ -8,15 +8,9 @@ use super::{assert_highlight, assert_reference, file_uri, line, temp_workspace};
 #[test]
 fn lsp_references_find_schema_record_constructor_shorthand_field_labels() {
     let schema_text = "pub fn level() { return 1 }";
-    let text = "\
-pub fn make(level: i64) -> Player {
-    let player = Player { level }
-    return player
-}
-
-pub fn main(player: Player) -> i64 {
-    return player.level
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-shorthand-field.vela"
+    );
     let mut server = TestServer::new();
     let (root, schema_uri, uri) = open_schema_field_workspace(&mut server, schema_text, text);
 

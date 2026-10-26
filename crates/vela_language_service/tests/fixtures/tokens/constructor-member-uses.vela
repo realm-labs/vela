@@ -1,0 +1,12 @@
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn bonus(self, extra: i64) -> i64 { return self.amount + extra }
+}
+
+pub fn main() -> i64 {
+    let reward = Reward { amount: 1 }
+    return reward.amount + reward.bonus(1)
+}

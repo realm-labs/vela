@@ -1,0 +1,9 @@
+pub struct Reward {
+    amount: i64
+}
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.amount
+    reward.amount += 1
+    return reward.amount + first
+}

@@ -49,21 +49,7 @@ fn expression_facts_include_unit_and_tuple_literals() {
 #[test]
 fn expression_facts_include_tuple_destructuring_bindings() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let source = r#"pub fn main(pairs: Array<(String, i64)>) {
-            let (let_name, let_score) = ("Ada", 1)
-            let_name
-            let_score
-            for (for_name, for_score) in pairs {
-                for_name
-                for_score
-            }
-            match ("Grace", 2) {
-                (match_name, match_score) => {
-                    match_name
-                    match_score
-                },
-            }
-        }"#;
+    let source = include_str!("../../tests/fixtures/expression-facts/tuple-destructuring.vela");
     let files = vec![SourceFileSnapshot::new(document.clone(), source)];
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

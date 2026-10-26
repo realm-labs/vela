@@ -81,16 +81,19 @@ impl TraitToolingFixture {
             "vela_provider_tooling_{name}_{}",
             std::process::id()
         ));
-        let api_text = "pub trait CommandTrait { fn run(self) -> i64; }\n".to_owned();
-        let plugin_text = "use api::api::CommandTrait\npub struct Command {}\nimpl CommandTrait for Command { pub fn run(self) -> i64 { return 1; } }\n".to_owned();
+        let api_text =
+            include_str!("../tests/fixtures/packages/ordinary-trait/api/src/api.vela").to_owned();
+        let plugin_text =
+            include_str!("../tests/fixtures/packages/ordinary-trait/plugin/src/plugin.vela")
+                .to_owned();
         write_file(
             &root.join("api/vela.toml"),
-            "[package]\nid = \"dev.vela.api\"\nname = \"api\"\nversion = \"0.1.0\"\n[source]\nroots = [\"src\"]\n",
+            include_str!("../tests/fixtures/packages/ordinary-trait/api/vela.toml"),
         );
         write_file(&root.join("api/src/api.vela"), &api_text);
         write_file(
             &root.join("plugin/vela.toml"),
-            "[package]\nid = \"dev.vela.plugin\"\nname = \"plugin\"\nversion = \"0.1.0\"\n[source]\nroots = [\"src\"]\n[dependencies]\napi = { path = \"../api\" }\n",
+            include_str!("../tests/fixtures/packages/ordinary-trait/plugin/vela.toml"),
         );
         write_file(&root.join("plugin/src/plugin.vela"), &plugin_text);
         Self {

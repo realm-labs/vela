@@ -1,0 +1,9 @@
+struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    current_player().grant("raw", 1)
+    return current_player().grant("again", 2)
+}

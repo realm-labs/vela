@@ -1,0 +1,13 @@
+struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn grant(self, amount: i64) -> i64 { return amount }
+    fn preview(self) -> i64 { return self.grant(1) }
+}
+
+fn main(reward: Reward) -> i64 {
+    let first = reward.grant(1)
+    return reward.grant(first)
+}

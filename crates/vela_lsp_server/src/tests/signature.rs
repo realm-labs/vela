@@ -209,12 +209,9 @@ fn lsp_signature_help_resolves_script_method_call() {
             "capabilities": {}
         }),
     ));
-    let text = "\
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-pub fn main(player: Player) { player.grant(1, 2) }";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-parameters.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -270,13 +267,9 @@ fn lsp_signature_help_resolves_source_method_on_source_function_return() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() { current_player().grant(1, 2) }";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-parameters.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -332,16 +325,7 @@ fn lsp_signature_help_resolves_source_method_on_source_method_return() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-pub fn main(player: Player) { player.inventory().grant(1, 2) }";
+    let text = include_str!("../../tests/fixtures/signature/method-return.vela");
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -397,13 +381,7 @@ fn lsp_signature_help_resolves_source_trait_default_method_call() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-trait Rewardable {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-struct Player { level: i64 }
-impl Rewardable for Player {}
-pub fn main(player: Player) { player.grant(1, 2) }";
+    let text = include_str!("../../tests/fixtures/signature/default-trait.vela");
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -459,14 +437,7 @@ fn lsp_signature_help_resolves_source_trait_default_method_on_source_function_re
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-trait Rewardable {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-struct Player { level: i64 }
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() { current_player().grant(1, 2) }";
+    let text = include_str!("../../tests/fixtures/signature/function-default-trait.vela");
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({

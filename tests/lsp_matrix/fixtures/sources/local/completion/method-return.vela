@@ -1,0 +1,11 @@
+
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+fn global_grant() -> bool { return true }
+pub fn main(player: Player) { player.inventory(). }

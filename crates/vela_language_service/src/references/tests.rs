@@ -294,16 +294,9 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn references_find_field_reads_and_writes() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    reward.amount += 1
-    return reward.amount + first
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/field-read-write.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -346,22 +339,9 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn references_find_enum_variant_constructors_and_patterns() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/enum-constructors-and-patterns.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -405,19 +385,9 @@ pub fn main(state: QuestState) -> i64 {
 #[test]
 fn references_find_script_method_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/script-method-calls.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -454,26 +424,9 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn references_find_trait_impl_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player {
-    level: i64
-}
-
-pub struct Chest {
-    amount: i64
-}
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-impl Rewardable for Chest {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/trait-impl-uses.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -587,13 +540,9 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn document_highlight_marks_read_write_call() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn grant(amount: i64) -> i64 { return amount }
-pub fn main(amount: i64) -> i64 {
-    let score = amount
-    score += grant(amount)
-    return score + grant(score)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/local-read-write-calls.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let score_highlights = databases.document_highlights(
@@ -656,19 +605,9 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn document_highlight_marks_script_method_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/script-method-calls.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(
@@ -700,16 +639,9 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn document_highlight_marks_trait_impl_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/trait-impl-highlights.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(

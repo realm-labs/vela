@@ -12,27 +12,9 @@ fn lsp_folding_ranges_cover_items_and_blocks() {
             "capabilities": {}
         }),
     ));
-    let text = "\
-use game::reward::grant
-use game::reward::Reward
-
-pub struct Player {
-    level: i64
-}
-
-pub fn main(player: Player) -> i64 {
-    if player.level > 1 {
-        return match player.level {
-            1 => {
-                return 1
-            }
-            _ => {
-                return 2
-            }
-        }
-    }
-    return 0
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/folding/items-and-blocks.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

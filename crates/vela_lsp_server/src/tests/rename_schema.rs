@@ -257,15 +257,9 @@ fn lsp_source_backed_schema_variant_rename_updates_constructors_and_patterns() {
         }),
     ));
 
-    let text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active
-    match state {
-        QuestState::Active => { return 1 }
-        QuestState::Done => { return 2 }
-    }
-    return 0
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-unit-variants.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

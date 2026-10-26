@@ -103,17 +103,9 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
         }),
     ));
 
-    let text = "\
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-variant-field-uses.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

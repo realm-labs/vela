@@ -1,0 +1,9 @@
+struct Player { level: i64 }
+fn dynamic(raw: Any, count: i64) -> i64 { return count }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main(player: Player) {
+    dynamic("raw", 1)
+    player.grant("raw", 2)
+}

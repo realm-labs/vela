@@ -99,11 +99,9 @@ fn lsp_inlay_hints_show_source_method_parameter_names() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-pub fn main(player: Player) { player.grant(1, 2) }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-parameters.vela"
+    );
     let main_line = text.lines().nth(4).expect("main line should exist");
     open_document(&mut server, uri, text);
 
@@ -194,13 +192,8 @@ fn lsp_inlay_hints_show_lambda_parameter_facts() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"pub fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let doubled: Array<i64> = scores.map(|score| score + 1);
-    let rewards: Map<String, i64> = {"gold": 1};
-    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
-    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
-}"#;
+    let text =
+        include_str!("../../../../tests/lsp_matrix/fixtures/sources/local/inlay/lambda-facts.vela");
     open_document(&mut server, uri, text);
 
     let response = response_value(request::<lsp_types::request::InlayHintRequest>(
@@ -501,15 +494,9 @@ fn lsp_inlay_hints_suppress_any_source_function_and_method_parameters() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Player { level: i64 }
-fn dynamic(raw: Any, count: i64) -> i64 { return count }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main(player: Player) {
-    dynamic("raw", 1)
-    player.grant("raw", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-parameters.vela"
+    );
     open_document(&mut server, uri, text);
 
     let response = response_value(request::<lsp_types::request::InlayHintRequest>(
@@ -548,15 +535,9 @@ fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_retu
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Player { level: i64 }
-fn current_player() -> Player { return Player { level: 1 } }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main() {
-    current_player().grant("raw", 1)
-    return current_player().grant("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-any-parameter.vela"
+    );
     let first_call = text.lines().nth(6).expect("first call line");
     let second_call = text.lines().nth(7).expect("second call line");
     open_document(&mut server, uri, text);
@@ -722,14 +703,9 @@ fn lsp_inlay_hints_suppress_any_enum_variant_payloads() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"enum Payload {
-    Dynamic(raw: Any, count: i64),
-    Stable(name: String, count: i64),
-}
-pub fn main() {
-    Payload::Dynamic("raw", 1)
-    Payload::Stable("ok", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/variant-any-and-control.vela"
+    );
     open_document(&mut server, uri, text);
 
     let response = response_value(request::<lsp_types::request::InlayHintRequest>(

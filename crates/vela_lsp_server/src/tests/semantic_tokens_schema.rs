@@ -558,15 +558,9 @@ fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
     let schema = token_modifier_bit(token_modifiers, "schema");
     let schema_host = schema;
 
-    let text = "\
-pub fn main(state: QuestState) -> QuestState {
-    let active = QuestState::Active
-    let done = QuestState::Done(1)
-    match state {
-        QuestState::Active => active
-        QuestState::Done(value) => done
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/schema-enum-uses.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

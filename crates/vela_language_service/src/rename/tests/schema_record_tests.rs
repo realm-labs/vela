@@ -6,9 +6,9 @@ fn source_backed_schema_record_labels_produce_complete_owned_edits() {
     for crlf in [false, true] {
         let main = DocumentId::from("/workspace/scripts/main.vela");
         let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-        let marked = "use host::Record as Alias\n/* 中😀 */ fn main(value: i64, item: host::Record) {\n let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };\n let b = Alias { [[short:start]]value[[short:end]] };\n match a { host::Record { [[pattern:start]]value[[pattern:end]]: bound } => bound };\n item.[[dot:start]]value[[dot:end]];\n}\n";
+        let marked = include_str!("../../../tests/fixtures/rename/schema-record-main.marked.vela");
         let marked = marked.to_owned()
-            + "pub struct Record { value: i64 }\nfn unrelated() { Record { value: 1 }; other::Record { [[metadata:start]]value[[metadata:end]]: 2 }; host::Record { [[unknown:start]]bogus[[unknown:end]]: 3 }; }\n";
+            + include_str!("../../../tests/fixtures/rename/schema-record-unrelated.marked.vela");
         let marked = if crlf {
             marked.replace('\n', "\r\n")
         } else {

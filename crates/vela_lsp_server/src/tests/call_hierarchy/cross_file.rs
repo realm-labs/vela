@@ -21,27 +21,13 @@ fn lsp_call_hierarchy_cross_file_trait_impl_method_calls() {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let math_uri = "file:///workspace/scripts/game/math.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
-    let main_text = "\
-use game::types::Player
-pub fn first(player: Player) -> i64 {
-    return player.grant(1)
-}
-
-pub fn second(player: Player) -> i64 {
-    return player.grant(2)
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-impl-caller.vela"
+    );
     let math_text = "pub fn clamp(value: i64) -> i64 { return value }";
-    let types_text = "\
-use game::math::clamp
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-}";
+    let types_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-impl.vela"
+    );
     for (uri, text) in [
         (math_uri, math_text),
         (types_uri, types_text),
@@ -204,19 +190,13 @@ fn lsp_call_hierarchy_cross_file_trait_default_and_interface_methods() {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let math_uri = "file:///workspace/scripts/game/math.vela";
     let traits_uri = "file:///workspace/scripts/game/traits.vela";
-    let main_text = "\
-use game::traits::Rewardable
-pub fn main(rewardable: Rewardable) -> i64 {
-    let first = rewardable.grant(1)
-    return rewardable.preview(first)
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-trait-caller.vela"
+    );
     let math_text = "pub fn clamp(value: i64) -> i64 { return value }";
-    let traits_text = "\
-use game::math::clamp
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-    fn preview(self, amount: i64) -> i64;
-}";
+    let traits_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-trait-owner.vela"
+    );
     for (uri, text) in [
         (math_uri, math_text),
         (traits_uri, traits_text),

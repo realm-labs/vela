@@ -1,0 +1,12 @@
+struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+fn source_any() -> Any { return current_player() }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    source_any().grant("raw", 1)
+    let dynamic = source_any()
+    dynamic.grant("again", 2)
+    current_player().grant("stable", 3)
+}

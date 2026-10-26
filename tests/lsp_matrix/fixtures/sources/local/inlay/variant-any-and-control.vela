@@ -1,0 +1,8 @@
+enum Payload {
+    Dynamic(raw: Any, count: i64),
+    Stable(name: String, count: i64),
+}
+pub fn main() {
+    Payload::Dynamic("raw", 1)
+    Payload::Stable("ok", 2)
+}

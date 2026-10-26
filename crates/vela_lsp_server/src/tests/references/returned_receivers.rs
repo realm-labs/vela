@@ -643,21 +643,9 @@ fn lsp_references_find_source_method_calls_on_source_function_return_receivers()
         }),
     ));
 
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-impl Player {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-method.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -721,23 +709,9 @@ fn lsp_references_find_source_trait_default_method_calls_on_source_function_retu
         }),
     ));
 
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-impl Rewardable for Player {}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-default-trait.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -807,21 +781,9 @@ fn lsp_document_highlight_marks_source_method_calls_on_source_function_return_re
         }),
     ));
 
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-impl Player {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-method.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -885,23 +847,9 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_func
         }),
     ));
 
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-impl Rewardable for Player {}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-default-trait.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

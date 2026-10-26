@@ -483,21 +483,7 @@ fn hover_reports_tuple_and_unit_parameter_facts() {
 #[test]
 fn hover_reports_tuple_destructuring_binding_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"pub fn main(pairs: Array<(String, i64)>) {
-    let (let_name, let_score) = ("Ada", 1)
-    let_name
-    let_score
-    for (for_name, for_score) in pairs {
-        for_name
-        for_score
-    }
-    match ("Grace", 2) {
-        (match_name, match_score) => {
-            match_name
-            match_score
-        },
-    }
-}"#;
+    let text = include_str!("../../tests/fixtures/hover/tuple-destructuring.vela");
     let databases = databases_for(&document, text, RegistryFacts::default());
 
     let let_name_hover = hover_for_nth(&databases, &document, text, "let_name", 2);
@@ -763,18 +749,9 @@ pub fn main(player: Player) {
 #[test]
 fn hover_reports_source_method_on_source_function_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player {
-    level: i64,
-}
-impl Player {
-    fn grant(self, amount: i64) -> bool {
-        return amount > 0
-    }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    return current_player().grant(3)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/function-method.vela"
+    );
     let databases = databases_for(&document, text, RegistryFacts::default());
     let call_line = text.lines().nth(10).expect("method use line should exist");
 
@@ -802,23 +779,9 @@ pub fn main() {
 #[test]
 fn hover_reports_source_method_on_source_method_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player {
-    level: i64,
-}
-struct Inventory {
-    slots: i64,
-}
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { slots: 1 } }
-}
-impl Inventory {
-    fn grant(self, amount: i64) -> bool {
-        return amount > 0
-    }
-}
-pub fn main(player: Player) {
-    return player.inventory().grant(3)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/method-method.vela"
+    );
     let databases = databases_for(&document, text, RegistryFacts::default());
     let call_line = text.lines().nth(15).expect("method use line should exist");
 
@@ -956,18 +919,9 @@ pub fn main(rewardable: Rewardable) {
 #[test]
 fn hover_reports_source_trait_default_method_on_source_function_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"trait Rewardable {
-    #[doc("Preview reward")]
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-}
-struct Player {
-    level: i64,
-}
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    return current_player().preview(1)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/function-default-trait.vela"
+    );
     let databases = databases_for(&document, text, RegistryFacts::default());
     let call_line = text
         .lines()
@@ -1001,23 +955,9 @@ pub fn main() {
 #[test]
 fn hover_reports_source_trait_default_method_on_source_method_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"trait Rewardable {
-    #[doc("Preview reward")]
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-}
-struct Player {
-    level: i64,
-}
-struct Inventory {
-    slots: i64,
-}
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { slots: 1 } }
-}
-impl Rewardable for Inventory {}
-pub fn main(player: Player) {
-    return player.inventory().preview(1)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/method-default-trait.vela"
+    );
     let databases = databases_for(&document, text, RegistryFacts::default());
     let call_line = text
         .lines()

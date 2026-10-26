@@ -1,0 +1,7 @@
+use host::Record as Alias
+/* 中😀 */ fn main(value: i64, item: host::Record) {
+ let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };
+ let b = Alias { [[short:start]]value[[short:end]] };
+ match a { host::Record { [[pattern:start]]value[[pattern:end]]: bound } => bound };
+ item.[[dot:start]]value[[dot:end]];
+}

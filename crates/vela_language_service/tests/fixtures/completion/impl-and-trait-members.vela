@@ -1,0 +1,15 @@
+
+struct Player { level: i64 }
+trait Rewardable {
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+impl Player {
+    fn level_up(self, amount: i64) -> bool { return amount > 0 }
+}
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+pub fn main(player: Player, rewardable: Rewardable) {
+    player.
+}

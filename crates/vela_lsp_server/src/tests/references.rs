@@ -134,16 +134,9 @@ pub fn main(amount: i64) -> i64 {
 fn lsp_references_find_field_reads_and_writes() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    reward.amount += 1
-    return reward.amount + first
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/field-read-write.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -194,18 +187,9 @@ pub fn main(reward: Reward) -> i64 {
 fn lsp_references_find_record_constructor_field_labels() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn make(amount: i64) -> Reward {
-    return Reward { amount: amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/record-explicit-field.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -252,18 +236,9 @@ pub fn main(reward: Reward) -> i64 {
 fn lsp_references_find_record_constructor_shorthand_field_labels() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn make(amount: i64) -> Reward {
-    return Reward { amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/record-shorthand-field.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -310,22 +285,9 @@ pub fn main(reward: Reward) -> i64 {
 fn lsp_references_find_enum_variant_constructors_and_patterns() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/enum-constructors-and-patterns.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -372,22 +334,9 @@ pub fn main(state: QuestState) -> i64 {
 fn lsp_references_find_enum_record_variant_field_labels_and_patterns() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/variant-field-uses.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -434,19 +383,9 @@ pub fn main(state: QuestState) -> i64 {
 fn lsp_references_find_script_method_calls() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/script-method-calls.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -491,26 +430,9 @@ pub fn main(reward: Reward) -> i64 {
 fn lsp_references_find_trait_impl_uses() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player {
-    level: i64
-}
-
-pub struct Chest {
-    amount: i64
-}
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-impl Rewardable for Chest {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/trait-impl-uses.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -659,13 +581,9 @@ pub fn main(amount: i64) -> i64 {
 fn lsp_document_highlight_marks_read_write_call() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub fn grant(amount: i64) -> i64 { return amount }
-pub fn main(amount: i64) -> i64 {
-    let score = amount
-    score += grant(amount)
-    return score + grant(score)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/local-read-write-calls.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -744,19 +662,9 @@ pub fn main(amount: i64) -> i64 {
 fn lsp_document_highlight_marks_script_method_calls() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/script-method-calls.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
@@ -800,16 +708,9 @@ pub fn main(reward: Reward) -> i64 {
 fn lsp_document_highlight_marks_trait_impl_uses() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/trait-impl-highlights.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 

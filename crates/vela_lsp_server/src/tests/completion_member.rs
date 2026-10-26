@@ -686,14 +686,9 @@ fn lsp_member_completion_uses_source_function_return_receiver_facts() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-fn global_grant() -> bool { return true }
-pub fn main() { current_player(). }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/completion/function-return.vela"
+    );
     let main_line = text.lines().nth(7).expect("main line");
     open_document(&mut server, uri, text);
 
@@ -720,17 +715,9 @@ fn lsp_member_completion_uses_source_method_return_receiver_facts() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-fn global_grant() -> bool { return true }
-pub fn main(player: Player) { player.inventory(). }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/completion/method-return.vela"
+    );
     let main_line = text.lines().nth(10).expect("main line");
     open_document(&mut server, uri, text);
 
@@ -788,21 +775,7 @@ fn lsp_member_completion_includes_source_and_builtin_methods() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"
-struct Player { level: i64 }
-trait Rewardable {
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Player {
-    fn level_up(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-pub fn main(player: Player) {
-    player.
-}"#;
+    let text = include_str!("../../tests/fixtures/completion/impl-and-trait-members.vela");
     open_document(&mut server, uri, text);
 
     let player_response = response_value(request::<lsp_types::request::Completion>(

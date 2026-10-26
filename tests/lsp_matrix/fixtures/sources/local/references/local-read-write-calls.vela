@@ -1,0 +1,6 @@
+pub fn grant(amount: i64) -> i64 { return amount }
+pub fn main(amount: i64) -> i64 {
+    let score = amount
+    score += grant(amount)
+    return score + grant(score)
+}

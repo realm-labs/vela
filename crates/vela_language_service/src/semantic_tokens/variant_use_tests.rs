@@ -7,16 +7,9 @@ use crate::{
 fn semantic_tokens_classify_imported_source_enum_variant_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let quest = DocumentId::from("/workspace/scripts/game/quest.vela");
-    let main_text = "\
-use game::quest::Progress
-pub fn main(progress: Progress) -> Progress {
-    let started = Progress::Started
-    let done = Progress::Done(\"ok\")
-    match progress {
-        Progress::Started => started
-        Progress::Done(value) => done
-    }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/imported-enum-uses.vela"
+    );
     let quest_text = "\
 pub enum Progress {
     Started

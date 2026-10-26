@@ -1,0 +1,17 @@
+pub struct Reward {
+    amount: i64
+}
+
+pub enum Progress {
+    Started
+    Active { quest_id: String }
+    Finished(result: String)
+}
+
+pub trait Scored {
+    fn score(value: Reward) -> i64
+}
+
+impl Reward {
+    fn bonus(value: Reward) -> i64 { return 1 }
+}

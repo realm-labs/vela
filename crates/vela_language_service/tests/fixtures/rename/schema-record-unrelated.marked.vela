@@ -1,0 +1,2 @@
+pub struct Record { value: i64 }
+fn unrelated() { Record { value: 1 }; other::Record { [[metadata:start]]value[[metadata:end]]: 2 }; host::Record { [[unknown:start]]bogus[[unknown:end]]: 3 }; }

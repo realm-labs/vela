@@ -133,20 +133,9 @@ fn lsp_private_method_rename_rejects_trait_impl_collision() {
             "capabilities": {}
         }),
     ));
-    let text = "\
-struct Reward {
-    amount: i64
-}
-
-trait Rewardable {
-    fn grant(self) -> i64
-    fn award(self) -> i64
-}
-
-impl Rewardable for Reward {
-    fn grant(self) -> i64 { return self.amount }
-    fn award(self) -> i64 { return self.amount + 1 }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/trait-impl-collision.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

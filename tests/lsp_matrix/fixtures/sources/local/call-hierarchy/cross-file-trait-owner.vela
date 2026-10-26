@@ -1,0 +1,5 @@
+use game::math::clamp
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
+    fn preview(self, amount: i64) -> i64;
+}

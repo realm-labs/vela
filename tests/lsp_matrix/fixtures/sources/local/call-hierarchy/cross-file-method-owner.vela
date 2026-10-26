@@ -1,0 +1,7 @@
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}

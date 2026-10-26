@@ -425,13 +425,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_script_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            struct Player { level: i64 }
-            impl Player {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            pub fn main(player: Player) { player.grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/method.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -459,14 +453,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_method_on_source_function_return() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            struct Player { level: i64 }
-            impl Player {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            fn current_player() -> Player { return Player { level: 1 } }
-            pub fn main() { current_player().grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/function-return.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -494,17 +481,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_method_on_source_method_return() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            struct Player { level: i64 }
-            struct Inventory { count: i64 }
-            impl Player {
-                fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-            }
-            impl Inventory {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            pub fn main(player: Player) { player.inventory().grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/method-return.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -532,12 +509,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_trait_receiver_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            trait Rewardable {
-                fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/trait-receiver.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -565,14 +537,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_trait_impl_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            trait Rewardable { fn grant(self, amount: i64, bonus: i64) -> i64; }
-            struct Player { level: i64 }
-            impl Rewardable for Player {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            pub fn main(player: Player) { player.grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/trait-impl.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -600,14 +565,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_trait_default_method_on_record_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            trait Rewardable {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            struct Player { level: i64 }
-            impl Rewardable for Player {}
-            pub fn main(player: Player) { player.grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/default-trait.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -635,15 +593,7 @@ pub fn main() { source_any().grant(1, 2) }"#;
     #[test]
     fn signature_help_resolves_source_trait_default_method_on_source_function_return() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"
-            trait Rewardable {
-                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-            }
-            struct Player { level: i64 }
-            impl Rewardable for Player {}
-            fn current_player() -> Player { return Player { level: 1 } }
-            pub fn main() { current_player().grant(1, 2) }
-        "#;
+        let text = include_str!("../tests/fixtures/signature/function-default-trait.vela");
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

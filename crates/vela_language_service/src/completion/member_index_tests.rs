@@ -11,19 +11,7 @@ use super::member_index::{MemberCompletionIndex, MemberCompletionSurface};
 #[test]
 fn member_completion_index_unifies_source_schema_trait_and_builtin_members() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"
-struct Player { level: i64 }
-trait Rewardable {
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Player {
-    fn level_up(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-"#;
+    let text = include_str!("../../tests/fixtures/completion/member-index.vela");
     let files = vec![SourceFileSnapshot::new(document, text)];
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

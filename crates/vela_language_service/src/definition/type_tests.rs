@@ -541,20 +541,9 @@ fn type_definition_follows_imported_source_method_return_type() {
 fn main(config: RewardConfig) {
 return config.outcome();
 }"#;
-    let rewards_text = r#"pub enum RewardOutcome {
-Granted,
-Skipped,
-}
-
-pub struct RewardConfig {
-count: i64,
-}
-
-impl RewardConfig {
-pub fn outcome(self) -> RewardOutcome {
-return RewardOutcome::Granted;
-}
-}"#;
+    let rewards_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/definition/method-return-type.vela"
+    );
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),

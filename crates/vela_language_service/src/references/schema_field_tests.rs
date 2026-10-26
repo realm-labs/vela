@@ -7,15 +7,9 @@ use crate::{
 fn references_find_schema_record_constructor_field_labels() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-    let main_text = "\
-pub fn make(level: i64) -> Player {
-    let player = Player { level: level }
-    return player
-}
-
-pub fn main(player: Player) -> i64 {
-    return player.level
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-explicit-field.vela"
+    );
     let schema_text = "pub fn level() { return 1 }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
@@ -97,15 +91,9 @@ pub fn main(player: Player) -> i64 {
 fn references_find_schema_record_constructor_shorthand_field_labels() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-    let main_text = "\
-pub fn make(level: i64) -> Player {
-    let player = Player { level }
-    return player
-}
-
-pub fn main(player: Player) -> i64 {
-    return player.level
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-shorthand-field.vela"
+    );
     let schema_text = "pub fn level() { return 1 }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
@@ -264,17 +252,9 @@ pub fn main(player: Player) -> i64 {
 fn references_find_schema_record_variant_field_labels_and_patterns() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-    let main_text = "\
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-variant-field-uses.vela"
+    );
     let schema_text = "pub fn count() { return 1 }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),

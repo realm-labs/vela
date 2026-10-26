@@ -18,7 +18,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF06 | Complete | [Engine/reload evidence](test-input-sf06.md): 101 fixtures, four formatter and portable route comparisons; 620 default / 632 all-feature tests. |
 | SF07 | Complete | [Macro/bindgen evidence](test-input-sf07.md): 301-byte enum fixture; 83 tests including 27 trybuild cases per lane and isolated source-tree checks. |
 | SF08 | Complete | [CLI/WASM/examples evidence](test-input-sf08.md): full UI-C, bounded processes/temp ownership and public routes; 29 CLI, 14 WASM, 29 example tests per lane. |
-| SF09–SF12 | Pending | No acceptance claimed. |
+| SF09 | Complete | [Tooling source evidence](test-input-sf09.md): 196 literal sites / 97 fixtures, unchanged identities; LS 771 plus two ignored, LSP 842 library + seven binary + ten stdio per lane. |
+| SF10–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 

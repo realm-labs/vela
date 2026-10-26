@@ -1,0 +1,12 @@
+use game::types::QuestState
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count } => { return count }
+        QuestState::Done => { return 0 }
+    }
+}

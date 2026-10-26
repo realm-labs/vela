@@ -6,22 +6,9 @@ use crate::{
 #[test]
 fn references_find_enum_record_variant_field_labels_and_patterns() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/variant-field-uses.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -57,19 +44,9 @@ pub fn main(state: QuestState) -> i64 {
 fn references_find_cross_file_imported_source_enum_variant_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::QuestState
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-variant-uses.vela"
+    );
     let types_text = "\
 pub enum QuestState {
     Active { count: i64 },
@@ -125,19 +102,9 @@ pub enum QuestState {
 fn references_find_cross_file_imported_source_enum_record_variant_field_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::QuestState
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-variant-field-uses.vela"
+    );
     let types_text = "\
 pub enum QuestState {
     Active { count: i64 },

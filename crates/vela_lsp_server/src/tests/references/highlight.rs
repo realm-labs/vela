@@ -237,13 +237,9 @@ fn lsp_document_highlight_imported_const_and_global_stays_in_active_document() {
         initialize["result"]["capabilities"]["documentHighlightProvider"],
         true
     );
-    let main_text = "\
-use game::rewards::BASE_REWARD
-use game::rewards::reward_scale
-pub fn main() -> i64 {
-    let first = BASE_REWARD
-    return first + reward_scale
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-value-uses.vela"
+    );
     let rewards_text = "\
 pub const BASE_REWARD = 4
 pub state reward_scale: i64 = 1;";
@@ -427,15 +423,9 @@ fn lsp_document_highlight_imported_source_type_stays_in_active_document() {
     );
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
-    let main_text = "\
-use game::inventory::Inventory as Bag
-
-pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
-
-pub fn main(bag: Bag) -> Bag {
-    let next: Bag = bag
-    return next
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-type-alias.vela"
+    );
     let inventory_text = "\
 pub struct Inventory {
     slots: i64
@@ -573,14 +563,9 @@ fn lsp_document_highlight_imported_source_field_and_method_stays_in_active_docum
     );
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
-    let main_text = "\
-use game::types::Reward
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    let second = reward.total()
-    return first + second + reward.amount + reward.total()
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-record-members.vela"
+    );
     let types_text = "\
 pub struct Reward {
     amount: i64

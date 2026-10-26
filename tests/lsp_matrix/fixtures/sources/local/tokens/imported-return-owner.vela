@@ -1,0 +1,5 @@
+pub struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+pub fn current_player() -> Player { return Player { level: 1 } }

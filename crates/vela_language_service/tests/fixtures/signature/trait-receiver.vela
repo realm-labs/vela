@@ -1,0 +1,6 @@
+
+            trait Rewardable {
+                fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }
+        

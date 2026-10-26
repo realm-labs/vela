@@ -1,0 +1,12 @@
+fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards)
+}
+
+fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let rewards: Map<String, i64> = {
+        "xp": 5
+    };
+    let tags: Set<String> = set::from_array(["daily", "vip"]);
+    return score(scores, rewards, tags).unwrap_or(0)
+}

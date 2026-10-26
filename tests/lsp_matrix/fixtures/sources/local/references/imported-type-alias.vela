@@ -1,0 +1,8 @@
+use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+
+pub fn main(bag: Bag) -> Bag {
+    let next: Bag = bag
+    return next
+}

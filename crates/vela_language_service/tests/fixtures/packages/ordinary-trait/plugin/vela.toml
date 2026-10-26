@@ -1,0 +1,8 @@
+[package]
+id = "dev.vela.plugin"
+name = "plugin"
+version = "0.1.0"
+[source]
+roots = ["src"]
+[dependencies]
+api = { path = "../api" }

@@ -9,23 +9,12 @@ use crate::{
 fn hover_reports_imported_function_const_and_global_facts() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
-    let main_text = "\
-use game::rewards::BASE_REWARD
-use game::rewards::reward_scale
-use game::rewards::reward_bonus
-pub fn main(amount: i64) -> i64 {
-    let first = BASE_REWARD
-    let scaled = reward_bonus(first, reward_scale)
-    return scaled + amount
-}";
-    let rewards_text = r#"#[doc("Base reward amount")]
-pub const BASE_REWARD: i64 = 4
-#[doc("Current reward scale")]
-pub state reward_scale: i64 = 1;
-#[doc("Compute reward bonus")]
-pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
-    return amount * scale
-}"#;
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/hover/cross-file-main.vela"
+    );
+    let rewards_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/hover/cross-file-rewards.vela"
+    );
     let databases = databases_for_files(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards, rewards_text),

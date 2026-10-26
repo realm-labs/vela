@@ -8,21 +8,7 @@ use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 #[test]
 fn member_completion_includes_source_impl_and_trait_methods() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"
-struct Player { level: i64 }
-trait Rewardable {
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Player {
-    fn level_up(self, amount: i64) -> bool { return amount > 0 }
-}
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-pub fn main(player: Player, rewardable: Rewardable) {
-    player.
-}"#;
+    let text = include_str!("../../tests/fixtures/completion/impl-and-trait-members.vela");
 
     let player_completions = completions_for(document.clone(), text, "player.");
 
@@ -201,14 +187,9 @@ fn member_completion_uses_schema_trait_method_return_receiver_facts() {
 #[test]
 fn member_completion_uses_source_function_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-fn global_grant() -> bool { return true }
-pub fn main() { current_player(). }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/completion/function-return.vela"
+    );
 
     let completions = completions_for(document, text, "current_player().");
 
@@ -240,17 +221,9 @@ fn main() { current_player(). }"#;
 #[test]
 fn member_completion_uses_source_method_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, amount: i64) -> bool { return amount > 0 }
-}
-fn global_grant() -> bool { return true }
-pub fn main(player: Player) { player.inventory(). }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/completion/method-return.vela"
+    );
 
     let completions = completions_for(document, text, "player.inventory().");
 

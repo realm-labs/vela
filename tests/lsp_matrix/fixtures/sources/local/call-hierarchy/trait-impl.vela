@@ -1,0 +1,16 @@
+pub fn clamp(value: i64) -> i64 { return value }
+
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player { level: i64 }
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
+}
+
+pub fn main(player: Player) -> i64 {
+    let first = player.grant(1)
+    return player.grant(first)
+}

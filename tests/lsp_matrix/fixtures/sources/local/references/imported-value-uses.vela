@@ -1,0 +1,6 @@
+use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+pub fn main() -> i64 {
+    let first = BASE_REWARD
+    return first + reward_scale
+}

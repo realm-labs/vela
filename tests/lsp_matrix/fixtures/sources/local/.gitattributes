@@ -1,0 +1,2 @@
+# SF09 direct-include sources only; leave sibling SF10 source rules unchanged.
+*.vela text eol=lf

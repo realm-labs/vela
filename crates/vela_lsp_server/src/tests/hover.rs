@@ -498,18 +498,9 @@ pub fn main(rewardable: Rewardable) {
 fn lsp_hover_reports_source_trait_default_method_on_source_function_return_receiver() {
     let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
-    let text = r#"trait Rewardable {
-    #[doc("Preview reward")]
-    fn preview(self, amount: i64) -> bool { return amount > 0 }
-}
-struct Player {
-    level: i64,
-}
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    return current_player().preview(1)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/returned-receivers/function-default-trait.vela"
+    );
     let method_line = text
         .lines()
         .nth(10)

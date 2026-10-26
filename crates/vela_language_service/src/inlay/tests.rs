@@ -156,11 +156,9 @@ fn inlay_hints_skip_named_arguments_and_unknown_calls() {
 #[test]
 fn inlay_hints_show_source_method_parameter_names() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-pub fn main(player: Player) { player.grant(1, 2) }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-parameters.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let main_line = text.lines().nth(4).expect("main line should exist");
 
@@ -207,12 +205,9 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
 #[test]
 fn inlay_hints_show_source_method_parameter_names_for_hir_receiver_call() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() { current_player().grant(1, 2) }"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-parameters.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let main_line = text.lines().nth(5).expect("main line should exist");
 
@@ -302,14 +297,7 @@ pub fn main() {
 #[test]
 fn inlay_hints_show_tuple_destructuring_binding_typefacts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"pub fn main(pairs: Array<(String, i64)>) {
-    let (let_name, let_score) = ("Ada", 1)
-    for (for_name, for_score) in pairs {
-    }
-    match ("Grace", 2) {
-        (match_name, match_score) => {}
-    }
-}"#;
+    let text = include_str!("../../tests/fixtures/inlay/tuple-destructuring.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let hints = databases.inlay_hints(
@@ -357,13 +345,8 @@ fn inlay_hints_show_tuple_destructuring_binding_typefacts() {
 #[test]
 fn inlay_hints_show_lambda_parameter_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"pub fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let doubled: Array<i64> = scores.map(|score| score + 1);
-    let rewards: Map<String, i64> = {"gold": 1};
-    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
-    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
-}"#;
+    let text =
+        include_str!("../../../../tests/lsp_matrix/fixtures/sources/local/inlay/lambda-facts.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let hints = databases.inlay_hints(

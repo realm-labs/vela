@@ -609,27 +609,9 @@ mod tests {
     #[test]
     fn folding_ranges_cover_items_and_blocks() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-use game::reward::grant
-use game::reward::Reward
-
-pub struct Player {
-    level: i64
-}
-
-pub fn main(player: Player) -> i64 {
-    if player.level > 1 {
-        return match player.level {
-            1 => {
-                return 1
-            }
-            _ => {
-                return 2
-            }
-        }
-    }
-    return 0
-}";
+        let text = include_str!(
+            "../../../tests/lsp_matrix/fixtures/sources/local/folding/items-and-blocks.vela"
+        );
         let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
         let ranges = databases.folding_ranges(&document);

@@ -1,0 +1,6 @@
+pub fn main(player: Player) {
+    let ignored: Array<Any> = player.values.map(|value| value);
+    let filtered: Map<String, Any> = player.rewards.filter(|key, value| true);
+    let stable: Array<i64> = [1, 2, 3];
+    let mapped: Array<i64> = stable.map(|score| score + 1);
+}

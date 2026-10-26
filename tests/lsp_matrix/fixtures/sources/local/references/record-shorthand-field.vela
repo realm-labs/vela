@@ -1,0 +1,11 @@
+pub struct Reward {
+    amount: i64
+}
+
+pub fn make(amount: i64) -> Reward {
+    return Reward { amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    return reward.amount
+}

@@ -743,25 +743,7 @@ mod tests {
     #[test]
     fn document_symbols_include_nested_type_members() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "\
-const BASE: i64 = 1
-state player: Player = Player { level: 1, name: \"sample\" };
-pub struct Player {
-    level: i64
-    name: String
-}
-pub enum Reward {
-    None
-    Coins(amount: i64)
-    Item { id: String }
-}
-pub trait Damageable {
-    fn damage(amount: i64) -> bool
-}
-impl Player {
-    fn heal(amount: i64) -> i64 { return amount }
-}
-pub fn main(amount: i64) -> i64 { return amount }";
+        let text = include_str!("../tests/fixtures/symbols/nested-type-members.vela");
         let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
         let symbols = databases.document_symbols(&document);

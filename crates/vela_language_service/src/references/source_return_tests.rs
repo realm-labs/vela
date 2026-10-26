@@ -6,21 +6,9 @@ use crate::{
 #[test]
 fn references_find_source_method_calls_on_source_function_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-impl Player {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -62,23 +50,9 @@ pub fn main() -> i64 {
 #[test]
 fn references_find_source_trait_default_method_calls_on_source_function_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-impl Rewardable for Player {}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-default-trait.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -126,27 +100,9 @@ pub fn main() -> i64 {
 #[test]
 fn references_find_source_method_calls_on_source_method_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Inventory {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().grant(1)
-    return player.inventory().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -188,29 +144,9 @@ pub fn main(player: Player) -> i64 {
 #[test]
 fn references_find_source_trait_default_method_calls_on_source_method_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Rewardable for Inventory {}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().preview(1)
-    return player.inventory().preview(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-default-trait.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -258,21 +194,9 @@ pub fn main(player: Player) -> i64 {
 #[test]
 fn document_highlight_marks_source_method_calls_on_source_function_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-impl Player {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(
@@ -310,23 +234,9 @@ pub fn main() -> i64 {
 fn document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers()
 {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-impl Rewardable for Player {}
-
-fn current_player() -> Player { return Player { level: 1 } }
-
-pub fn main() -> i64 {
-    let first = current_player().grant(1)
-    return current_player().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/function-default-trait.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(
@@ -369,27 +279,9 @@ pub fn main() -> i64 {
 #[test]
 fn document_highlight_marks_source_method_calls_on_source_method_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Inventory {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().grant(1)
-    return player.inventory().grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(
@@ -426,29 +318,9 @@ pub fn main(player: Player) -> i64 {
 #[test]
 fn document_highlight_marks_source_trait_default_method_calls_on_source_method_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Rewardable for Inventory {}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().preview(1)
-    return player.inventory().preview(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-default-trait.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let highlights = databases.document_highlights(

@@ -1,0 +1,7 @@
+pub fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let doubled: Array<i64> = scores.map(|score| score + 1);
+    let rewards: Map<String, i64> = {"gold": 1};
+    let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
+    let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
+}

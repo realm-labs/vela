@@ -465,24 +465,9 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn semantic_tokens_classify_script_members() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub enum Progress {
-    Started
-    Active { quest_id: String }
-    Finished(result: String)
-}
-
-pub trait Scored {
-    fn score(value: Reward) -> i64
-}
-
-impl Reward {
-    fn bonus(value: Reward) -> i64 { return 1 }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/script-members.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
@@ -551,18 +536,9 @@ impl Reward {
 #[test]
 fn semantic_tokens_classify_script_member_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    fn bonus(value: Reward) -> i64 { return value.amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount + reward.bonus()
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/typed-member-uses.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
@@ -592,19 +568,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn semantic_tokens_classify_record_constructor_local_member_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    fn bonus(self, extra: i64) -> i64 { return self.amount + extra }
-}
-
-pub fn main() -> i64 {
-    let reward = Reward { amount: 1 }
-    return reward.amount + reward.bonus(1)
-}";
+    let text = include_str!("../../tests/fixtures/tokens/constructor-member-uses.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
@@ -661,23 +625,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
 #[test]
 fn semantic_tokens_classify_source_enum_variant_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub enum Progress {
-    Started
-    Finished(result: String)
-    Active { quest_id: String }
-}
-
-pub fn main(progress: Progress) -> Progress {
-    let started = Progress::Started
-    let finished = Progress::Finished(\"done\")
-    let active = Progress::Active { quest_id: \"q\" }
-    match progress {
-        Progress::Started => started
-        Progress::Finished(result) => finished
-        Progress::Active { quest_id } => active
-    }
-}";
+    let text = include_str!("../../tests/fixtures/tokens/source-enum-uses.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
@@ -706,15 +654,9 @@ pub fn main(progress: Progress) -> Progress {
 #[test]
 fn semantic_tokens_classify_schema_enum_variant_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn main(state: QuestState) -> QuestState {
-    let active = QuestState::Active
-    let done = QuestState::Done(1)
-    match state {
-        QuestState::Active => active
-        QuestState::Done(value) => done
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/schema-enum-uses.vela"
+    );
     let mut schema = RegistryFacts::default();
     schema.insert_type(
         "QuestState",
@@ -756,22 +698,7 @@ pub fn main(state: QuestState) -> QuestState {
 #[test]
 fn semantic_tokens_classify_source_type_hints() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub enum Progress {
-    Started
-}
-
-pub trait Rewardable {
-    fn preview(self, reward: Reward) -> Progress
-}
-
-pub fn main(reward: Reward, rewardable: Rewardable) -> Progress {
-    return rewardable.preview(reward)
-}";
+    let text = include_str!("../../tests/fixtures/tokens/source-type-hints.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);

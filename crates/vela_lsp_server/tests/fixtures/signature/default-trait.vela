@@ -1,0 +1,6 @@
+trait Rewardable {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+struct Player { level: i64 }
+impl Rewardable for Player {}
+pub fn main(player: Player) { player.grant(1, 2) }

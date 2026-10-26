@@ -84,12 +84,9 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     );
 
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let text = r#"pub fn main(player: Player) {
-    let ignored: Array<Any> = player.values.map(|value| value);
-    let filtered: Map<String, Any> = player.rewards.filter(|key, value| true);
-    let stable: Array<i64> = [1, 2, 3];
-    let mapped: Array<i64> = stable.map(|score| score + 1);
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-lambda-and-control.vela"
+    );
     let filter_line = text.lines().nth(2).expect("filter line");
     let mapped_line = text.lines().nth(4).expect("mapped line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
@@ -847,16 +844,9 @@ fn lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"trait Rewardable {
-    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
-}
-struct Player { level: i64 }
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    current_player().preview("raw", 1)
-    return current_player().preview("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-trait-any-parameter.vela"
+    );
     let first_call = text.lines().nth(7).expect("first call line");
     let second_call = text.lines().nth(8).expect("second call line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
@@ -921,18 +911,9 @@ fn lsp_inlay_hints_suppress_source_any_return_receiver() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Player { level: i64 }
-fn current_player() -> Player { return Player { level: 1 } }
-fn source_any() -> Any { return current_player() }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main() {
-    source_any().grant("raw", 1)
-    let dynamic = source_any()
-    dynamic.grant("again", 2)
-    current_player().grant("stable", 3)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-return-negative-and-control.vela"
+    );
     let stable_call = text.lines().nth(10).expect("stable call line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -987,18 +968,9 @@ fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main(player: Player) {
-    player.inventory().grant("raw", 1)
-    return player.inventory().grant("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-return-any-parameter.vela"
+    );
     let first_call = text.lines().nth(9).expect("first call line");
     let second_call = text.lines().nth(10).expect("second call line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
@@ -1064,19 +1036,9 @@ fn lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"trait Rewardable {
-    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
-}
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Rewardable for Inventory {}
-pub fn main(player: Player) {
-    player.inventory().preview("raw", 1)
-    return player.inventory().preview("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-return-trait-any-parameter.vela"
+    );
     let first_call = text.lines().nth(10).expect("first call line");
     let second_call = text.lines().nth(11).expect("second call line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(

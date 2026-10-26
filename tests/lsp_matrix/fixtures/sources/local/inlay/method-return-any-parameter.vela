@@ -1,0 +1,12 @@
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main(player: Player) {
+    player.inventory().grant("raw", 1)
+    return player.inventory().grant("again", 2)
+}

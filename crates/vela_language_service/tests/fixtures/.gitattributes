@@ -1,0 +1,3 @@
+# Preserve authored bytes; tests generate CRLF variants from these LF sources.
+*.vela text eol=lf
+*.toml text eol=lf

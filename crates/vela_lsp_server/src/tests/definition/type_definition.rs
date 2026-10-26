@@ -474,20 +474,9 @@ fn assert_imported_source_method_return_type_definition() {
 fn main(config: RewardConfig) {
 return config.outcome();
 }"#;
-    let rewards_text = r#"pub enum RewardOutcome {
-Granted,
-Skipped,
-}
-
-pub struct RewardConfig {
-count: i64,
-}
-
-impl RewardConfig {
-pub fn outcome(self) -> RewardOutcome {
-return RewardOutcome::Granted;
-}
-}"#;
+    let rewards_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/definition/method-return-type.vela"
+    );
     open_document(&mut server, rewards_uri, rewards_text);
     open_document(&mut server, main_uri, main_text);
     let call_line = main_text.lines().nth(3).expect("method call line");

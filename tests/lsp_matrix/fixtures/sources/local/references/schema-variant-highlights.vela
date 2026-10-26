@@ -1,0 +1,7 @@
+pub fn main(state: QuestState) -> i64 {
+    let next = QuestState::Active(1)
+    match state {
+        QuestState::Active(level) => return level
+        QuestState::Done => return 0
+    }
+}

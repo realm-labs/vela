@@ -1,0 +1,15 @@
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count: current } => { return current }
+        QuestState::Done => { return 0 }
+    }
+}

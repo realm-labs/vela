@@ -1,0 +1,20 @@
+pub struct Player {
+    level: i64
+}
+
+pub struct Inventory {
+    count: i64
+}
+
+impl Player {
+    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+
+impl Inventory {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub fn main(player: Player) -> i64 {
+    let first = player.inventory().grant(1)
+    return player.inventory().grant(first)
+}

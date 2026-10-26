@@ -7,20 +7,7 @@ use crate::{
 #[test]
 fn references_find_tuple_destructuring_binding_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn main(pairs: Array<(String, i64)>) {
-    let (name, score) = (\"Ada\", 1)
-    name
-    name
-    for (item_name, item_score) in pairs {
-        item_score
-    }
-    match (\"Grace\", 2) {
-        (match_name, match_score) => {
-            match_name
-        },
-    }
-}";
+    let text = include_str!("../../tests/fixtures/references/tuple-destructuring.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let name_references = databases.references(&document, position_for_nth(text, "name", 3), true);

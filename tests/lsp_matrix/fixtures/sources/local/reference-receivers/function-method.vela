@@ -1,0 +1,14 @@
+pub struct Player {
+    level: i64
+}
+
+impl Player {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+fn current_player() -> Player { return Player { level: 1 } }
+
+pub fn main() -> i64 {
+    let first = current_player().grant(1)
+    return current_player().grant(first)
+}

@@ -1,0 +1,19 @@
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player {
+    level: i64
+}
+
+pub struct Chest {
+    amount: i64
+}
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+impl Rewardable for Chest {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}

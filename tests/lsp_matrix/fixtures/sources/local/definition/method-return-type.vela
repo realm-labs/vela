@@ -1,0 +1,14 @@
+pub enum RewardOutcome {
+Granted,
+Skipped,
+}
+
+pub struct RewardConfig {
+count: i64,
+}
+
+impl RewardConfig {
+pub fn outcome(self) -> RewardOutcome {
+return RewardOutcome::Granted;
+}
+}

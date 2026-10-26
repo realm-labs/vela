@@ -245,19 +245,9 @@ pub fn main() { return source_any().grant(1) }"#;
 #[test]
 fn call_hierarchy_uses_resolved_script_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/script-method-calls.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
 
     let prepared_from_declaration = databases.prepare_call_hierarchy(
@@ -328,23 +318,12 @@ pub fn main(reward: Reward) -> i64 {
 fn call_hierarchy_cross_file_source_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::Reward
-pub fn first(reward: Reward) -> i64 {
-    return reward.grant(1)
-}
-
-pub fn second(reward: Reward) -> i64 {
-    return reward.grant(2)
-}";
-    let types_text = "\
-pub struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-method-caller.vela"
+    );
+    let types_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-method-owner.vela"
+    );
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(types.clone(), types_text),
@@ -414,23 +393,9 @@ impl Reward {
 #[test]
 fn call_hierarchy_uses_resolved_trait_impl_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn clamp(value: i64) -> i64 { return value }
-
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.grant(1)
-    return player.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/trait-impl.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
 
     let prepared_from_declaration = databases.prepare_call_hierarchy(
@@ -494,27 +459,13 @@ fn call_hierarchy_cross_file_trait_impl_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let math = DocumentId::from("/workspace/scripts/game/math.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::Player
-pub fn first(player: Player) -> i64 {
-    return player.grant(1)
-}
-
-pub fn second(player: Player) -> i64 {
-    return player.grant(2)
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-impl-caller.vela"
+    );
     let math_text = "pub fn clamp(value: i64) -> i64 { return value }";
-    let types_text = "\
-use game::math::clamp
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64;
-}
-
-pub struct Player { level: i64 }
-
-impl Rewardable for Player {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-}";
+    let types_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-impl.vela"
+    );
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(math.clone(), math_text),
@@ -597,18 +548,9 @@ impl Rewardable for Player {
 #[test]
 fn call_hierarchy_uses_trait_default_and_interface_methods() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn clamp(value: i64) -> i64 { return value }
-
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-    fn preview(self, amount: i64) -> i64;
-}
-
-pub fn main(rewardable: Rewardable) -> i64 {
-    let first = rewardable.grant(1)
-    return rewardable.preview(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/default-and-interface.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
 
     let grant_from_declaration = databases.prepare_call_hierarchy(
@@ -687,19 +629,13 @@ fn call_hierarchy_cross_file_trait_default_and_interface_methods() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let math = DocumentId::from("/workspace/scripts/game/math.vela");
     let traits = DocumentId::from("/workspace/scripts/game/traits.vela");
-    let main_text = "\
-use game::traits::Rewardable
-pub fn main(rewardable: Rewardable) -> i64 {
-    let first = rewardable.grant(1)
-    return rewardable.preview(first)
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-trait-caller.vela"
+    );
     let math_text = "pub fn clamp(value: i64) -> i64 { return value }";
-    let traits_text = "\
-use game::math::clamp
-pub trait Rewardable {
-    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
-    fn preview(self, amount: i64) -> i64;
-}";
+    let traits_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/call-hierarchy/cross-file-trait-owner.vela"
+    );
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(math.clone(), math_text),

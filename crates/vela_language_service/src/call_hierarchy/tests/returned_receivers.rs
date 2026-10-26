@@ -3,27 +3,9 @@ use super::*;
 #[test]
 fn call_hierarchy_uses_source_method_calls_on_source_method_return_receivers() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Inventory {
-    pub fn grant(self, amount: i64) -> i64 { return amount }
-}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().grant(1)
-    return player.inventory().grant(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
 
     let prepared_from_declaration = databases.prepare_call_hierarchy(
@@ -110,29 +92,9 @@ pub fn main(player: Player) -> i64 {
 #[test]
 fn call_hierarchy_uses_source_trait_default_method_calls_on_source_method_return_receivers() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-
-pub struct Player {
-    level: i64
-}
-
-pub struct Inventory {
-    count: i64
-}
-
-impl Player {
-    pub fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-
-impl Rewardable for Inventory {}
-
-pub fn main(player: Player) -> i64 {
-    let first = player.inventory().preview(1)
-    return player.inventory().preview(first)
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/reference-receivers/method-default-trait.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), text)]);
 
     let prepared_from_declaration = databases.prepare_call_hierarchy(

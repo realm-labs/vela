@@ -1,0 +1,7 @@
+use game::types::Reward
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.amount
+    let second = reward.total()
+    return first + second + reward.amount + reward.total()
+}

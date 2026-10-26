@@ -1,0 +1,8 @@
+pub fn make(level: i64) -> Player {
+    let player = Player { level }
+    return player
+}
+
+pub fn main(player: Player) -> i64 {
+    return player.level
+}

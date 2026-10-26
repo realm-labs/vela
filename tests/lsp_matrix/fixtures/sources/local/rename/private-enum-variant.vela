@@ -1,0 +1,15 @@
+enum QuestState {
+    Active { count: i64 },
+    Done
+}
+
+fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count } => { return count }
+        QuestState::Done => { return 0 }
+    }
+}

@@ -1,0 +1,15 @@
+pub struct Reward {
+    amount: i64
+}
+
+pub enum Progress {
+    Started
+}
+
+pub trait Rewardable {
+    fn preview(self, reward: Reward) -> Progress
+}
+
+pub fn main(reward: Reward, rewardable: Rewardable) -> Progress {
+    return rewardable.preview(reward)
+}

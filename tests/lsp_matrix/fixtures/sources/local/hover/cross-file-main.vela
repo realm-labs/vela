@@ -1,0 +1,8 @@
+use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+use game::rewards::reward_bonus
+pub fn main(amount: i64) -> i64 {
+    let first = BASE_REWARD
+    let scaled = reward_bonus(first, reward_scale)
+    return scaled + amount
+}

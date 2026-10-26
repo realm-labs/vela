@@ -355,20 +355,9 @@ fn bump(player: Player) -> i64 {
 #[test]
 fn private_method_rename_updates_typed_receiver_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    fn grant(self, amount: i64) -> i64 { return amount }
-    fn preview(self) -> i64 { return self.grant(1) }
-}
-
-fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/private-method.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let prepare = databases
@@ -401,20 +390,9 @@ fn main(reward: Reward) -> i64 {
 #[test]
 fn private_method_rename_rejects_trait_impl_collision() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-struct Reward {
-    amount: i64
-}
-
-trait Rewardable {
-    fn grant(self) -> i64
-    fn award(self) -> i64
-}
-
-impl Rewardable for Reward {
-    fn grant(self) -> i64 { return self.amount }
-    fn award(self) -> i64 { return self.amount + 1 }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/trait-impl-collision.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     assert_eq!(
@@ -430,22 +408,9 @@ impl Rewardable for Reward {
 #[test]
 fn private_enum_variant_rename_updates_constructors_and_patterns() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/private-enum-variant.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let prepare = databases
@@ -652,15 +617,9 @@ pub fn main(amount: i64) -> i64 {
 fn source_backed_schema_variant_rename_updates_constructors_and_patterns() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/_schema_defs.vela");
-    let main_text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active
-    match state {
-        QuestState::Active => { return 1 }
-        QuestState::Done => { return 2 }
-    }
-    return 0
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-unit-variants.vela"
+    );
     let schema_text = "pub fn Active() { return 1 }\npub fn Done() { return 2 }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),

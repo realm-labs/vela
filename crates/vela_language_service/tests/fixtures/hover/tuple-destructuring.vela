@@ -1,0 +1,15 @@
+pub fn main(pairs: Array<(String, i64)>) {
+    let (let_name, let_score) = ("Ada", 1)
+    let_name
+    let_score
+    for (for_name, for_score) in pairs {
+        for_name
+        for_score
+    }
+    match ("Grace", 2) {
+        (match_name, match_score) => {
+            match_name
+            match_score
+        },
+    }
+}

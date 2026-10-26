@@ -1,0 +1,13 @@
+struct Reward {
+    amount: i64
+}
+
+trait Rewardable {
+    fn grant(self) -> i64
+    fn award(self) -> i64
+}
+
+impl Rewardable for Reward {
+    fn grant(self) -> i64 { return self.amount }
+    fn award(self) -> i64 { return self.amount + 1 }
+}

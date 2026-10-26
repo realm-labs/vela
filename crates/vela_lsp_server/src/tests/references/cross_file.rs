@@ -21,14 +21,9 @@ fn lsp_references_find_cross_file_imported_source_field_and_method_uses() {
     ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
-    let main_text = "\
-use game::types::Reward
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    let second = reward.total()
-    return first + second + reward.amount + reward.total()
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-record-members.vela"
+    );
     let types_text = "\
 pub struct Reward {
     amount: i64
@@ -683,19 +678,9 @@ fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
     ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
-    let main_text = "\
-use game::types::QuestState
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-variant-uses.vela"
+    );
     let types_text = "\
 pub enum QuestState {
     Active { count: i64 },
@@ -774,19 +759,9 @@ fn lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses
     ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
-    let main_text = "\
-use game::types::QuestState
-
-pub fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-pub fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count: current } => { return current }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let main_text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-variant-field-uses.vela"
+    );
     let types_text = "\
 pub enum QuestState {
     Active { count: i64 },

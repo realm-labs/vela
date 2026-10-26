@@ -71,18 +71,9 @@ fn lsp_source_trait_default_method_rename_updates_source_function_return_receive
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-struct Player {
-    level: i64,
-}
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() -> i64 {
-    let first = current_player().preview(1)
-    return current_player().preview(first)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/function-default-trait.vela"
+    );
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({

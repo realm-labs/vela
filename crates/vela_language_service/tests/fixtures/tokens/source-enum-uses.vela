@@ -1,0 +1,16 @@
+pub enum Progress {
+    Started
+    Finished(result: String)
+    Active { quest_id: String }
+}
+
+pub fn main(progress: Progress) -> Progress {
+    let started = Progress::Started
+    let finished = Progress::Finished("done")
+    let active = Progress::Active { quest_id: "q" }
+    match progress {
+        Progress::Started => started
+        Progress::Finished(result) => finished
+        Progress::Active { quest_id } => active
+    }
+}

@@ -25,15 +25,9 @@ fn lsp_semantic_tokens_classify_source_method_on_source_function_return() {
     let source = token_modifier_bit(token_modifiers, "source");
 
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() -> i64 {
-    return current_player().grant(1)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/function-return.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -107,16 +101,8 @@ fn lsp_semantic_tokens_suppress_source_any_return_receiver_member() {
     let source = token_modifier_bit(token_modifiers, "source");
 
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-fn source_any() -> Any { return Player { level: 1 } }
-pub fn main() -> i64 {
-    source_any().grant(1)
-    return source_any().level
-}";
+    let text =
+        include_str!("../../../../tests/lsp_matrix/fixtures/sources/local/tokens/any-return.vela");
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -199,12 +185,9 @@ fn lsp_semantic_tokens_classify_imported_source_method_on_source_function_return
     let source = token_modifier_bit(token_modifiers, "source");
 
     let player_uri = "file:///workspace/scripts/game/player.vela";
-    let player_text = "\
-pub struct Player { level: i64 }
-impl Player {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-pub fn current_player() -> Player { return Player { level: 1 } }";
+    let player_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/imported-return-owner.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -310,16 +293,9 @@ pub enum Progress {
         }),
     );
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-use game::quest::Progress
-pub fn main(progress: Progress) -> Progress {
-    let started = Progress::Started
-    let done = Progress::Done(\"ok\")
-    match progress {
-        Progress::Started => started
-        Progress::Done(value) => done
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/imported-enum-uses.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -383,18 +359,9 @@ fn lsp_semantic_tokens_classify_source_method_on_source_method_return() {
     let source = token_modifier_bit(token_modifiers, "source");
 
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, amount: i64) -> i64 { return amount }
-}
-pub fn main(player: Player) -> i64 {
-    return player.inventory().grant(1)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/method-return.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -467,16 +434,9 @@ fn lsp_semantic_tokens_classify_source_trait_method_on_source_function_return() 
     let source = token_modifier_bit(token_modifiers, "source");
 
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-struct Player { level: i64 }
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() -> i64 {
-    return current_player().preview(1)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/function-default-trait.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -548,19 +508,9 @@ fn lsp_semantic_tokens_classify_source_trait_method_on_source_method_return() {
     let source = token_modifier_bit(token_modifiers, "source");
 
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = "\
-trait Rewardable {
-    fn preview(self, amount: i64) -> i64 { return amount }
-}
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Rewardable for Inventory {}
-pub fn main(player: Player) -> i64 {
-    return player.inventory().preview(1)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/tokens/method-default-trait.vela"
+    );
     let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({

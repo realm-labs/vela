@@ -6,18 +6,9 @@ use crate::{
 #[test]
 fn references_find_record_constructor_field_labels() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn make(amount: i64) -> Reward {
-    return Reward { amount: amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/record-explicit-field.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -57,18 +48,9 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn references_find_record_constructor_shorthand_field_labels() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub struct Reward {
-    amount: i64
-}
-
-pub fn make(amount: i64) -> Reward {
-    return Reward { amount }
-}
-
-pub fn main(reward: Reward) -> i64 {
-    return reward.amount
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/record-shorthand-field.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let references = databases.references(
@@ -131,14 +113,9 @@ pub fn main(reward: Reward) -> i64 {
 fn references_find_cross_file_imported_source_field_and_method_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::Reward
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    let second = reward.total()
-    return first + second + reward.amount + reward.total()
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-record-members.vela"
+    );
     let types_text = "\
 pub struct Reward {
     amount: i64

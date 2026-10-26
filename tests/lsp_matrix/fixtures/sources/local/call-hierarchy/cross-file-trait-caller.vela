@@ -1,0 +1,5 @@
+use game::traits::Rewardable
+pub fn main(rewardable: Rewardable) -> i64 {
+    let first = rewardable.grant(1)
+    return rewardable.preview(first)
+}

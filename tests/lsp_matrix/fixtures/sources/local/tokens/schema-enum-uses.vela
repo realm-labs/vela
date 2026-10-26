@@ -1,0 +1,8 @@
+pub fn main(state: QuestState) -> QuestState {
+    let active = QuestState::Active
+    let done = QuestState::Done(1)
+    match state {
+        QuestState::Active => active
+        QuestState::Done(value) => done
+    }
+}

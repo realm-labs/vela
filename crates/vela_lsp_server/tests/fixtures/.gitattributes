@@ -1,0 +1,2 @@
+# Preserve authored LF, including sources without a final newline.
+*.vela text eol=lf

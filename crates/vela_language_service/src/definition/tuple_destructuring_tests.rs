@@ -6,19 +6,7 @@ use crate::{
 #[test]
 fn definition_follows_tuple_destructuring_binding() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "\
-pub fn main(pairs: Array<(String, i64)>) {
-    let (name, score) = (\"Ada\", 1)
-    name
-    for (item_name, item_score) in pairs {
-        item_score
-    }
-    match (\"Grace\", 2) {
-        (match_name, match_score) => {
-            match_name
-        },
-    }
-}";
+    let text = include_str!("../../tests/fixtures/definition/tuple-destructuring.vela");
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let let_definition = databases

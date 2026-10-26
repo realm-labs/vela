@@ -256,15 +256,9 @@ fn inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_retu
 #[test]
 fn inlay_hints_suppress_any_source_function_and_method_parameters() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-fn dynamic(raw: Any, count: i64) -> i64 { return count }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main(player: Player) {
-    dynamic("raw", 1)
-    player.grant("raw", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-parameters.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let hints = databases.inlay_hints(
@@ -284,15 +278,9 @@ pub fn main(player: Player) {
 #[test]
 fn inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-fn current_player() -> Player { return Player { level: 1 } }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main() {
-    current_player().grant("raw", 1)
-    return current_player().grant("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-any-parameter.vela"
+    );
     let first_call = line(text, 6);
     let second_call = line(text, 7);
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
@@ -320,18 +308,9 @@ pub fn main() {
 #[test]
 fn inlay_hints_suppress_source_any_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-fn current_player() -> Player { return Player { level: 1 } }
-fn source_any() -> Any { return current_player() }
-impl Player {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main() {
-    source_any().grant("raw", 1)
-    let dynamic = source_any()
-    dynamic.grant("again", 2)
-    current_player().grant("stable", 3)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-return-negative-and-control.vela"
+    );
     let stable_call = line(text, 10);
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
@@ -352,18 +331,9 @@ pub fn main() {
 #[test]
 fn inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Inventory {
-    fn grant(self, raw: Any, count: i64) -> i64 { return count }
-}
-pub fn main(player: Player) {
-    player.inventory().grant("raw", 1)
-    return player.inventory().grant("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-return-any-parameter.vela"
+    );
     let first_call = line(text, 9);
     let second_call = line(text, 10);
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
@@ -392,16 +362,9 @@ pub fn main(player: Player) {
 fn inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver()
  {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"trait Rewardable {
-    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
-}
-struct Player { level: i64 }
-impl Rewardable for Player {}
-fn current_player() -> Player { return Player { level: 1 } }
-pub fn main() {
-    current_player().preview("raw", 1)
-    return current_player().preview("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/function-return-trait-any-parameter.vela"
+    );
     let first_call = line(text, 7);
     let second_call = line(text, 8);
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
@@ -430,19 +393,9 @@ pub fn main() {
 fn inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_method_return_receiver()
  {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"trait Rewardable {
-    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
-}
-struct Player { level: i64 }
-struct Inventory { count: i64 }
-impl Player {
-    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
-}
-impl Rewardable for Inventory {}
-pub fn main(player: Player) {
-    player.inventory().preview("raw", 1)
-    return player.inventory().preview("again", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/method-return-trait-any-parameter.vela"
+    );
     let first_call = line(text, 10);
     let second_call = line(text, 11);
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
@@ -470,14 +423,9 @@ pub fn main(player: Player) {
 #[test]
 fn inlay_hints_suppress_any_enum_variant_payloads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"enum Payload {
-    Dynamic(raw: Any, count: i64),
-    Stable(name: String, count: i64),
-}
-pub fn main() {
-    Payload::Dynamic("raw", 1)
-    Payload::Stable("ok", 2)
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/variant-any-and-control.vela"
+    );
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let hints = databases.inlay_hints(
@@ -549,12 +497,9 @@ fn inlay_hints_suppress_any_schema_enum_variant_payloads() {
 #[test]
 fn inlay_hints_suppress_any_lambda_parameter_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"pub fn main(player: Player) {
-    let ignored: Array<Any> = player.values.map(|value| value);
-    let filtered: Map<String, Any> = player.rewards.filter(|key, value| true);
-    let stable: Array<i64> = [1, 2, 3];
-    let mapped: Array<i64> = stable.map(|score| score + 1);
-}"#;
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/inlay/any-lambda-and-control.vela"
+    );
     let filter_line = line(text, 2);
     let mapped_line = line(text, 4);
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);

@@ -197,11 +197,7 @@ fn lsp_document_formatting_formats_container_type_hint_example() {
                 "uri": uri,
                 "languageId": "vela",
                 "version": 1,
-                "text": "\
-fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
-
-fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"xp\":5};let tags:Set < String > = set::from_array([\"daily\",\"vip\"]);return score(scores,rewards,tags).unwrap_or(0)}
-"
+                "text": include_str!("../../../../tests/lsp_matrix/fixtures/sources/local/formatting/container-hints.input.vela")
             }
         }),
     ));
@@ -221,20 +217,9 @@ fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"x
     assert_eq!(edits.len(), 1);
     assert_eq!(
         edits[0]["newText"],
-        "\
-fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
-    return result::ok(rewards)
-}
-
-fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let rewards: Map<String, i64> = {
-        \"xp\": 5
-    };
-    let tags: Set<String> = set::from_array([\"daily\", \"vip\"]);
-    return score(scores, rewards, tags).unwrap_or(0)
-}
-"
+        include_str!(
+            "../../../../tests/lsp_matrix/fixtures/sources/local/formatting/container-hints.expected.vela"
+        )
     );
 }
 

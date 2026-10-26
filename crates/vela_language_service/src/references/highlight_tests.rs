@@ -7,14 +7,9 @@ use crate::{
 fn document_highlight_marks_schema_variant_uses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
-    let main_text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active(1)
-    match state {
-        QuestState::Active(level) => return level
-        QuestState::Done => return 0
-    }
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-variant-highlights.vela"
+    );
     let schema_text = "pub enum QuestState { Active(i64), Done }";
     let mut databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
@@ -190,13 +185,9 @@ pub fn main(amount: i64) -> i64 {
 fn document_highlight_imported_const_and_global_stays_in_active_document() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
-    let main_text = "\
-use game::rewards::BASE_REWARD
-use game::rewards::reward_scale
-pub fn main() -> i64 {
-    let first = BASE_REWARD
-    return first + reward_scale
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-value-uses.vela"
+    );
     let rewards_text = "\
 pub const BASE_REWARD = 4
 pub state reward_scale: i64 = 1;";
@@ -320,15 +311,9 @@ pub state reward_scale: i64 = 1;";
 fn document_highlight_imported_source_type_stays_in_active_document() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
-    let main_text = "\
-use game::inventory::Inventory as Bag
-
-pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
-
-pub fn main(bag: Bag) -> Bag {
-    let next: Bag = bag
-    return next
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-type-alias.vela"
+    );
     let inventory_text = "\
 pub struct Inventory {
     slots: i64
@@ -430,14 +415,9 @@ pub struct Inventory {
 fn document_highlight_imported_source_field_and_method_stays_in_active_document() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");
-    let main_text = "\
-use game::types::Reward
-
-pub fn main(reward: Reward) -> i64 {
-    let first = reward.amount
-    let second = reward.total()
-    return first + second + reward.amount + reward.total()
-}";
+    let main_text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/references/imported-record-members.vela"
+    );
     let types_text = "\
 pub struct Reward {
     amount: i64

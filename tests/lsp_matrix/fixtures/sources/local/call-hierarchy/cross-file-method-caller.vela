@@ -1,0 +1,8 @@
+use game::types::Reward
+pub fn first(reward: Reward) -> i64 {
+    return reward.grant(1)
+}
+
+pub fn second(reward: Reward) -> i64 {
+    return reward.grant(2)
+}

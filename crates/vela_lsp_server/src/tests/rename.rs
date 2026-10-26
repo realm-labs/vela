@@ -390,20 +390,9 @@ fn bump(player: Player) -> i64 {
 fn lsp_private_method_rename_updates_typed_receiver_calls() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
-    let text = "\
-struct Reward {
-    amount: i64
-}
-
-impl Reward {
-    fn grant(self, amount: i64) -> i64 { return amount }
-    fn preview(self) -> i64 { return self.grant(1) }
-}
-
-fn main(reward: Reward) -> i64 {
-    let first = reward.grant(1)
-    return reward.grant(first)
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/private-method.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
@@ -449,22 +438,9 @@ fn main(reward: Reward) -> i64 {
 fn lsp_private_enum_variant_rename_updates_constructors_and_patterns() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
-    let text = "\
-enum QuestState {
-    Active { count: i64 },
-    Done
-}
-
-fn active(count: i64) -> QuestState {
-    return QuestState::Active { count: count }
-}
-
-fn main(state: QuestState) -> i64 {
-    match state {
-        QuestState::Active { count } => { return count }
-        QuestState::Done => { return 0 }
-    }
-}";
+    let text = include_str!(
+        "../../../../tests/lsp_matrix/fixtures/sources/local/rename/private-enum-variant.vela"
+    );
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 

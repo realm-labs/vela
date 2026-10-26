@@ -244,15 +244,9 @@ fn lsp_references_find_schema_record_constructor_field_labels() {
         }),
     ));
 
-    let text = "\
-pub fn make(level: i64) -> Player {
-    let player = Player { level: level }
-    return player
-}
-
-pub fn main(player: Player) -> i64 {
-    return player.level
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-explicit-field.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -566,15 +560,9 @@ fn lsp_references_find_schema_variant_constructors_and_patterns() {
         }),
     ));
 
-    let text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active
-    match state {
-        QuestState::Active => { return 1 }
-        QuestState::Done => { return 2 }
-    }
-    return 0
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-unit-variants.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -720,14 +708,9 @@ fn lsp_document_highlight_marks_schema_variant_uses() {
         }),
     ));
 
-    let text = "\
-pub fn main(state: QuestState) -> i64 {
-    let next = QuestState::Active(1)
-    match state {
-        QuestState::Active(level) => return level
-        QuestState::Done => return 0
-    }
-}";
+    let text = include_str!(
+        "../../../../../tests/lsp_matrix/fixtures/sources/local/references/schema-variant-highlights.vela"
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,

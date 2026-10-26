@@ -1,0 +1,11 @@
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn bonus(value: Reward) -> i64 { return value.amount }
+}
+
+pub fn main(reward: Reward) -> i64 {
+    return reward.amount + reward.bonus()
+}
