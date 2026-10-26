@@ -164,22 +164,7 @@ fn runtime_reflection_preserves_map_key_values() {
 fn compiled_source_reflects_script_record_implements() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
-        r#"
-struct Player { level: i64 }
-
-fn main() {
-    let player = Player { level: 7 };
-    let fields = reflect::fields(player);
-    let missing_type = ReflectType { name: "", kind: "missing" };
-    let player_type = reflect::type_of(player).unwrap_or(missing_type);
-    if reflect::name(player_type) == "Player" && reflect::implements(player, "Damageable") {
-        if reflect::get(fields[0], "name") == "level" {
-            return reflect::get(player, "level") + 1;
-        }
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/script_trait.vela"),
     )
     .expect("compile script record reflection source");
 
@@ -224,21 +209,7 @@ fn main() {
 fn compiled_source_reflect_set_returns_updated_script_record() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
-        r#"
-struct Player { level: i64, name: String }
-
-fn main() {
-    let player = Player { level: 7, name: "hero" };
-    let updated = reflect::set(player, "level", 10);
-    if reflect::get(player, "level") == 7
-        && reflect::get(updated, "level") == 10
-        && reflect::name(updated) == "Player"
-        && reflect::get(updated, "name") == "hero" {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/updated_record.vela"),
     )
     .expect("compile script record reflect set source");
 
@@ -351,22 +322,7 @@ fn main() {
 fn heap_execution_reflects_script_record_implements() {
     let program = compile_reflection_value_source(
         SourceId::new(1),
-        r#"
-struct Player { level: i64 }
-
-fn main() {
-    let player = Player { level: 7 };
-    let fields = reflect::fields(player);
-    let missing_type = ReflectType { name: "", kind: "missing" };
-    let player_type = reflect::type_of(player).unwrap_or(missing_type);
-    if reflect::name(player_type) == "Player" && reflect::implements(player, "Damageable") {
-        if reflect::get(fields[0], "name") == "level" {
-            return reflect::get(player, "level") + 1;
-        }
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/script_trait.vela"),
     )
     .expect("compile heap script record reflection source");
 
@@ -399,27 +355,7 @@ fn compiled_module_reflects_registered_script_trait_impls() {
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
-        r#"
-trait Damageable {
-    fn damage(self) -> i64 { return self.level; }
-}
-struct Player { level: i64 }
-
-impl Damageable for Player {}
-
-pub fn main() {
-    let player = Player { level: 7 };
-    let fields = reflect::fields(player);
-    let missing_type = ReflectType { name: "", kind: "missing" };
-    let player_type = reflect::type_of(player).unwrap_or(missing_type);
-    if reflect::name(player_type) == "game::Player" && reflect::implements(player, "game::Damageable") {
-        if reflect::get(fields[0], "name") == "level" {
-            return player.damage() + 1;
-        }
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/registered_script_trait.vela"),
     )];
     let mut graph = ModuleGraph::new();
     for source in &sources {

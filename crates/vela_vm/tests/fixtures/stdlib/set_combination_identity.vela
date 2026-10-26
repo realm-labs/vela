@@ -1,0 +1,31 @@
+
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let c = Player { id: 1, level: 10 };
+    let left = set::from_array([a, b]);
+    let right = set::from_array([a, c]);
+    a.level += 1;
+
+    let unioned = left.union(right);
+    let shared = left.intersection(right);
+    let only_left = left.difference(right);
+    let changed = left.symmetric_difference(right);
+    let required = set::from_array([a]);
+    let d = Player { id: 1, level: 11 };
+
+    if unioned.len() == 3
+        && shared.len() == 1 && shared.has(a)
+        && only_left.len() == 1 && only_left.has(b)
+        && changed.len() == 2 && changed.has(b) && changed.has(c)
+        && required.is_subset(left) && left.is_superset(required)
+        && left.is_disjoint(set::from_array([d])) {
+        return 7;
+    }
+    return 0;
+}

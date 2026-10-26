@@ -1,0 +1,17 @@
+
+fn checked(raw) {
+    let value = option::ok_or(raw, "bad level")?;
+    return result::ok(value + 1);
+}
+
+fn main() {
+    let ok = checked(option::some(41));
+    let err = checked(option::none());
+    if result::unwrap_or(ok, 0) == 42
+        && result::is_err(err)
+        && option::is_none(result::to_option(err))
+    {
+        return option::unwrap_or(result::to_option(ok), 0);
+    }
+    return 0;
+}

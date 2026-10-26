@@ -1,0 +1,11 @@
+
+fn main(player) {
+    let fields = reflect::fields(player);
+    let player_type = reflect::type_info("Player");
+    return reflect::get(player_type, "field_count") == 2
+        && reflect::get(fields[0], "owner") == "Player"
+        && reflect::get(fields[0], "name") == "id"
+        && reflect::get(fields[1], "owner") == "Player"
+        && reflect::get(fields[1], "name") == "level"
+        && reflect::kind(fields[1]) == "field";
+}

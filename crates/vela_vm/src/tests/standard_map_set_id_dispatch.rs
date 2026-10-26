@@ -5,21 +5,7 @@ use super::*;
 fn call_method_uses_standard_map_transform_ids_before_name_fallback() {
     let mut program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let base = {"gold": 2, "xp": 6};
-    let patch = {"bonus": 3, "xp": 9};
-    base.extend({"rank": 1});
-    let merged = base.merge(patch);
-    let keys = merged.keys().collect_array().join(",");
-    let total = merged.values().collect_array().sum();
-    let entries = merged.entries().collect_array();
-    if keys == "gold,xp,rank,bonus" && total == 15 && entries.len() == 4 {
-        return merged.get_or("xp", 0);
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/map_transform_ids.vela"),
     )
     .expect("standard map transform source should compile")
     .into_bytecode();
@@ -45,25 +31,7 @@ fn main() {
 fn call_method_uses_standard_set_transform_ids_before_name_fallback() {
     let mut program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let base = set::from_array(["daily", "quest"]);
-    let patch = set::from_array(["quest", "raid"]);
-    base.extend(set::from_array(["bonus"]));
-    let unioned = base.union(patch).values().collect_array().sort().join(",");
-    let shared = base.intersection(patch).values().collect_array().sort().join(",");
-    let only_base = base.difference(patch).values().collect_array().sort().join(",");
-    let changed = base.symmetric_difference(patch).values().collect_array().sort().join(",");
-    if unioned == "bonus,daily,quest,raid"
-        && shared == "quest"
-        && only_base == "bonus,daily"
-        && changed == "bonus,daily,raid"
-    {
-        return unioned;
-    }
-    return "";
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/set_transform_ids.vela"),
     )
     .expect("standard set transform source should compile")
     .into_bytecode();

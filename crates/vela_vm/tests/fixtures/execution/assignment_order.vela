@@ -1,0 +1,22 @@
+
+fn receiver(values, trace) {
+    trace.push(1);
+    return values;
+}
+
+fn index(trace) {
+    trace.push(2);
+    return 0;
+}
+
+fn value(trace) {
+    trace.push(3);
+    return 7;
+}
+
+fn main() {
+    let values = [10];
+    let trace = [];
+    receiver(values, trace)[index(trace)] = value(trace);
+    return [values[0], trace.len(), trace[0], trace[1], trace[2]];
+}

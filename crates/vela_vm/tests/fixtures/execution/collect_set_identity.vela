@@ -1,0 +1,19 @@
+
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let collected = [a, a, b]
+        .iter()
+        .collect_set();
+    a.level += 1;
+    let c = Player { id: 1, level: 11 };
+    if collected.len() == 2 && collected.has(a) && collected.has(b) && !collected.has(c) {
+        return collected.len();
+    }
+    return 0;
+}

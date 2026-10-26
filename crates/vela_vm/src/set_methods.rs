@@ -195,29 +195,8 @@ mod tests {
 
     #[test]
     fn runs_compiled_set_combination_methods() {
-        let source = r#"
-fn main() {
-    let player = set::from_array(["daily", "quest", "raid"]);
-    let event = set::from_array(["quest", "bonus", "daily"]);
-    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let missing = player.difference(event).values().collect_array().join(",");
-    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let required = set::from_array(["daily", "quest"]);
-    if unioned == "bonus,daily,quest,raid"
-        && shared == "daily,quest"
-        && missing == "raid"
-        && changed == "bonus,raid"
-        && required.is_subset(player)
-        && player.is_superset(required)
-        && player.is_disjoint(set::from_array(["bonus"]))
-        && player.len() == 3
-    {
-        return shared;
-    }
-    return "";
-}
-"#;
+        let source =
+            include_str!("../../../tests/fixtures/conformance/collections/set_combinations.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set combination source should compile");
         let mut vm = Vm::new();
@@ -230,25 +209,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_set_combination_methods() {
-        let source = r#"
-fn main() {
-    let base = set::from_array([1, 2, 3, 5]);
-    let bonus = set::from_array([2, 4, 5]);
-    let unioned = base.union(bonus);
-    let shared = base.intersection(bonus);
-    let only_base = base.difference(bonus);
-    let changed = base.symmetric_difference(bonus);
-    let required = set::from_array([1, 3]);
-    let excluded = set::from_array([9]);
-    if !required.is_subset(base) || !base.is_superset(required) || !base.is_disjoint(excluded) {
-        return -1;
-    }
-    return unioned.values().collect_array().sum()
-        + shared.values().collect_array().sum()
-        + only_base.values().collect_array().sum()
-        + changed.values().collect_array().sum();
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/managed_set_combination.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set combination source should compile");
         let mut vm = Vm::new();
@@ -265,28 +226,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_string_set_predicates() {
-        let source = r#"
-fn main() {
-    let player = set::from_array(["daily", "quest", "raid"]);
-    let required = set::from_array(["daily", "quest"]);
-    let event = set::from_array(["quest", "bonus"]);
-    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let missing = player.difference(required).values().collect_array().sort_by(|tag| tag).join(",");
-    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
-    if required.is_subset(player)
-        && player.is_superset(required)
-        && player.is_disjoint(set::from_array(["bonus"]))
-        && unioned == "bonus,daily,quest,raid"
-        && shared == "quest"
-        && missing == "raid"
-        && changed == "bonus,daily,raid"
-    {
-        return unioned;
-    }
-    return "";
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/string_set_predicates.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string set predicate source should compile");
         let mut vm = Vm::new();
@@ -331,29 +271,7 @@ fn main() {
 
     #[test]
     fn managed_heap_set_uses_record_identity_keys() {
-        let source = r#"
-struct Player {
-    id
-    level
-}
-
-fn main() {
-    let a = Player { id: 1, level: 10 };
-    let b = Player { id: 1, level: 10 };
-    let seen = [].iter().collect_set();
-
-    let first_add = seen.add(a);
-    a.level += 1;
-    let duplicate_add = seen.add(a);
-    let second_add = seen.add(b);
-    let c = Player { id: 1, level: 11 };
-
-    if first_add && !duplicate_add && second_add && seen.has(a) && !seen.has(c) {
-        return seen.len();
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/set_record_identity.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity set source should compile");
         let mut vm = Vm::new();
@@ -367,38 +285,7 @@ fn main() {
 
     #[test]
     fn managed_heap_set_combinations_use_record_identity_keys() {
-        let source = r#"
-struct Player {
-    id
-    level
-}
-
-fn main() {
-    let a = Player { id: 1, level: 10 };
-    let b = Player { id: 1, level: 10 };
-    let c = Player { id: 1, level: 10 };
-    let left = set::from_array([a, b]);
-    let right = set::from_array([a, c]);
-    a.level += 1;
-
-    let unioned = left.union(right);
-    let shared = left.intersection(right);
-    let only_left = left.difference(right);
-    let changed = left.symmetric_difference(right);
-    let required = set::from_array([a]);
-    let d = Player { id: 1, level: 11 };
-
-    if unioned.len() == 3
-        && shared.len() == 1 && shared.has(a)
-        && only_left.len() == 1 && only_left.has(b)
-        && changed.len() == 2 && changed.has(b) && changed.has(c)
-        && required.is_subset(left) && left.is_superset(required)
-        && left.is_disjoint(set::from_array([d])) {
-        return 7;
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/set_combination_identity.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity set combination source should compile");
         let mut vm = Vm::new();
@@ -557,37 +444,7 @@ fn main() {
 
     #[test]
     fn managed_heap_set_higher_order_outputs_use_record_identity_keys() {
-        let source = r#"
-struct Player {
-    id
-    level
-}
-
-fn main() {
-    let a = Player { id: 1, level: 10 };
-    let b = Player { id: 1, level: 10 };
-    let c = Player { id: 2, level: 20 };
-    let players = set::from_array([a, b, c]);
-    let copied = players.map(|player| player);
-    let filtered = players.filter(|player| player.id == 1);
-    a.level += 1;
-    let d = Player { id: 1, level: 11 };
-
-    if copied.len() == 3
-        && filtered.len() == 2
-        && copied.has(a)
-        && copied.has(b)
-        && copied.has(c)
-        && !copied.has(d)
-        && filtered.has(a)
-        && filtered.has(b)
-        && !filtered.has(c)
-    {
-        return copied.len() + filtered.len();
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/set_callback_identity.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set higher-order identity source should compile");
         let mut vm = Vm::new();

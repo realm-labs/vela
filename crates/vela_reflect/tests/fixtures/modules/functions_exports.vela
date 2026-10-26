@@ -1,0 +1,10 @@
+
+pub fn grant(player: Player, amount: i64 = 1) -> bool {
+    return true;
+}
+
+#[doc("Helper docs.")]
+#[event("reward.helper")]
+fn helper() {
+    return ();
+}

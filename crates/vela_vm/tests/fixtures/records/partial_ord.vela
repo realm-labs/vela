@@ -1,0 +1,28 @@
+
+struct Score { value: i64 }
+impl PartialOrd for Score {
+    fn partial_cmp(self, other: Score) {
+        if self.value < other.value {
+            return option::some(-1);
+        }
+        if self.value > other.value {
+            return option::some(1);
+        }
+        return option::some(0);
+    }
+}
+
+fn main() {
+    let low = Score { value: 1 };
+    let same = Score { value: 1 };
+    let high = Score { value: 2 };
+    if low < high
+        && low <= same
+        && high > low
+        && high >= same
+        && !(same < low)
+    {
+        return 1;
+    }
+    return 0;
+}

@@ -359,16 +359,7 @@ fn script_module_reflection_registry() -> TypeRegistry {
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
-        r#"
-#[doc("Grant reward.")]
-#[event("reward")]
-pub fn grant(player: Player, amount: i64 = 1) -> bool {
-    return true;
-}
-
-pub state counter: i64 = 1;
-
-"#,
+        include_str!("../tests/fixtures/reflection/reward_module.vela"),
     ));
     let mut registry = TypeRegistry::new();
     registry.register_script_modules(&graph);

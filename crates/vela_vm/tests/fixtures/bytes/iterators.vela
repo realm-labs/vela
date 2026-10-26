@@ -1,0 +1,18 @@
+
+fn main() {
+    let total = 0;
+    for byte in b"AZ" {
+        if byte == 65u8 {
+            total += 10;
+        }
+        if byte == 90u8 {
+            total += 100;
+        }
+    }
+    let iter_values = b"\x01\x02\x03".iter().collect_array();
+    let byte_values = b"\x04\x05".values().collect_array();
+    if iter_values[0] == 1u8 && iter_values[2] == 3u8 && byte_values[1] == 5u8 {
+        total += iter_values.len() + byte_values.len();
+    }
+    return total;
+}

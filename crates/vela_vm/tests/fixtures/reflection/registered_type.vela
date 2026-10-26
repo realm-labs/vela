@@ -1,0 +1,21 @@
+
+fn main() {
+    let types = reflect::types();
+    let player = reflect::type_info("Player");
+    if reflect::has_type("Player")
+        && !reflect::has_type("Plyer")
+        && reflect::get(types[0], "name") == "Player"
+        && reflect::get(types[0], "id") == reflect::get(player, "id")
+        && reflect::name(types[0]) == "Player"
+        && reflect::kind(types[0]) == "script_struct"
+        && reflect::get(player, "kind") == "script_struct"
+        && reflect::kind(player) == "script_struct"
+        && reflect::get(player, "origin") == "host"
+        && reflect::origin(player) == "host"
+        && reflect::get(player, "field_count") == 2
+        && reflect::get(player, "method_count") == 1
+        && reflect::get(player, "trait_count") == 1 {
+        return reflect::get(player, "name");
+    }
+    return "missing";
+}

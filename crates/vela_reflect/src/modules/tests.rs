@@ -30,17 +30,7 @@ fn registers_script_module_functions_and_exports() {
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
-        r#"
-pub fn grant(player: Player, amount: i64 = 1) -> bool {
-    return true;
-}
-
-#[doc("Helper docs.")]
-#[event("reward.helper")]
-fn helper() {
-    return ();
-}
-"#,
+        include_str!("../../tests/fixtures/modules/functions_exports.vela"),
     ));
     let mut registry = TypeRegistry::new();
 

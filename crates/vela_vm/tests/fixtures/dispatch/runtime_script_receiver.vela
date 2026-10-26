@@ -1,0 +1,26 @@
+
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn f(x) {
+    return x.starts_with("q");
+}
+
+fn quest() {
+    return f(Label { text: "quest" });
+}
+
+fn raid() {
+    return f(Label { text: "raid" });
+}
+
+fn bad() {
+    return f(42);
+}

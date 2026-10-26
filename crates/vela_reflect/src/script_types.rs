@@ -516,23 +516,7 @@ mod tests {
             SourceId::new(1),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
-            r#"
-#[doc("Reward metadata.")]
-#[domain("gameplay")]
-#[policy(level = 3, tags = ["reward", game::reward::Event])]
-struct Reward {
-    #[doc("Reward count.")]
-    count: i64 = 1,
-    item_id: String = "gold",
-}
-
-enum QuestProgress {
-    None,
-    #[active]
-    Active { quest_id: String, count: i64 = 0 },
-    Finished(quest_id: String),
-}
-"#,
+            include_str!("../tests/fixtures/metadata/struct_enum.vela"),
         ));
         let mut registry = TypeRegistry::new();
 
@@ -921,22 +905,7 @@ impl Player {
             SourceId::new(1),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
-            r#"
-#[doc("Damage protocol.")]
-trait Damageable {
-    #[doc("Apply damage.")]
-    fn damage(self, amount: i64) -> i64;
-    fn alive(self) -> bool { return true; }
-}
-
-struct Player { hp: i64 }
-
-impl Damageable for Player {
-    fn damage(self, amount: i64) -> i64 {
-        return self.hp - amount;
-    }
-}
-"#,
+            include_str!("../tests/fixtures/metadata/traits_impls.vela"),
         ));
         let mut registry = TypeRegistry::new();
 

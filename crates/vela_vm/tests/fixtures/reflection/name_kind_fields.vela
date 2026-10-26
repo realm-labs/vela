@@ -1,0 +1,44 @@
+
+fn main(player) {
+    let player_type = reflect::type_info("Player");
+    let field = reflect::field(player, "level");
+    let type_field = reflect::field(player_type, "level");
+    let access = reflect::access(field);
+    let all_fields = reflect::fields();
+    if reflect::name(player) == "Player"
+        && reflect::id(player) == 100
+        && reflect::kind(player) == "script_struct"
+        && reflect::docs(player).unwrap_or("") == "A player script value."
+        && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
+        && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
+        && reflect::has_attr(player, "domain")
+        && !reflect::has_attr(player, "missing")
+        && reflect::has_field(player, "level")
+        && reflect::has_field(player_type, "level")
+        && !reflect::has_field(player, "mana")
+        && reflect::get(player_type, "field_count") == 2
+        && reflect::get(all_fields[1], "owner") == "Player"
+        && reflect::get(all_fields[1], "name") == "level"
+        && reflect::get(field, "owner") == "Player"
+        && reflect::get(field, "name") == "level"
+        && reflect::get(type_field, "name") == "level"
+        && reflect::get(type_field, "id") == reflect::get(field, "id")
+        && reflect::name(field) == "level"
+        && reflect::owner(field) == "Player"
+        && reflect::origin(field) == "host"
+        && reflect::id(field) == 2
+        && reflect::kind(field) == "field"
+        && reflect::get(field, "type").unwrap_or("") == "i64"
+        && reflect::get(field, "docs").unwrap_or("") == "Current player level."
+        && reflect::docs(field).unwrap_or("") == "Current player level."
+        && reflect::get(access, "reflect_readable")
+        && reflect::get(access, "reflect_writable")
+        && reflect::attr(field, "unit").unwrap_or("") == "level"
+        && reflect::attr(field, "unit").unwrap_or("") == "level"
+        && reflect::has_attr(field, "unit")
+        && !reflect::has_attr(field, "missing")
+        && reflect::get(field, "writable") {
+        return 1;
+    }
+    return 0;
+}

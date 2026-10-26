@@ -1,0 +1,38 @@
+
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
+        return [prefix, self.text, suffix].join("");
+    }
+
+    fn require(self, prefix: String) -> String {
+        return [prefix, self.text].join("");
+    }
+}
+
+fn missing_required(x) {
+    return x.require();
+}
+
+fn unknown_named(x) {
+    return x.wrap(extra = "!");
+}
+
+fn unsupported_receiver(x) {
+    return x.wrap(prefix = "{");
+}
+
+fn missing_case() {
+    return missing_required(Label { text: "quest" });
+}
+
+fn unknown_case() {
+    return unknown_named(Label { text: "quest" });
+}
+
+fn unsupported_case() {
+    return unsupported_receiver(42);
+}

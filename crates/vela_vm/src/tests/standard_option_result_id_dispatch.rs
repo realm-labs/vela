@@ -5,32 +5,7 @@ use super::*;
 fn call_method_uses_standard_option_result_ids_before_name_fallback() {
     let mut program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let some = option::some(4);
-    let none = option::none();
-    let ok = result::ok(8);
-    let err = result::err(3);
-    let converted_ok = some.ok_or(99);
-    let converted_err = none.ok_or(5);
-    let nested_some = option::some(option::some(6)).flatten();
-    let nested_ok = result::ok(result::ok(7)).flatten();
-    let nested_err = result::ok(result::err(2)).flatten();
-    if some.unwrap_or(0) == 4
-        && none.unwrap_or(9) == 9
-        && ok.unwrap_or(0) == 8
-        && err.unwrap_or(11) == 11
-        && converted_ok.to_option().unwrap_or(0) == 4
-        && converted_err.to_error_option().unwrap_or(0) == 5
-        && nested_some.unwrap_or(0) == 6
-        && nested_ok.unwrap_or(0) == 7
-        && nested_err.to_error_option().unwrap_or(0) == 2
-    {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/option_result_ids.vela"),
     )
     .expect("standard option/result method source should compile")
     .into_bytecode();

@@ -1,0 +1,30 @@
+
+enum Option {
+    Some(value),
+    None,
+}
+
+enum Result {
+    Ok(value),
+    Err(message),
+}
+
+fn result_ok_in_option() -> Option<i64> {
+    let value = Result::Ok(1)?;
+    return Option::Some(value);
+}
+
+fn result_err_in_option() -> Option<i64> {
+    let value = Result::Err("bad")?;
+    return Option::Some(value);
+}
+
+fn option_some_in_result() -> Result<i64, String> {
+    let value = Option::Some(1)?;
+    return Result::Ok(value);
+}
+
+fn option_none_in_result() -> Result<i64, String> {
+    let value = Option::None?;
+    return Result::Ok(value);
+}

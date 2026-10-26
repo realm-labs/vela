@@ -1,0 +1,14 @@
+
+fn main(player) {
+    let fields = reflect::fields(player);
+    let all_fields = reflect::fields();
+    if reflect::has_field(player, "level")
+        && !reflect::has_field(player, "secret")
+        && reflect::owner(fields[0]) == "Player"
+        && reflect::name(fields[0]) == "level"
+        && reflect::name(reflect::field(player, "level")) == "level"
+        && reflect::name(all_fields[0]) == "level" {
+        return 11;
+    }
+    return 0;
+}

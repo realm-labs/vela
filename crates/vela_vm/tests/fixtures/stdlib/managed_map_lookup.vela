@@ -1,0 +1,17 @@
+
+fn main() {
+    let states = {"daily": "done", "raid": "active", "boss": "ready"};
+    let scores = {"daily": 3, "raid": 8, "boss": 13};
+    if states.contains_key("raid")
+        && !states.contains_key("missing")
+        && states.has("boss")
+        && option::unwrap_or(states.get("boss"), "") == "ready"
+        && states.get_or("missing", "fallback") == "fallback"
+        && scores.get_or("raid", 0) == 8
+        && option::unwrap_or(scores.get("missing"), -1) == -1
+    {
+        return states.len() + scores.get_or("daily", 0);
+    }
+
+    return 0;
+}

@@ -268,24 +268,7 @@ fn main() {
 fn record_semantic_equality_uses_builtin_partial_eq_impl() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-struct Reward { code: String, amount: i64 }
-impl PartialEq for Reward {
-    fn eq(self, other: Reward) -> bool {
-        return self.code == other.code;
-    }
-}
-
-fn main() {
-    let left = Reward { code: "xp", amount: 10 };
-    let same_code = Reward { code: "xp", amount: 99 };
-    let different_code = Reward { code: "gold", amount: 10 };
-    if left == same_code && left != different_code {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/records/partial_eq.vela"),
     )
     .expect("compile PartialEq record equality source");
 
@@ -326,38 +309,7 @@ fn main() {
 fn array_lookup_uses_value_key_not_derived_record_partial_eq() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-#[derive(PartialEq)]
-struct Reward { code: String, amount: i64 }
-
-fn main() {
-    let rewards = [
-        Reward { code: "xp", amount: 10 },
-        Reward { code: "gold", amount: 5 },
-    ];
-    let same_object = rewards[0];
-    let matching = Reward { code: "xp", amount: 10 };
-    let different_amount = Reward { code: "xp", amount: 99 };
-    let found_matching = false;
-    let found_different_amount = false;
-    for reward in rewards {
-        if reward == matching {
-            found_matching = true;
-        }
-        if reward == different_amount {
-            found_different_amount = true;
-        }
-    }
-    if rewards.contains(same_object)
-        && !rewards.contains(matching)
-        && found_matching
-        && !found_different_amount
-    {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/records/derived_equality_lookup.vela"),
     )
     .expect("compile derived PartialEq array key lookup source");
 
@@ -449,35 +401,7 @@ fn main() {
 fn record_semantic_ordering_uses_builtin_partial_ord_impl() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-struct Score { value: i64 }
-impl PartialOrd for Score {
-    fn partial_cmp(self, other: Score) {
-        if self.value < other.value {
-            return option::some(-1);
-        }
-        if self.value > other.value {
-            return option::some(1);
-        }
-        return option::some(0);
-    }
-}
-
-fn main() {
-    let low = Score { value: 1 };
-    let same = Score { value: 1 };
-    let high = Score { value: 2 };
-    if low < high
-        && low <= same
-        && high > low
-        && high >= same
-        && !(same < low)
-    {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/records/partial_ord.vela"),
     )
     .expect("compile PartialOrd record ordering source");
 
@@ -1078,26 +1002,7 @@ fn main() {
 fn runs_schema_field_defaults_for_enum_constructors() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-enum Damage {
-    Physical { amount: i64 = 7, element: String = "slash" },
-    Magical(amount: i64 = 3, element: String = "arcane"),
-}
-
-fn main() {
-    let physical = Damage::Physical { amount: 5 };
-    let magical = Damage::Magical();
-    let physical_score = match physical {
-        Damage::Physical { amount, element } => amount + element.len(),
-        _ => 0,
-    };
-    let magical_score = match magical {
-        Damage::Magical(amount, element) => amount + element.len(),
-        _ => 0,
-    };
-    return physical_score + magical_score;
-}
-"#,
+        include_str!("../../tests/fixtures/records/constructor_defaults.vela"),
     )
     .expect("compile defaulted enum constructors");
 
@@ -1111,21 +1016,7 @@ fn main() {
 fn matches_enum_tag_and_binds_variant_fields() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-enum Damage {
-    Physical { amount: i64 },
-    Magical { amount: i64 },
-}
-
-fn main() {
-    let damage = Damage::Physical { amount: 7 };
-    match damage {
-        Damage::Magical { amount } => { return amount + 100; },
-        Damage::Physical { amount } => { return amount + 1; },
-        _ => { return 0; },
-    }
-}
-"#,
+        include_str!("../../tests/fixtures/records/enum_match.vela"),
     )
     .expect("compile enum match source");
 
@@ -1139,21 +1030,7 @@ fn main() {
 fn heap_execution_matches_enum_tags_and_reads_fields() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-enum Damage {
-    Physical { amount: i64 },
-    Magical { amount: i64 },
-}
-
-fn main() {
-    let damage = Damage::Physical { amount: 7 };
-    match damage {
-        Damage::Magical { amount } => { return amount + 100; },
-        Damage::Physical { amount } => { return amount + 1; },
-        _ => { return 0; },
-    }
-}
-"#,
+        include_str!("../../tests/fixtures/records/enum_match.vela"),
     )
     .expect("compile enum match source");
     let mut heap = ScriptHeap::new();

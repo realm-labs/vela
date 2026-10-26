@@ -1,0 +1,26 @@
+
+fn sink(value) {
+    return value;
+}
+
+fn block_arg() {
+    sink({
+        return 7;
+    });
+    return 0;
+}
+
+fn if_value(flag) {
+    return if flag {
+        return 1;
+    } else {
+        return 2;
+    };
+}
+
+fn match_value(value) {
+    return match value {
+        1 => { return 10; },
+        _ => { return 11; },
+    };
+}

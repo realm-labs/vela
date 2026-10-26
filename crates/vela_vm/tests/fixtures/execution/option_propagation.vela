@@ -1,0 +1,22 @@
+
+enum Option {
+    Some(value),
+    None,
+}
+
+fn maybe(value) {
+    if value > 0 {
+        return Option::Some(value);
+    }
+    return Option::None;
+}
+
+fn present() {
+    let value = maybe(4)?;
+    return Option::Some(value + 1);
+}
+
+fn missing() {
+    let value = maybe(0)?;
+    return Option::Some(value + 1);
+}

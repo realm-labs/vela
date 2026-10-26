@@ -1,0 +1,20 @@
+
+fn first_tag(values) {
+    return option::some(values[0]);
+}
+
+fn join_values(values) {
+    return result::ok(values[0]);
+}
+
+fn main() {
+    let some = option::some(["quest"]).and_then(|values| first_tag(values));
+    let none = option::none().and_then(|values| first_tag(values));
+    let ok = result::ok(["a", "b"]).and_then(|values| join_values(values));
+    let err = result::err(["blocked"]).and_then(|values| join_values(values));
+
+    return option::unwrap_or(some, "") == "quest"
+        && option::is_none(none)
+        && result::unwrap_or(ok, "") == "a"
+        && result::is_err(err);
+}

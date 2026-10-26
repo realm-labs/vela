@@ -1,0 +1,20 @@
+
+fn recover_option() {
+    return option::some(9);
+}
+
+fn recover_result(error) {
+    return result::ok(error + 1);
+}
+
+fn main() {
+    let some = option::some(4).or_else(| | recover_option());
+    let none = option::none().or_else(| | recover_option());
+    let ok = result::ok(4).or_else(|error| recover_result(error));
+    let err = result::err(2).or_else(|error| recover_result(error));
+
+    return option::unwrap_or(some, 0) == 4
+        && option::unwrap_or(none, 0) == 9
+        && result::unwrap_or(ok, 0) == 4
+        && result::unwrap_or(err, 0) == 3;
+}

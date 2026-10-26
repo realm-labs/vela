@@ -97,25 +97,7 @@ fn main() {
 fn compiled_source_reflect_variants_respect_field_access() {
     let program = compile_reflection_member_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let quest = QuestProgress::Active { count: 1 };
-    let variants = reflect::variants(quest);
-    let active = reflect::variant_info(quest, "Active");
-    let all_variants = reflect::variants();
-    let active_fields = reflect::fields(quest);
-    if reflect::name(reflect::get(active, "fields")[0]) == "count"
-        && reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
-        && reflect::name(active_fields[0]) == "count"
-        && reflect::owner(active_fields[0]) == "QuestProgress::Active"
-        && !reflect::has_field(quest, "secret")
-        && reflect::name(reflect::get(all_variants[0], "fields")[0]) == "count"
-        && reflect::owner(all_variants[0]) == "QuestProgress" {
-        return 22;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/variant_access.vela"),
     )
     .expect("compile policy variant reflection source");
 
@@ -160,21 +142,7 @@ fn main() {
 fn compiled_source_reflect_variants_respect_field_permissions() {
     let program = compile_reflection_member_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let quest = QuestProgress::Active { count: 1, admin_note: "hidden" };
-    let variants = reflect::variants(quest);
-    let active = reflect::variant_info(quest, "Active");
-    let fields = reflect::fields(quest);
-    if reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
-        && reflect::name(reflect::get(active, "fields")[0]) == "count"
-        && reflect::name(fields[0]) == "count"
-        && !reflect::has_field(quest, "admin_note") {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/variant_permissions_denied.vela"),
     )
     .expect("compile denied variant field permission source");
 
@@ -195,26 +163,7 @@ fn main() {
 fn compiled_source_reflect_variants_expose_granted_field_permissions() {
     let program = compile_reflection_member_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let quest = QuestProgress::Active { count: 1, admin_note: "shown" };
-    let variants = reflect::variants(quest);
-    let active = reflect::variant_info(quest, "Active");
-    let fields = reflect::fields(quest);
-    let admin = reflect::field(quest, "admin_note");
-    if reflect::name(reflect::get(variants[0], "fields")[1]) == "admin_note"
-        && reflect::name(reflect::get(active, "fields")[1]) == "admin_note"
-        && reflect::name(fields[1]) == "admin_note"
-        && reflect::owner(reflect::get(active, "fields")[1]) == "QuestProgress::Active"
-        && reflect::has_field(quest, "admin_note")
-        && reflect::name(admin) == "admin_note"
-        && reflect::owner(admin) == "QuestProgress::Active"
-        && reflect::get(reflect::get(admin, "access"), "required_permissions")[0] == "quest.admin.inspect" {
-        return 1;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/variant_permissions_granted.vela"),
     )
     .expect("compile granted variant field permission source");
 
@@ -236,23 +185,7 @@ fn main() {
 fn compiled_source_reflect_methods_respect_method_policy() {
     let program = compile_reflection_member_source(
         SourceId::new(1),
-        r#"
-fn main(player) {
-    let methods = reflect::methods(player);
-    let visible = reflect::method(player, "visible");
-    let all_methods = reflect::methods();
-    if reflect::has_method(player, "visible")
-        && !reflect::has_method(player, "hidden")
-        && !reflect::has_method(player, "private")
-        && !reflect::has_method(player, "admin")
-        && reflect::name(visible) == "visible"
-        && reflect::name(methods[0]) == "visible"
-        && reflect::name(all_methods[0]) == "visible" {
-        return 11;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/method_policy.vela"),
     )
     .expect("compile policy methods reflection source");
 

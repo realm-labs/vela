@@ -1,0 +1,33 @@
+
+struct Player { id: i64, level: i64 }
+
+fn main() {
+    let alice = Player { id: 1, level: 10 };
+    let bob = Player { id: 2, level: 20 };
+    let alice_copy = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(alice, 10);
+    scores.set(bob, 20);
+    alice.level += 1;
+
+    let missing_copy = scores.remove(alice_copy);
+    let removed_bob = scores.remove(bob);
+    let active = set::from_array([]);
+    let inserted_alice = active.add(alice);
+    let duplicate_alice = active.add(alice);
+    let inserted_copy = active.add(alice_copy);
+    let removed_copy = active.remove(alice_copy);
+    let removed_copy_again = active.remove(alice_copy);
+
+    if scores.has(alice) && !scores.has(bob)
+        && scores.get_or(alice, 0) == 10
+        && option::is_none(missing_copy)
+        && option::unwrap_or(removed_bob, 0) == 20
+        && active.has(alice) && !active.has(alice_copy)
+        && inserted_alice && !duplicate_alice && inserted_copy
+        && removed_copy && !removed_copy_again {
+        return scores.get_or(alice, 0) + active.len();
+    }
+    return 0;
+}

@@ -1,0 +1,31 @@
+
+#[derive(PartialEq)]
+struct Reward { code: String, amount: i64 }
+
+fn main() {
+    let rewards = [
+        Reward { code: "xp", amount: 10 },
+        Reward { code: "gold", amount: 5 },
+    ];
+    let same_object = rewards[0];
+    let matching = Reward { code: "xp", amount: 10 };
+    let different_amount = Reward { code: "xp", amount: 99 };
+    let found_matching = false;
+    let found_different_amount = false;
+    for reward in rewards {
+        if reward == matching {
+            found_matching = true;
+        }
+        if reward == different_amount {
+            found_different_amount = true;
+        }
+    }
+    if rewards.contains(same_object)
+        && !rewards.contains(matching)
+        && found_matching
+        && !found_different_amount
+    {
+        return 1;
+    }
+    return 0;
+}

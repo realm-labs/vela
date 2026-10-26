@@ -1,0 +1,6 @@
+
+fn nested() {
+    return [41].map(|value| bridge::value(value))[0];
+}
+fn main() { return nested() + 1; }
+fn reenter() { return [7, 8]; }

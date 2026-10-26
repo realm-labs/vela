@@ -1,0 +1,28 @@
+
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let rewards = {"seed": ""};
+    rewards.clear();
+
+    rewards.set(a, "first");
+    a.level += 1;
+    rewards.set(a, "updated");
+    rewards.set(b, "second");
+    let c = Player { id: 1, level: 11 };
+
+    if rewards.len() == 2
+        && rewards[a] == "updated"
+        && rewards.get_or(b, "missing") == "second"
+        && rewards.has(a)
+        && !rewards.has(c)
+    {
+        return rewards.keys().count();
+    }
+    return 0;
+}

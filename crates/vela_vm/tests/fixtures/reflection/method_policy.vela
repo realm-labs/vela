@@ -1,0 +1,16 @@
+
+fn main(player) {
+    let methods = reflect::methods(player);
+    let visible = reflect::method(player, "visible");
+    let all_methods = reflect::methods();
+    if reflect::has_method(player, "visible")
+        && !reflect::has_method(player, "hidden")
+        && !reflect::has_method(player, "private")
+        && !reflect::has_method(player, "admin")
+        && reflect::name(visible) == "visible"
+        && reflect::name(methods[0]) == "visible"
+        && reflect::name(all_methods[0]) == "visible" {
+        return 11;
+    }
+    return 0;
+}

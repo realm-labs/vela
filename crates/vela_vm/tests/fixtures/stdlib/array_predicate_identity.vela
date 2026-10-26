@@ -1,0 +1,32 @@
+
+struct Reward { code: String, amount: i64 }
+impl PartialEq for Reward {
+    fn eq(self, other: Reward) -> bool {
+        return self.code == other.code;
+    }
+}
+
+fn main() {
+    let rewards = [
+        Reward { code: "xp", amount: 10 },
+        Reward { code: "xp", amount: 99 },
+        Reward { code: "gold", amount: 1 },
+    ];
+    let expected_xp = Reward { code: "xp", amount: 0 };
+    let expected_gold = Reward { code: "gold", amount: 999 };
+    let unique = rewards.distinct();
+    let found = rewards.find(|reward| reward == expected_gold);
+    let found_reward = option::unwrap_or(found, Reward { code: "missing", amount: -1 });
+    if rewards.any(|reward| reward == expected_xp)
+        && found_reward.amount == 1
+        && !rewards.contains(expected_xp)
+        && option::unwrap_or(rewards.index_of(expected_gold), -1) == -1
+        && unique.len() == 3
+        && unique[0].amount == 10
+        && unique[1].amount == 99
+        && unique[2].code == "gold"
+    {
+        return 1;
+    }
+    return 0;
+}

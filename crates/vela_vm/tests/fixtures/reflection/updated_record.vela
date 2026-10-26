@@ -1,0 +1,14 @@
+
+struct Player { level: i64, name: String }
+
+fn main() {
+    let player = Player { level: 7, name: "hero" };
+    let updated = reflect::set(player, "level", 10);
+    if reflect::get(player, "level") == 7
+        && reflect::get(updated, "level") == 10
+        && reflect::name(updated) == "Player"
+        && reflect::get(updated, "name") == "hero" {
+        return 1;
+    }
+    return 0;
+}

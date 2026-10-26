@@ -1,0 +1,19 @@
+
+enum Damage {
+    Physical { amount: i64 = 7, element: String = "slash" },
+    Magical(amount: i64 = 3, element: String = "arcane"),
+}
+
+fn main() {
+    let physical = Damage::Physical { amount: 5 };
+    let magical = Damage::Magical();
+    let physical_score = match physical {
+        Damage::Physical { amount, element } => amount + element.len(),
+        _ => 0,
+    };
+    let magical_score = match magical {
+        Damage::Magical(amount, element) => amount + element.len(),
+        _ => 0,
+    };
+    return physical_score + magical_score;
+}

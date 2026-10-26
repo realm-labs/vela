@@ -1,0 +1,18 @@
+
+fn main() {
+    let quest = QuestProgress::Active { count: 1 };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let all_variants = reflect::variants();
+    let active_fields = reflect::fields(quest);
+    if reflect::name(reflect::get(active, "fields")[0]) == "count"
+        && reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
+        && reflect::name(active_fields[0]) == "count"
+        && reflect::owner(active_fields[0]) == "QuestProgress::Active"
+        && !reflect::has_field(quest, "secret")
+        && reflect::name(reflect::get(all_variants[0], "fields")[0]) == "count"
+        && reflect::owner(all_variants[0]) == "QuestProgress" {
+        return 22;
+    }
+    return 0;
+}

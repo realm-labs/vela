@@ -1,0 +1,19 @@
+
+fn main() {
+    let quest = QuestProgress::Active { count: 1, admin_note: "shown" };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let fields = reflect::fields(quest);
+    let admin = reflect::field(quest, "admin_note");
+    if reflect::name(reflect::get(variants[0], "fields")[1]) == "admin_note"
+        && reflect::name(reflect::get(active, "fields")[1]) == "admin_note"
+        && reflect::name(fields[1]) == "admin_note"
+        && reflect::owner(reflect::get(active, "fields")[1]) == "QuestProgress::Active"
+        && reflect::has_field(quest, "admin_note")
+        && reflect::name(admin) == "admin_note"
+        && reflect::owner(admin) == "QuestProgress::Active"
+        && reflect::get(reflect::get(admin, "access"), "required_permissions")[0] == "quest.admin.inspect" {
+        return 1;
+    }
+    return 0;
+}

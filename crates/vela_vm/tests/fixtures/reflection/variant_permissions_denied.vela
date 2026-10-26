@@ -1,0 +1,14 @@
+
+fn main() {
+    let quest = QuestProgress::Active { count: 1, admin_note: "hidden" };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let fields = reflect::fields(quest);
+    if reflect::name(reflect::get(variants[0], "fields")[0]) == "count"
+        && reflect::name(reflect::get(active, "fields")[0]) == "count"
+        && reflect::name(fields[0]) == "count"
+        && !reflect::has_field(quest, "admin_note") {
+        return 1;
+    }
+    return 0;
+}

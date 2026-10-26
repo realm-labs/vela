@@ -2,25 +2,7 @@ use super::*;
 
 #[test]
 fn runs_compiled_array_higher_order_methods() {
-    let source = r#"
-fn main() {
-    let values = [1, 2, 3, 4];
-    let doubled = values.map(|value| value * 2);
-    let evens = values.filter(|value| value % 2 == 0);
-    let first_large = values.find(|value| value > 2);
-    let missing = values.find(|value| value > 10);
-    let count = values.count(|value| value > 1);
-    if doubled[2] == 6 && evens[0] == 2 && evens[1] == 4
-        && option::unwrap_or(first_large, 0) == 3
-        && option::unwrap_or(missing, 9) == 9
-        && values.any(|value| value == 4)
-        && values.all(|value| value > 0)
-    {
-        return count;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_callbacks.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array higher-order methods should compile");
     let mut vm = Vm::new();
@@ -33,25 +15,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_array_higher_order_methods() {
-    let source = r#"
-fn main() {
-    let names = ["boar", "wolf", "wyrm"];
-    let lengths = names.map(|name| name.len());
-    let matches = names.filter(|name| name.starts_with("w"));
-    let found = names.find(|name| name.contains("yr"));
-    let missing = names.find(|name| name == "dragon");
-    if lengths[0] == 4 && lengths[2] == 4
-        && matches.len() == 2 && matches[1] == "wyrm"
-        && option::unwrap_or(found, "missing") == "wyrm"
-        && option::unwrap_or(missing, "missing") == "missing"
-        && names.any(|name| name.ends_with("f"))
-        && names.all(|name| name.len() == 4)
-    {
-        return names.count(|name| name.contains("o"));
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_array_callbacks.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array higher-order methods should compile");
     let mut budget = ExecutionBudget::unbounded();

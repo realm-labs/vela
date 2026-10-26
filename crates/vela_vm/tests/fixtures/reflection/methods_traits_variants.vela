@@ -1,0 +1,71 @@
+
+fn main(player) {
+    let player_type = reflect::type_info("Player");
+    let quest_type = reflect::type_info("QuestProgress");
+    let methods = reflect::methods(player);
+    let method = reflect::method(player, "grant_exp");
+    let type_methods = reflect::methods(player_type);
+    let type_method = reflect::method(player_type, "grant_exp");
+    let all_methods = reflect::methods();
+    let traits = reflect::traits(player);
+    let type_traits = reflect::traits(player_type);
+    let quest = QuestProgress::Active { count: 1 };
+    let variants = reflect::variants(quest);
+    let active = reflect::variant_info(quest, "Active");
+    let active_fields = reflect::fields(quest);
+    let active_count = reflect::field(quest, "count");
+    let all_fields = reflect::fields();
+    let type_variants = reflect::variants(quest_type);
+    let type_active = reflect::variant_info(quest_type, "Active");
+    let all_variants = reflect::variants();
+    if reflect::has_method(player, "grant_exp")
+        && reflect::has_method(player_type, "grant_exp")
+        && reflect::get(player_type, "method_count") == 1
+        && reflect::get(all_methods[0], "owner") == "Player"
+        && reflect::get(all_methods[0], "name") == "grant_exp"
+        && reflect::get(methods[0], "owner") == "Player"
+        && reflect::get(method, "name") == "grant_exp"
+        && reflect::get(type_method, "id") == reflect::get(method, "id")
+        && reflect::get(method, "owner") == "Player"
+        && reflect::owner(method) == "Player"
+        && reflect::origin(method) == "host"
+        && reflect::attr(method, "effect").unwrap_or("") == "write"
+        && reflect::get(methods[0], "return").unwrap_or("") == "bool"
+        && reflect::get(reflect::get(methods[0], "params")[0], "name") == "amount"
+        && reflect::get(reflect::get(methods[0], "params")[0], "type").unwrap_or("") == "i64"
+        && reflect::get(reflect::get(method, "params")[0], "name") == "amount"
+        && reflect::get(player_type, "trait_count") == 1
+        && reflect::get(quest_type, "variant_count") == 2
+        && reflect::get(variants[0], "owner") == "QuestProgress"
+        && reflect::owner(variants[0]) == "QuestProgress"
+        && reflect::get(reflect::get(variants[0], "fields")[0], "owner") == "QuestProgress::Active"
+        && reflect::get(active, "name") == "Active"
+        && reflect::get(type_active, "id") == reflect::get(active, "id")
+        && reflect::get(active, "owner") == "QuestProgress"
+        && reflect::owner(active) == "QuestProgress"
+        && reflect::origin(active) == "host"
+        && reflect::get(reflect::get(active, "fields")[0], "name") == "count"
+        && reflect::get(reflect::get(active, "fields")[0], "owner") == "QuestProgress::Active"
+        && reflect::has_field(quest, "count")
+        && !reflect::has_field(quest, "missing")
+        && reflect::get(active_fields[0], "name") == "count"
+        && reflect::get(active_fields[0], "owner") == "QuestProgress::Active"
+        && reflect::get(active_count, "name") == "count"
+        && reflect::get(active_count, "owner") == "QuestProgress::Active"
+        && reflect::get(active_count, "id") == reflect::get(reflect::get(active, "fields")[0], "id")
+        && reflect::get(all_fields[2], "owner") == "QuestProgress::Active"
+        && reflect::get(all_fields[2], "name") == "count"
+        && reflect::get(reflect::get(type_variants[0], "fields")[0], "owner") == "QuestProgress::Active"
+        && reflect::get(reflect::get(type_active, "fields")[0], "owner") == "QuestProgress::Active"
+        && reflect::has_variant(quest_type, "Active")
+        && reflect::get(all_variants[0], "owner") == "QuestProgress"
+        && reflect::get(all_variants[0], "name") == "Active"
+        && reflect::get(reflect::get(all_variants[0], "fields")[0], "owner") == "QuestProgress::Active"
+        && reflect::variant(quest) == "Active"
+        && reflect::has_variant(quest, "Active")
+        && !reflect::has_variant(quest, "Paused")
+        && reflect::variant_is(quest, "Active") {
+        return 1;
+    }
+    return 0;
+}

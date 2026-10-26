@@ -1,0 +1,14 @@
+
+fn main() {
+    let label = "  Quest.Log ";
+    let padded = label.trim_start().trim_end();
+    let parts = padded.replace(".", "_").to_lower().slice(0, 9).split("_");
+    if parts.len() == 2
+        && parts[0] == "quest"
+        && parts[1] == "log"
+        && "wolf".to_upper() == "WOLF"
+    {
+        return parts[0];
+    }
+    return "";
+}

@@ -45,59 +45,7 @@ fn compile_reflection_module_source(
 fn compiled_source_reflects_modules_functions_and_exports() {
     let program = compile_reflection_module_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let module = reflect::module("game::reward");
-    let modules = reflect::modules();
-    let exports = reflect::exports("game::reward");
-    let module_exports = reflect::exports(module);
-    let listed_exports = reflect::exports(modules[0]);
-    let function = reflect::function("game::reward::grant");
-    let functions = reflect::functions();
-    let counter = reflect::state("game::reward::counter");
-    let states = reflect::states();
-    let function_params = reflect::get(function, "params");
-    if reflect::get(module, "name") == "game::reward"
-        && reflect::name(module) == "game::reward"
-        && reflect::kind(module) == "module"
-        && reflect::kind(reflect::source_span(module).unwrap_or(())) == "source_span"
-        && reflect::has_module("game::reward")
-        && !reflect::has_module("game::missing")
-        && reflect::has_function("game::reward::grant")
-        && !reflect::has_function("game::reward::missing")
-        && reflect::has_state("game::reward::counter")
-        && !reflect::has_state("game::reward::player")
-        && !reflect::has_state("game::reward::missing")
-        && states.len() == 1
-        && reflect::name(counter) == "game::reward::counter"
-        && reflect::kind(counter) == "state"
-        && reflect::origin(counter) == "script"
-        && reflect::get(counter, "public")
-        && reflect::get(counter, "type") == "i64"
-        && reflect::get(counter, "has_initializer")
-        && reflect::get(modules[0], "name") == "game::reward"
-        && exports[0] == "game::reward::grant"
-        && module_exports[0] == "game::reward::grant"
-        && listed_exports[0] == "game::reward::grant"
-        && reflect::get(functions[0], "name") == "game::reward::grant"
-        && reflect::get(functions[0], "id") == reflect::get(function, "id")
-        && reflect::get(function_params[0], "name") == "player"
-        && reflect::get(function_params[1], "name") == "amount"
-        && reflect::name(function) == "game::reward::grant"
-        && reflect::id(function) == reflect::get(function, "id")
-        && reflect::kind(function) == "function"
-        && reflect::get(function, "id") > 0
-        && reflect::docs(function).unwrap_or("") == "Grant reward."
-        && reflect::origin(function) == "script"
-        && reflect::origin(module) == "script"
-        && reflect::attr(function, "event").unwrap_or("") == "reward"
-        && reflect::get(reflect::source_span(function).unwrap_or(()), "source") == 1
-        && reflect::get(function, "return").unwrap_or("") == "bool" {
-        return 2;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/modules_functions_exports.vela"),
     )
     .expect("compile module reflection source");
 
@@ -277,32 +225,7 @@ fn main() {
 fn compiled_source_reflect_exports_respect_function_policy() {
     let program = compile_reflection_module_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let module = reflect::module("game::reward");
-    let modules = reflect::modules();
-    let exports = reflect::exports("game::reward");
-    let module_exports = reflect::exports(module);
-    let functions = reflect::functions();
-    let module_export_names = reflect::get(module, "exports");
-    let listed_export_names = reflect::get(modules[0], "exports");
-    if reflect::has_module("game::reward")
-        && !reflect::has_module("game::missing")
-        && reflect::has_function("game::reward::grant")
-        && !reflect::has_function("game::reward::hidden")
-        && !reflect::has_function("game::reward::private")
-        && !reflect::has_function("game::reward::admin") {
-        if module_export_names[0] == "game::reward::grant"
-            && exports[0] == "game::reward::grant"
-            && module_exports[0] == "game::reward::grant"
-            && reflect::get(functions[0], "name") == "game::reward::grant"
-            && listed_export_names[0] == "game::reward::grant" {
-            return 11111;
-        }
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/export_policy.vela"),
     )
     .expect("compile policy exports reflection source");
 

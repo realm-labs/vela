@@ -1,0 +1,16 @@
+
+#[doc("Reward metadata.")]
+#[domain("gameplay")]
+#[policy(level = 3, tags = ["reward", game::reward::Event])]
+struct Reward {
+    #[doc("Reward count.")]
+    count: i64 = 1,
+    item_id: String = "gold",
+}
+
+enum QuestProgress {
+    None,
+    #[active]
+    Active { quest_id: String, count: i64 = 0 },
+    Finished(quest_id: String),
+}

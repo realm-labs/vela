@@ -1,0 +1,35 @@
+
+fn main() {
+    let some = option::some(["quest", "done"]);
+    let none = option::none();
+    let ok = result::ok(["done"]);
+    let err = result::err(["blocked"]);
+    let converted_ok = some.ok_or(["missing"]);
+    let converted_err = none.ok_or(["missing"]);
+    let flattened_some = option::some(option::some(["quest", "done"])).flatten();
+    let flattened_none = option::some(option::none()).flatten();
+    let flattened_ok = result::ok(result::ok(["done"])).flatten();
+    let flattened_err = result::ok(result::err(["nested"])).flatten();
+
+    return some.is_some()
+        && none.is_none()
+        && ok.is_ok()
+        && err.is_err()
+        && converted_ok.is_ok()
+        && converted_err.is_err()
+        && option::unwrap_or(some, ["", ""])[0] == "quest"
+        && option::unwrap_or(some, ["", ""])[1] == "done"
+        && option::unwrap_or(none, ["fallback"])[0] == "fallback"
+        && result::unwrap_or(ok, [""])[0] == "done"
+        && result::unwrap_or(err, ["fallback"])[0] == "fallback"
+        && option::unwrap_or(converted_ok.to_option(), ["", ""])[0] == "quest"
+        && option::unwrap_or(converted_ok.to_option(), ["", ""])[1] == "done"
+        && option::unwrap_or(converted_err.to_option(), ["fallback"])[0] == "fallback"
+        && converted_ok.to_error_option().is_none()
+        && option::unwrap_or(converted_err.to_error_option(), ["fallback"])[0] == "missing"
+        && option::unwrap_or(flattened_some, ["", ""])[0] == "quest"
+        && option::unwrap_or(flattened_some, ["", ""])[1] == "done"
+        && flattened_none.is_none()
+        && result::unwrap_or(flattened_ok, [""])[0] == "done"
+        && option::unwrap_or(flattened_err.to_error_option(), [""])[0] == "nested";
+}

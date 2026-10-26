@@ -1,0 +1,2 @@
+# Preserve the evaluated LF source bytes consumed by include_str!.
+*.vela text eol=lf

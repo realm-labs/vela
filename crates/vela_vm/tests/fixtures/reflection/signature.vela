@@ -1,0 +1,13 @@
+
+fn main() {
+    let function = reflect::function("game::reward::grant");
+    let params = reflect::params(function);
+    let direct = reflect::params(reflect::get(function, "params"));
+    return reflect::get(params[0], "name") == "player"
+        && reflect::get(params[0], "type").unwrap_or("") == "Player"
+        && reflect::get(params[1], "name") == "amount"
+        && reflect::get(params[1], "defaulted")
+        && reflect::get(direct[1], "name") == "amount"
+        && reflect::returns(function).unwrap_or("") == "bool";
+}
+

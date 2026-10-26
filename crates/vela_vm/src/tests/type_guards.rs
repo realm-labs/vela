@@ -24,18 +24,7 @@ fn main() {
 fn linked_function_contract_forwards_callbacks_across_container_families() {
     let program = compile_test_program(
         SourceId::new(2),
-        r#"
-fn forward(unary: Function, binary: Function) {
-    let array_total = [1, 2].map(unary).sum();
-    let set_total = set::from_array([1, 2]).map(unary).values().collect_array().sum();
-    let iterator_total = [1, 2].iter().map(unary).collect_array().sum();
-    let map_total = {"gold": 4, "xp": 6}.filter(binary).values().collect_array().sum();
-    return array_total + set_total + iterator_total + map_total;
-}
-fn main() {
-    return forward(|value| value + 1, |key, value| key == "xp" && value == 6);
-}
-"#,
+        include_str!("../../tests/fixtures/contracts/forward_container_callbacks.vela"),
     )
     .expect("dynamic Function parameters should forward into all callback families");
     let value = run_linked_test_program_with_budget(

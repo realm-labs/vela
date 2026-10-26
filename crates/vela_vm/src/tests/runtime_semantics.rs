@@ -51,31 +51,9 @@ fn assert_execution_unit_edge(
 
 #[test]
 fn indexed_assignment_evaluates_target_then_value_once() {
-    let program = compile_fixture(
-        r#"
-fn receiver(values, trace) {
-    trace.push(1);
-    return values;
-}
-
-fn index(trace) {
-    trace.push(2);
-    return 0;
-}
-
-fn value(trace) {
-    trace.push(3);
-    return 7;
-}
-
-fn main() {
-    let values = [10];
-    let trace = [];
-    receiver(values, trace)[index(trace)] = value(trace);
-    return [values[0], trace.len(), trace[0], trace[1], trace[2]];
-}
-"#,
-    );
+    let program = compile_fixture(include_str!(
+        "../../tests/fixtures/execution/assignment_order.vela"
+    ));
 
     assert_eq!(
         run_fixture(&program, "main"),
@@ -91,32 +69,9 @@ fn main() {
 
 #[test]
 fn indexed_compound_assignment_observes_aliasing_value_write() {
-    let program = compile_fixture(
-        r#"
-fn receiver(values, trace) {
-    trace.push(1);
-    return values;
-}
-
-fn index(trace) {
-    trace.push(2);
-    return 0;
-}
-
-fn aliasing_value(values, trace) {
-    trace.push(3);
-    values[0] = 100;
-    return 5;
-}
-
-fn main() {
-    let values = [10];
-    let trace = [];
-    receiver(values, trace)[index(trace)] += aliasing_value(values, trace);
-    return [values[0], trace.len(), trace[0], trace[1], trace[2]];
-}
-"#,
-    );
+    let program = compile_fixture(include_str!(
+        "../../tests/fixtures/execution/compound_assignment_order.vela"
+    ));
 
     assert_eq!(
         run_fixture(&program, "main"),
@@ -132,44 +87,9 @@ fn main() {
 
 #[test]
 fn assignment_target_components_survive_rhs_local_reassignment() {
-    let program = compile_fixture(
-        r#"
-struct Box { value: i64 }
-
-fn main() {
-    let original_values = [10, 20];
-    let replacement_values = [100, 200];
-    let values = original_values;
-    let index = 0;
-    values[index] += if true {
-        values = replacement_values;
-        index = 1;
-        5
-    } else {
-        0
-    };
-
-    let original_box = Box { value: 30 };
-    let replacement_box = Box { value: 300 };
-    let target = original_box;
-    target.value += if true {
-        target = replacement_box;
-        7
-    } else {
-        0
-    };
-
-    return [
-        original_values[0],
-        original_values[1],
-        replacement_values[0],
-        replacement_values[1],
-        original_box.value,
-        replacement_box.value,
-    ];
-}
-"#,
-    );
+    let program = compile_fixture(include_str!(
+        "../../tests/fixtures/execution/assignment_target_reassignment.vela"
+    ));
 
     assert_eq!(
         run_fixture(&program, "main"),

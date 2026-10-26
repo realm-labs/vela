@@ -1,0 +1,11 @@
+
+fn forward(unary: Function, binary: Function) {
+    let array_total = [1, 2].map(unary).sum();
+    let set_total = set::from_array([1, 2]).map(unary).values().collect_array().sum();
+    let iterator_total = [1, 2].iter().map(unary).collect_array().sum();
+    let map_total = {"gold": 4, "xp": 6}.filter(binary).values().collect_array().sum();
+    return array_total + set_total + iterator_total + map_total;
+}
+fn main() {
+    return forward(|value| value + 1, |key, value| key == "xp" && value == 6);
+}

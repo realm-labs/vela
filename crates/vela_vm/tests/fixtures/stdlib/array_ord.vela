@@ -1,0 +1,45 @@
+
+struct Score { value: i64, label: String }
+impl PartialEq for Score {
+    fn eq(self, other: Score) -> bool {
+        return self.value == other.value;
+    }
+}
+impl Eq for Score {}
+impl PartialOrd for Score {
+    fn partial_cmp(self, other: Score) {
+        return 0;
+    }
+}
+impl Ord for Score {
+    fn cmp(self, other: Score) -> i64 {
+        if self.value < other.value {
+            return -1;
+        }
+        if self.value > other.value {
+            return 1;
+        }
+        return 0;
+    }
+}
+
+fn main() {
+    let values = [
+        Score { value: 30, label: "thirty" },
+        Score { value: 10, label: "ten" },
+        Score { value: 20, label: "twenty" },
+    ];
+    let sorted = values.sort();
+    let min = values.min().unwrap_or(Score { value: 0, label: "missing" });
+    let max = values.max().unwrap_or(Score { value: 0, label: "missing" });
+    if sorted[0].label == "ten"
+        && sorted[1].label == "twenty"
+        && sorted[2].label == "thirty"
+        && min.label == "ten"
+        && max.label == "thirty"
+        && values[0].label == "thirty"
+    {
+        return 1;
+    }
+    return 0;
+}

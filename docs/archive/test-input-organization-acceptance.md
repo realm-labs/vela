@@ -14,7 +14,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF02 | Complete | [Syntax/UI-P evidence](test-input-sf02.md): 29 preserved inputs, parser goldens, typed/recovery controls and formatter subset. |
 | SF03 | Complete | [Semantic/package evidence](test-input-sf03.md): 75 extracted inputs, 11 UI-S cases and fresh package trees; 329 tests per feature lane. Archive packaging remains limited by existing versionless path dependencies. |
 | SF04 | Complete | [MIR/compiler evidence](test-input-sf04.md): 48 source inputs, 12 MIR expectations, eight UI-S cases; 650 default / 666 all-feature tests. |
-| SF05–SF12 | Pending | No acceptance claimed. |
+| SF05 | Complete | [VM/reflection evidence](test-input-sf05.md): 106 sites into 104 owner fixtures plus shared set input; VM 872/882 and reflection 57/57, unchanged test discovery. |
+| SF06–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 

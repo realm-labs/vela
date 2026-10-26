@@ -130,41 +130,10 @@ fn main() {
 #[test]
 fn managed_heap_execution_runs_script_value_methods() {
     let program = compile_standard_program_source(
-            SourceId::new(1),
-            r#"
-fn dynamic(value) {
-    return value;
-}
-
-fn main() {
-    let names = ["gold", "xp"];
-    let empty = [];
-    let rewards = dynamic({"gold": 4, "xp": 6});
-    names.push("quest");
-    let popped = names.pop();
-    let missing_pop = empty.pop();
-    rewards.set("quest", "done");
-    let missing_get = rewards.get("missing_before");
-    let removed = rewards.remove("gold");
-    let missing_remove = rewards.remove("missing_after");
-    let keys = rewards.keys().collect_array();
-    let amounts = rewards.values().collect_array();
-    let entries = rewards.entries().collect_array();
-    let popped_name = option::unwrap_or(popped, "");
-    if names.len() == 2 && popped_name == "quest" && popped_name.contains("ue") && popped_name.starts_with("que")
-        && popped_name.ends_with("st") && option::is_none(missing_pop) && option::unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
-        && option::is_none(missing_get) && option::is_none(missing_remove)
-        && rewards.has("quest") && option::unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
-        && keys[0] == "xp" && keys[1] == "quest"
-        && amounts[0] == 6 && amounts[1] == "done"
-        && entries[0].key == "xp" && entries[1].value == "done" {
-        return names[0].len();
-    }
-    return 0;
-}
-"#,
-        )
-        .expect("compile heap script value methods");
+        SourceId::new(1),
+        include_str!("../../tests/fixtures/execution/managed_value_methods.vela"),
+    )
+    .expect("compile heap script value methods");
     let mut budget = ExecutionBudget::unbounded();
 
     let mut vm = Vm::new();
@@ -181,40 +150,7 @@ fn main() {
 fn managed_heap_execution_uses_record_identity_map_set_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Player { id: i64, level: i64 }
-
-fn main() {
-    let alice = Player { id: 1, level: 10 };
-    let bob = Player { id: 2, level: 20 };
-    let alice_copy = Player { id: 1, level: 10 };
-    let scores = {"seed": 0};
-    scores.clear();
-    scores.set(alice, 10);
-    scores.set(bob, 20);
-    alice.level += 1;
-
-    let missing_copy = scores.remove(alice_copy);
-    let removed_bob = scores.remove(bob);
-    let active = set::from_array([]);
-    let inserted_alice = active.add(alice);
-    let duplicate_alice = active.add(alice);
-    let inserted_copy = active.add(alice_copy);
-    let removed_copy = active.remove(alice_copy);
-    let removed_copy_again = active.remove(alice_copy);
-
-    if scores.has(alice) && !scores.has(bob)
-        && scores.get_or(alice, 0) == 10
-        && option::is_none(missing_copy)
-        && option::unwrap_or(removed_bob, 0) == 20
-        && active.has(alice) && !active.has(alice_copy)
-        && inserted_alice && !duplicate_alice && inserted_copy
-        && removed_copy && !removed_copy_again {
-        return scores.get_or(alice, 0) + active.len();
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/execution/record_identity_keys.vela"),
     )
     .expect("compile value-keyed record map/set source");
     let mut budget = ExecutionBudget::unbounded();
@@ -231,53 +167,7 @@ fn main() {
 fn managed_heap_execution_uses_closure_and_iterator_identity_map_set_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let inc = |value| value + 1;
-    let inc_alias = inc;
-    let inc_same_body = |value| value + 1;
-    let next = |value| value + 2;
-
-    let closure_scores = {"seed": 0};
-    closure_scores.clear();
-    closure_scores.set(inc, 10);
-    closure_scores.set(inc_alias, 20);
-    closure_scores.set(inc_same_body, 30);
-    let closures = set::from_array([inc, inc_alias, inc_same_body, next]);
-
-    let iter = [1, 2].iter();
-    let iter_alias = iter;
-    let other_iter = [1, 2].iter();
-    let iterator_scores = {"seed": 0};
-    iterator_scores.clear();
-    iterator_scores.set(iter, 3);
-    iterator_scores.set(iter_alias, 4);
-    iterator_scores.set(other_iter, 5);
-    let iterators = set::from_array([iter, iter_alias, other_iter]);
-
-    if closure_scores.len() == 2
-        && closure_scores[inc] == 20
-        && closure_scores[inc_alias] == 20
-        && closure_scores[inc_same_body] == 30
-        && closures.len() == 3
-        && closures.has(inc)
-        && closures.has(inc_alias)
-        && closures.has(inc_same_body)
-        && closures.has(next)
-        && iterator_scores.len() == 2
-        && iterator_scores[iter] == 4
-        && iterator_scores[iter_alias] == 4
-        && iterator_scores[other_iter] == 5
-        && iterators.len() == 2
-        && iterators.has(iter)
-        && iterators.has(iter_alias)
-        && iterators.has(other_iter)
-    {
-        return closure_scores[inc] + iterator_scores[iter] + closures.len() + iterators.len();
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/execution/closure_iterator_identity_keys.vela"),
     )
     .expect("compile value-keyed closure/iterator map/set source");
     let mut budget = ExecutionBudget::unbounded();
@@ -294,30 +184,7 @@ fn main() {
 fn managed_heap_map_indexing_uses_record_identity_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Player { id: i64, level: i64 }
-
-fn main() {
-    let alice = Player { id: 1, level: 10 };
-    let alice_copy = Player { id: 1, level: 10 };
-    let scores = {"seed": 0};
-    scores.clear();
-
-    scores[alice] = 10;
-    scores[alice] += 5;
-    alice.level += 1;
-    scores[alice_copy] = 3;
-
-    let removed_copy = scores.remove(alice_copy);
-    if scores[alice] == 15
-        && option::unwrap_or(removed_copy, 0) == 3
-        && scores.has(alice)
-        && !scores.has(alice_copy) {
-        return scores[alice] + alice.level;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/execution/record_index_identity.vela"),
     )
     .expect("compile value-keyed record map indexing source");
     let mut budget = ExecutionBudget::unbounded();
@@ -334,32 +201,7 @@ fn main() {
 fn managed_heap_execution_uses_finite_float_map_set_keys() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-fn main() {
-    let scores = {"seed": 0};
-    scores.clear();
-    scores.set(1.5f32, 4);
-    scores.set(1.5f64, 6);
-    scores.set(-0.0f64, 8);
-    scores.set(0.0f64, 9);
-
-    let values = set::from_array([]);
-    values.add(1.5f32);
-    values.add(1.5f64);
-    values.add(-0.0f64);
-    values.add(0.0f64);
-    let removed_zero = values.remove(-0.0f64);
-    if scores.has(1.5f32) && scores.has(1.5f64)
-        && scores.get_or(0.0f64, 0) == 9
-        && scores.get_or(-0.0f64, 0) == 9
-        && values.len() == 2
-        && removed_zero
-        && !values.has(0.0f64) {
-        return scores.get_or(1.5f32, 0) + scores.get_or(1.5f64, 0) + scores.get_or(0.0f64, 0);
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/execution/finite_float_keys.vela"),
     )
     .expect("compile finite float map/set source");
     let mut budget = ExecutionBudget::unbounded();
@@ -445,23 +287,7 @@ fn main() {
 fn managed_heap_execution_runs_trait_default_method_dispatch() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-trait BonusSource {
-    fn bonus(self, amount) -> i64 { return self.level + amount; }
-    fn label(self) -> String { return self.name; }
-}
-struct Player { level: i64, name: String }
-
-impl BonusSource for Player {}
-
-fn main() {
-    let player = Player { level: 8, name: "hero" };
-    if player.label() == "hero" {
-        return player.bonus(6) + 4;
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/execution/managed_trait_defaults.vela"),
     )
     .expect("compile heap trait default method dispatch");
     let mut budget = ExecutionBudget::unbounded();
@@ -846,20 +672,7 @@ fn main() {
 fn runs_compiled_nested_lambdas_with_transitive_captures() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-fn make_nested(base) {
-    return |amount| {
-        let scale = 2;
-        return |bonus| base + amount * scale + bonus;
-    };
-}
-
-fn main() {
-    let make = make_nested(10);
-    let add = make(4);
-    return add(3);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/nested_captures.vela"),
     )
     .expect("compile nested captured lambda");
     let mut budget = ExecutionBudget::unbounded();
@@ -895,29 +708,7 @@ fn main() {
 fn runs_try_propagation_for_option_values() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-enum Option {
-    Some(value),
-    None,
-}
-
-fn maybe(value) {
-    if value > 0 {
-        return Option::Some(value);
-    }
-    return Option::None;
-}
-
-fn present() {
-    let value = maybe(4)?;
-    return Option::Some(value + 1);
-}
-
-fn missing() {
-    let value = maybe(0)?;
-    return Option::Some(value + 1);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/option_propagation.vela"),
     )
     .expect("compile option propagation");
     let mut budget = ExecutionBudget::unbounded();
@@ -950,29 +741,7 @@ fn missing() {
 fn managed_heap_execution_runs_try_propagation_for_result_values() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-enum Result {
-    Ok(value),
-    Err(message),
-}
-
-fn checked(value) {
-    if value > 0 {
-        return Result::Ok(value);
-    }
-    return Result::Err("bad");
-}
-
-fn ok_case() {
-    let value = checked(3)?;
-    return Result::Ok(value + 7);
-}
-
-fn err_case() {
-    let value = checked(0)?;
-    return Result::Ok(value + 7);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/result_propagation.vela"),
     )
     .expect("compile result propagation");
     let mut budget = ExecutionBudget::new(10_000, 4096, 64);
@@ -1010,37 +779,7 @@ fn err_case() {
 fn typed_try_propagation_rejects_cross_family_option_result_values() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-enum Option {
-    Some(value),
-    None,
-}
-
-enum Result {
-    Ok(value),
-    Err(message),
-}
-
-fn result_ok_in_option() -> Option<i64> {
-    let value = Result::Ok(1)?;
-    return Option::Some(value);
-}
-
-fn result_err_in_option() -> Option<i64> {
-    let value = Result::Err("bad")?;
-    return Option::Some(value);
-}
-
-fn option_some_in_result() -> Result<i64, String> {
-    let value = Option::Some(1)?;
-    return Result::Ok(value);
-}
-
-fn option_none_in_result() -> Result<i64, String> {
-    let value = Option::None?;
-    return Result::Ok(value);
-}
-"#,
+        include_str!("../../tests/fixtures/contracts/cross_family_try.vela"),
     )
     .expect("compile cross-family propagation fixture");
 

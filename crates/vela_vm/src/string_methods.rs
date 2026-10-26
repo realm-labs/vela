@@ -158,21 +158,7 @@ mod tests {
 
     #[test]
     fn runs_compiled_string_utility_methods() {
-        let source = r#"
-fn main() {
-    let label = "  Quest.Log ";
-    let padded = label.trim_start().trim_end();
-    let parts = padded.replace(".", "_").to_lower().slice(0, 9).split("_");
-    if parts.len() == 2
-        && parts[0] == "quest"
-        && parts[1] == "log"
-        && "wolf".to_upper() == "WOLF"
-    {
-        return parts[0];
-    }
-    return "";
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/string_utilities.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string utility method source should compile");
 
@@ -183,21 +169,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_string_utility_methods() {
-        let source = r#"
-fn main() {
-    let event = " Player.LevelUp ";
-    let pieces = event.trim_start().trim_end().replace(".", "_").to_lower().slice(0, 14).split("_");
-    let marker = "!".repeat(3);
-    if pieces[0] == "player"
-        && pieces[1] == "levelup"
-        && pieces[1].to_upper() == "LEVELUP"
-        && marker == "!!!"
-    {
-        return pieces[1];
-    }
-    return "";
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/managed_string_utilities.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string utility method source should compile");
         let mut budget = ExecutionBudget::unbounded();
@@ -623,30 +595,7 @@ fn main() {
 
     #[test]
     fn string_parse_scalar_widths_and_char_return_options() {
-        let source = r#"
-fn main() {
-    let ok = option::unwrap_or("127".parse_i8(), 0i8) == 127i8
-        && option::is_none("128".parse_i8())
-        && option::unwrap_or("-32768".parse_i16(), 0i16) == -32768i16
-        && option::is_none("-32769".parse_i16())
-        && option::unwrap_or("2147483647".parse_i32(), 0i32) == 2147483647i32
-        && option::is_none("2147483648".parse_i32())
-        && option::unwrap_or("255".parse_u8(), 0u8) == 255u8
-        && option::is_none("256".parse_u8())
-        && option::unwrap_or("65535".parse_u16(), 0u16) == 65535u16
-        && option::is_none("-1".parse_u16())
-        && option::unwrap_or("4294967295".parse_u32(), 0u32) == 4294967295u32
-        && option::is_none("4294967296".parse_u32())
-        && option::unwrap_or("42".parse_u64(), 0u64) == 42u64
-        && option::is_none("-1".parse_u64())
-        && option::unwrap_or("1.5".parse_f32(), 0.0f32) == 1.5f32
-        && option::is_none("1e40".parse_f32())
-        && option::unwrap_or("奖".parse_char(), 'x') == '奖'
-        && option::is_none("".parse_char())
-        && option::is_none("ab".parse_char());
-    return ok;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/string_scalar_parsing.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string parse scalar source should compile");
         let mut vm = Vm::new();

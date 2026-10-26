@@ -1,0 +1,30 @@
+
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let c = Player { id: 2, level: 20 };
+    let players = set::from_array([a, b, c]);
+    let copied = players.map(|player| player);
+    let filtered = players.filter(|player| player.id == 1);
+    a.level += 1;
+    let d = Player { id: 1, level: 11 };
+
+    if copied.len() == 3
+        && filtered.len() == 2
+        && copied.has(a)
+        && copied.has(b)
+        && copied.has(c)
+        && !copied.has(d)
+        && filtered.has(a)
+        && filtered.has(b)
+        && !filtered.has(c)
+    {
+        return copied.len() + filtered.len();
+    }
+    return 0;
+}

@@ -1,0 +1,16 @@
+
+fn main() {
+    let iter = [1, 2, 3, 4].iter().skip(1);
+    let has_three = iter.any(|value| value == 3);
+    let next = iter.next().unwrap_or(0);
+    let found = [1, 5, 9].iter().find(|value| value > 5).unwrap_or(0);
+    let all_large = [7, 8, 9].iter().all(|value| value > 6);
+    let total = next * 100 + found * 10;
+    if has_three {
+        total += 1000;
+    }
+    if all_large {
+        total += 1;
+    }
+    return total;
+}

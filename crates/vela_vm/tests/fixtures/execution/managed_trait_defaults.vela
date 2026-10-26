@@ -1,0 +1,16 @@
+
+trait BonusSource {
+    fn bonus(self, amount) -> i64 { return self.level + amount; }
+    fn label(self) -> String { return self.name; }
+}
+struct Player { level: i64, name: String }
+
+impl BonusSource for Player {}
+
+fn main() {
+    let player = Player { level: 8, name: "hero" };
+    if player.label() == "hero" {
+        return player.bonus(6) + 4;
+    }
+    return 0;
+}

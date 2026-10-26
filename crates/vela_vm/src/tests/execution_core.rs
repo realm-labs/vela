@@ -336,16 +336,7 @@ fn main() {
 fn explicit_frame_stack_executes_deep_script_recursion() {
     let program = compile_test_program(
         SourceId::new(2),
-        r#"
-fn countdown(value) {
-    if value == 0 { return 42; }
-    return countdown(value - 1);
-}
-
-fn main() {
-    return countdown(10_000);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/deep_recursion.vela"),
     )
     .expect("compile deep recursive source");
     let linked = link_test_program(&program);
@@ -360,21 +351,7 @@ fn main() {
 fn explicit_frame_stack_executes_deep_trait_comparison_recursion() {
     let program = compile_test_program(
         SourceId::new(3),
-        r#"
-struct Counter { value: i64 }
-
-impl PartialEq for Counter {
-    fn eq(self, other: Counter) -> bool {
-        if self.value == 0 { return other.value == 0; }
-        return Counter { value: self.value - 1 }
-            == Counter { value: other.value - 1 };
-    }
-}
-
-fn main() {
-    return Counter { value: 10_000 } == Counter { value: 10_000 };
-}
-"#,
+        include_str!("../../tests/fixtures/execution/deep_trait_recursion.vela"),
     )
     .expect("compile deeply recursive trait comparison");
     let linked = link_test_program(&program);
@@ -389,16 +366,7 @@ fn main() {
 fn explicit_frame_stack_executes_deep_callback_recursion() {
     let program = compile_test_program(
         SourceId::new(4),
-        r#"
-fn dive(value) {
-    if value == 0 { return true; }
-    return [value - 1].any(|next| dive(next));
-}
-
-fn main() {
-    return dive(10_000);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/deep_callback_recursion.vela"),
     )
     .expect("compile deeply recursive callback source");
     let linked = link_test_program(&program);
@@ -413,20 +381,7 @@ fn main() {
 fn explicit_frame_stack_executes_deep_iterator_callback_recursion() {
     let program = compile_test_program(
         SourceId::new(5),
-        r#"
-fn dive(value) {
-    if value == 0 { return true; }
-    return [value - 1]
-        .iter()
-        .map(|next| dive(next))
-        .next()
-        .unwrap_or(false);
-}
-
-fn main() {
-    return dive(10_000);
-}
-"#,
+        include_str!("../../tests/fixtures/execution/deep_iterator_recursion.vela"),
     )
     .expect("compile deeply recursive iterator callback source");
     let linked = link_test_program(&program);

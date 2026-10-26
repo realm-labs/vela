@@ -1,0 +1,17 @@
+
+fn main() {
+    let traits = reflect::traits();
+    let trait_info = reflect::trait_info("Damageable");
+    if reflect::has_trait("Damageable")
+        && !reflect::has_trait("Damagable")
+        && reflect::get(traits[0], "name") == "Damageable"
+        && reflect::get(trait_info, "name") == "Damageable"
+        && reflect::get(reflect::get(trait_info, "methods")[0], "name") == "damage"
+        && reflect::get(reflect::get(trait_info, "methods")[0], "owner") == "Damageable"
+        && reflect::origin(trait_info) == "host"
+        && reflect::owner(reflect::get(trait_info, "methods")[0]) == "Damageable"
+        && reflect::kind(reflect::get(trait_info, "methods")[0]) == "trait_method" {
+        return 1;
+    }
+    return 0;
+}

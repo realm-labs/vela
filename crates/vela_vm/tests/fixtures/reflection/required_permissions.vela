@@ -1,0 +1,15 @@
+
+fn main() {
+    let function = reflect::function("game::reward::admin");
+    let permissions = reflect::required_permissions(function);
+    let access = reflect::access(function);
+    let function_access = reflect::get(function, "access");
+    let access_permissions = reflect::required_permissions(function_access);
+    let direct_access = reflect::access(function_access);
+    let public_function = reflect::function("game::reward::grant");
+    return permissions[0] == "game::admin"
+        && reflect::get(access, "required_permissions")[0] == "game::admin"
+        && access_permissions[0] == "game::admin"
+        && reflect::get(direct_access, "required_permissions")[0] == "game::admin"
+        && reflect::required_permissions(public_function).len() == 0;
+}

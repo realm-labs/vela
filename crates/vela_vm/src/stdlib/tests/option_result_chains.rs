@@ -3,24 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_option_ok_or_with_try_propagation() {
-    let source = r#"
-fn checked(raw) {
-    let value = option::ok_or(raw, "bad level")?;
-    return result::ok(value + 1);
-}
-
-fn main() {
-    let ok = checked(option::some(41));
-    let err = checked(option::none());
-    if result::unwrap_or(ok, 0) == 42
-        && result::is_err(err)
-        && option::is_none(result::to_option(err))
-    {
-        return option::unwrap_or(result::to_option(ok), 0);
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/option_ok_or_try.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option ok_or stdlib source should compile");
@@ -74,26 +57,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_result_tuple_payloads_with_try_destructuring() {
-    let source = r#"
-fn checked_pair(ok) -> Result<(i64, i64), String> {
-    if ok {
-        return result::ok((20, 22));
-    }
-    return result::err("missing");
-}
-
-fn sum_pair(ok) -> Result<i64, String> {
-    let (left, right) = checked_pair(ok)?;
-    return result::ok(left + right);
-}
-
-fn main() {
-    let ok = sum_pair(true);
-    let err = sum_pair(false);
-    return result::unwrap_or(ok, 0) == 42
-        && option::unwrap_or(result::to_error_option(err), "") == "missing";
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/result_tuple_try.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("result tuple payload stdlib source should compile");
@@ -109,40 +73,8 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_option_result_standard_helper_natives() {
-    let source = r#"
-fn main() {
-    let some = option::some("quest");
-    let none = option::none();
-    let ok = result::ok("done");
-    let err = result::err("blocked");
-    let converted_ok = option::ok_or(some, "missing");
-    let converted_err = option::ok_or(none, "missing");
-    let flattened_some = option::flatten(option::some(option::some(["quest", "done"])));
-    let flattened_none = option::flatten(option::some(option::none()));
-    let flattened_ok = result::flatten(result::ok(result::ok(["done"])));
-    let flattened_err = result::flatten(result::ok(result::err(["nested"])));
-
-    return option::is_some(some)
-        && option::is_none(none)
-        && result::is_ok(ok)
-        && result::is_err(err)
-        && result::is_ok(converted_ok)
-        && result::is_err(converted_err)
-        && option::unwrap_or(some, "fallback") == "quest"
-        && option::unwrap_or(none, "fallback") == "fallback"
-        && result::unwrap_or(ok, "fallback") == "done"
-        && result::unwrap_or(err, "fallback") == "fallback"
-        && option::unwrap_or(result::to_option(converted_ok), "fallback") == "quest"
-        && option::unwrap_or(result::to_option(converted_err), "fallback") == "fallback"
-        && option::is_none(result::to_error_option(converted_ok))
-        && option::unwrap_or(result::to_error_option(converted_err), "fallback") == "missing"
-        && option::unwrap_or(flattened_some, ["", ""])[0] == "quest"
-        && option::unwrap_or(flattened_some, ["", ""])[1] == "done"
-        && option::is_none(flattened_none)
-        && result::unwrap_or(flattened_ok, [""])[0] == "done"
-        && option::unwrap_or(result::to_error_option(flattened_err), [""])[0] == "nested";
-}
-"#;
+    let source =
+        include_str!("../../../tests/fixtures/stdlib/managed_option_result_native_helpers.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result helper stdlib source should compile");
@@ -210,27 +142,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_option_result_and_then_methods() {
-    let source = r#"
-fn first_tag(values) {
-    return option::some(values[0]);
-}
-
-fn join_values(values) {
-    return result::ok(values[0]);
-}
-
-fn main() {
-    let some = option::some(["quest"]).and_then(|values| first_tag(values));
-    let none = option::none().and_then(|values| first_tag(values));
-    let ok = result::ok(["a", "b"]).and_then(|values| join_values(values));
-    let err = result::err(["blocked"]).and_then(|values| join_values(values));
-
-    return option::unwrap_or(some, "") == "quest"
-        && option::is_none(none)
-        && result::unwrap_or(ok, "") == "a"
-        && result::is_err(err);
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_option_result_and_then.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result and_then source should compile");
@@ -246,27 +158,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_option_result_or_else_methods() {
-    let source = r#"
-fn fallback_tags() {
-    return option::some(["fallback"]);
-}
-
-fn fallback_result(errors) {
-    return result::ok(errors[0]);
-}
-
-fn main() {
-    let some = option::some(["keep"]).or_else(| | fallback_tags());
-    let none = option::none().or_else(| | fallback_tags());
-    let ok = result::ok("done").or_else(|errors| fallback_result(errors));
-    let err = result::err(["bad", "level"]).or_else(|errors| fallback_result(errors));
-
-    return option::unwrap_or(some, [""])[0] == "keep"
-        && option::unwrap_or(none, [""])[0] == "fallback"
-        && result::unwrap_or(ok, "") == "done"
-        && result::unwrap_or(err, "") == "bad";
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_option_result_or_else.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result or_else source should compile");

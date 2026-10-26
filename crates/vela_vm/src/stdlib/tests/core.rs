@@ -3,19 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn managed_heap_execution_runs_option_filter_method() {
-    let source = r#"
-fn main() {
-    let kept = option::some("quest").filter(|value| value.starts_with("q"));
-    let dropped = option::some("quest").filter(|value| value.starts_with("x"));
-    let aggregate = option::some(["quest", "done"]).filter(|values| values.len() == 2);
-    let none = option::some("quest").filter(|value| value.starts_with("q") && false);
-
-    return option::unwrap_or(kept, "") == "quest"
-        && option::is_none(dropped)
-        && option::unwrap_or(aggregate, []).join(".") == "quest.done"
-        && option::is_none(none);
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_option_filter.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option filter source should compile");
@@ -31,42 +19,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_option_result_helper_methods() {
-    let source = r#"
-fn main() {
-    let some = option::some(["quest", "done"]);
-    let none = option::none();
-    let ok = result::ok(["done"]);
-    let err = result::err(["blocked"]);
-    let converted_ok = some.ok_or(["missing"]);
-    let converted_err = none.ok_or(["missing"]);
-    let flattened_some = option::some(option::some(["quest", "done"])).flatten();
-    let flattened_none = option::some(option::none()).flatten();
-    let flattened_ok = result::ok(result::ok(["done"])).flatten();
-    let flattened_err = result::ok(result::err(["nested"])).flatten();
-
-    return some.is_some()
-        && none.is_none()
-        && ok.is_ok()
-        && err.is_err()
-        && converted_ok.is_ok()
-        && converted_err.is_err()
-        && option::unwrap_or(some, ["", ""])[0] == "quest"
-        && option::unwrap_or(some, ["", ""])[1] == "done"
-        && option::unwrap_or(none, ["fallback"])[0] == "fallback"
-        && result::unwrap_or(ok, [""])[0] == "done"
-        && result::unwrap_or(err, ["fallback"])[0] == "fallback"
-        && option::unwrap_or(converted_ok.to_option(), ["", ""])[0] == "quest"
-        && option::unwrap_or(converted_ok.to_option(), ["", ""])[1] == "done"
-        && option::unwrap_or(converted_err.to_option(), ["fallback"])[0] == "fallback"
-        && converted_ok.to_error_option().is_none()
-        && option::unwrap_or(converted_err.to_error_option(), ["fallback"])[0] == "missing"
-        && option::unwrap_or(flattened_some, ["", ""])[0] == "quest"
-        && option::unwrap_or(flattened_some, ["", ""])[1] == "done"
-        && flattened_none.is_none()
-        && result::unwrap_or(flattened_ok, [""])[0] == "done"
-        && option::unwrap_or(flattened_err.to_error_option(), [""])[0] == "nested";
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_option_result_helpers.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("heap option/result helper method source should compile");

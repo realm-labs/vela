@@ -1,0 +1,18 @@
+
+fn main() {
+    let values = [1, 2, 3, 4];
+    let doubled = values.map(|value| value * 2);
+    let evens = values.filter(|value| value % 2 == 0);
+    let first_large = values.find(|value| value > 2);
+    let missing = values.find(|value| value > 10);
+    let count = values.count(|value| value > 1);
+    if doubled[2] == 6 && evens[0] == 2 && evens[1] == 4
+        && option::unwrap_or(first_large, 0) == 3
+        && option::unwrap_or(missing, 9) == 9
+        && values.any(|value| value == 4)
+        && values.all(|value| value > 0)
+    {
+        return count;
+    }
+    return 0;
+}

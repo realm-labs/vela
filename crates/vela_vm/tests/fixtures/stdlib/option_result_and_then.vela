@@ -1,0 +1,26 @@
+
+fn checked_option(value) {
+    if value > 0 {
+        return option::some(value + 1);
+    }
+    return option::none();
+}
+
+fn checked_result(value) {
+    if value > 0 {
+        return result::ok(value + 1);
+    }
+    return result::err("bad");
+}
+
+fn main() {
+    let some = option::some(4).and_then(|value| checked_option(value));
+    let none = option::none().and_then(|value| checked_option(value));
+    let ok = result::ok(4).and_then(|value| checked_result(value));
+    let err = result::err("blocked").and_then(|value| checked_result(value));
+
+    return option::unwrap_or(some, 0) == 5
+        && option::is_none(none)
+        && result::unwrap_or(ok, 0) == 5
+        && result::is_err(err);
+}

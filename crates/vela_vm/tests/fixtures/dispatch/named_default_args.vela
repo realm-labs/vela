@@ -1,0 +1,26 @@
+
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
+        return [prefix, self.text, suffix].join("");
+    }
+}
+
+fn wrap_named(x) {
+    return x.wrap(suffix = "}", prefix = "{");
+}
+
+fn wrap_defaulted(x) {
+    return x.wrap();
+}
+
+fn named_case() {
+    return wrap_named(Label { text: "quest" });
+}
+
+fn defaulted_case() {
+    return wrap_defaulted(Label { text: "quest" });
+}

@@ -1,0 +1,18 @@
+
+fn main() {
+    let quests = {"raid": "active", "daily": "done", "world": "open"};
+    let keys = quests.keys().collect_array();
+    let values = quests.values().collect_array();
+    let entries = quests.entries().collect_array();
+    if keys.join(",") == "raid,daily,world"
+        && entries[0].key == "raid"
+        && entries[0].value == "active"
+        && entries[1].key == "daily"
+        && entries[1].value == "done"
+        && entries[2].key == "world"
+        && entries[2].value == "open"
+    {
+        return values.join("|");
+    }
+    return "";
+}

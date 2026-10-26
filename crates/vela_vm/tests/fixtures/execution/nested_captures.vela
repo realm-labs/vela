@@ -1,0 +1,13 @@
+
+fn make_nested(base) {
+    return |amount| {
+        let scale = 2;
+        return |bonus| base + amount * scale + bonus;
+    };
+}
+
+fn main() {
+    let make = make_nested(10);
+    let add = make(4);
+    return add(3);
+}

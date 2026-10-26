@@ -1,0 +1,20 @@
+
+fn main() {
+    let rewards = [
+        Reward { item_id: "gold", count: 2 },
+        Reward { item_id: "xp", count: 1 },
+        Reward { item_id: "gem", count: 3 },
+    ];
+    let middle = [10, 20, 30, 40].slice(1, 3);
+    let reward_slice = rewards.slice(0, 2);
+    let empty = rewards.slice(2, 2);
+    if middle[0] == 20
+        && middle[1] == 30
+        && reward_slice[1].item_id == "xp"
+        && rewards.len() == 3
+        && empty.is_empty()
+    {
+        return reward_slice[0].count;
+    }
+    return 0;
+}

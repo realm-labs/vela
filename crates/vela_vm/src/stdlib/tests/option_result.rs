@@ -102,42 +102,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_option_result_standard_helper_natives() {
-    let source = r#"
-fn main() {
-    let some = option::some(4);
-    let none = option::none();
-    let ok = result::ok(9);
-    let err = result::err("missing");
-    let converted_ok = option::ok_or(some, "missing");
-    let converted_err = option::ok_or(none, "missing");
-    let flattened_some = option::flatten(option::some(option::some(6)));
-    let flattened_none = option::flatten(option::some(option::none()));
-    let flattened_ok = result::flatten(result::ok(result::ok(8)));
-    let flattened_err = result::flatten(result::ok(result::err("nested")));
-
-    if option::is_some(some)
-        && option::is_none(none)
-        && result::is_ok(ok)
-        && result::is_err(err)
-        && result::is_ok(converted_ok)
-        && result::is_err(converted_err)
-        && option::is_none(result::to_error_option(converted_ok))
-        && option::unwrap_or(result::to_error_option(converted_err), "ok") == "missing"
-        && option::unwrap_or(flattened_some, 0) == 6
-        && option::is_none(flattened_none)
-        && result::unwrap_or(flattened_ok, 0) == 8
-        && option::unwrap_or(result::to_error_option(flattened_err), "ok") == "nested"
-    {
-        return option::unwrap_or(some, 0)
-            + option::unwrap_or(none, 5)
-            + result::unwrap_or(ok, 0)
-            + result::unwrap_or(err, 7)
-            + option::unwrap_or(result::to_option(converted_ok), 0)
-            + option::unwrap_or(result::to_option(converted_err), 11);
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/option_result_native_helpers.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result helper stdlib source should compile");
@@ -217,33 +182,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_option_result_and_then_methods() {
-    let source = r#"
-fn checked_option(value) {
-    if value > 0 {
-        return option::some(value + 1);
-    }
-    return option::none();
-}
-
-fn checked_result(value) {
-    if value > 0 {
-        return result::ok(value + 1);
-    }
-    return result::err("bad");
-}
-
-fn main() {
-    let some = option::some(4).and_then(|value| checked_option(value));
-    let none = option::none().and_then(|value| checked_option(value));
-    let ok = result::ok(4).and_then(|value| checked_result(value));
-    let err = result::err("blocked").and_then(|value| checked_result(value));
-
-    return option::unwrap_or(some, 0) == 5
-        && option::is_none(none)
-        && result::unwrap_or(ok, 0) == 5
-        && result::is_err(err);
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/option_result_and_then.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result and_then source should compile");
@@ -260,27 +199,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_option_result_or_else_methods() {
-    let source = r#"
-fn recover_option() {
-    return option::some(9);
-}
-
-fn recover_result(error) {
-    return result::ok(error + 1);
-}
-
-fn main() {
-    let some = option::some(4).or_else(| | recover_option());
-    let none = option::none().or_else(| | recover_option());
-    let ok = result::ok(4).or_else(|error| recover_result(error));
-    let err = result::err(2).or_else(|error| recover_result(error));
-
-    return option::unwrap_or(some, 0) == 4
-        && option::unwrap_or(none, 0) == 9
-        && result::unwrap_or(ok, 0) == 4
-        && result::unwrap_or(err, 0) == 3;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/option_result_or_else.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result or_else source should compile");
@@ -324,42 +243,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_option_result_helper_methods() {
-    let source = r#"
-fn main() {
-    let some = option::some(4);
-    let none = option::none();
-    let ok = result::ok(9);
-    let err = result::err("missing");
-    let converted_ok = some.ok_or("missing");
-    let converted_err = none.ok_or("missing");
-    let flattened_some = option::some(option::some(6)).flatten();
-    let flattened_none = option::some(option::none()).flatten();
-    let flattened_ok = result::ok(result::ok(8)).flatten();
-    let flattened_err = result::ok(result::err("nested")).flatten();
-
-    if some.is_some()
-        && none.is_none()
-        && ok.is_ok()
-        && err.is_err()
-        && converted_ok.is_ok()
-        && converted_err.is_err()
-        && option::is_none(result::to_error_option(converted_ok))
-        && option::unwrap_or(result::to_error_option(converted_err), "ok") == "missing"
-        && option::unwrap_or(flattened_some, 0) == 6
-        && option::is_none(flattened_none)
-        && result::unwrap_or(flattened_ok, 0) == 8
-        && option::unwrap_or(result::to_error_option(flattened_err), "ok") == "nested"
-    {
-        return option::unwrap_or(some, 0)
-            + option::unwrap_or(none, 5)
-            + result::unwrap_or(ok, 0)
-            + result::unwrap_or(err, 7)
-            + option::unwrap_or(result::to_option(converted_ok), 0)
-            + option::unwrap_or(result::to_option(converted_err), 11);
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/option_result_helpers.vela");
 
     let program = compile_standard_program_source(SourceId::new(1), source)
         .expect("option/result helper method source should compile");

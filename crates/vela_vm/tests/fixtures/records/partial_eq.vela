@@ -1,0 +1,17 @@
+
+struct Reward { code: String, amount: i64 }
+impl PartialEq for Reward {
+    fn eq(self, other: Reward) -> bool {
+        return self.code == other.code;
+    }
+}
+
+fn main() {
+    let left = Reward { code: "xp", amount: 10 };
+    let same_code = Reward { code: "xp", amount: 99 };
+    let different_code = Reward { code: "gold", amount: 10 };
+    if left == same_code && left != different_code {
+        return 1;
+    }
+    return 0;
+}

@@ -1,0 +1,35 @@
+
+struct Box { value: i64 }
+
+fn main() {
+    let original_values = [10, 20];
+    let replacement_values = [100, 200];
+    let values = original_values;
+    let index = 0;
+    values[index] += if true {
+        values = replacement_values;
+        index = 1;
+        5
+    } else {
+        0
+    };
+
+    let original_box = Box { value: 30 };
+    let replacement_box = Box { value: 300 };
+    let target = original_box;
+    target.value += if true {
+        target = replacement_box;
+        7
+    } else {
+        0
+    };
+
+    return [
+        original_values[0],
+        original_values[1],
+        replacement_values[0],
+        replacement_values[1],
+        original_box.value,
+        replacement_box.value,
+    ];
+}

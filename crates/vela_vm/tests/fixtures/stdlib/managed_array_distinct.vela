@@ -1,0 +1,18 @@
+
+fn main() {
+    let scores = [3, 1, 3, 2, 1];
+    let tags = ["raid", "quest", "raid", "daily", "quest"];
+    let unique_scores = scores.distinct();
+    let unique_tags = tags.distinct();
+    if scores.len() == 5
+        && unique_scores.len() == 3
+        && unique_scores[0] == 3
+        && unique_scores[1] == 1
+        && unique_scores[2] == 2
+        && tags.len() == 5
+        && unique_tags.join(",") == "raid,quest,daily"
+    {
+        return unique_scores.sum();
+    }
+    return 0;
+}

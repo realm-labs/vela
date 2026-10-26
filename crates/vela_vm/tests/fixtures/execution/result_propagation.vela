@@ -1,0 +1,22 @@
+
+enum Result {
+    Ok(value),
+    Err(message),
+}
+
+fn checked(value) {
+    if value > 0 {
+        return Result::Ok(value);
+    }
+    return Result::Err("bad");
+}
+
+fn ok_case() {
+    let value = checked(3)?;
+    return Result::Ok(value + 7);
+}
+
+fn err_case() {
+    let value = checked(0)?;
+    return Result::Ok(value + 7);
+}

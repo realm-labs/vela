@@ -1,0 +1,27 @@
+
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn main() {
+    let values = [
+        Label { text: "quest" },
+        Label { text: "raid" },
+        "quick",
+    ];
+
+    let count = 0;
+    for value in values {
+        if value.starts_with("q") {
+            count += 1;
+        }
+    }
+
+    return count;
+}

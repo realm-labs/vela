@@ -1,0 +1,17 @@
+
+fn main() {
+    let rewards = {"gold": 4, "xp": 6, "quest": 8};
+    let doubled = rewards.map_values(|value| value * 2);
+    let keyed = rewards.map_values(|key, value| key.len() + value);
+    let filtered = rewards.filter(|key, value| key.contains("o") && value == 4);
+    let valuable = rewards.filter(|value| value >= 6);
+    if doubled["gold"] == 8 && doubled["quest"] == 16
+        && keyed["gold"] == 8 && keyed["xp"] == 8
+        && filtered.len() == 1 && filtered["gold"] == 4
+        && valuable.len() == 2 && valuable["xp"] == 6 && valuable["quest"] == 8
+        && rewards.any(|value| value == 6)
+    {
+        return rewards.count(|key, value| key.len() >= 2 && value > 4);
+    }
+    return 0;
+}

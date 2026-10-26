@@ -1,0 +1,14 @@
+
+struct Counter { value: i64 }
+
+impl PartialEq for Counter {
+    fn eq(self, other: Counter) -> bool {
+        if self.value == 0 { return other.value == 0; }
+        return Counter { value: self.value - 1 }
+            == Counter { value: other.value - 1 };
+    }
+}
+
+fn main() {
+    return Counter { value: 10_000 } == Counter { value: 10_000 };
+}

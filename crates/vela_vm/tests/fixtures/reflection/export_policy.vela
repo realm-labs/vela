@@ -1,0 +1,25 @@
+
+fn main() {
+    let module = reflect::module("game::reward");
+    let modules = reflect::modules();
+    let exports = reflect::exports("game::reward");
+    let module_exports = reflect::exports(module);
+    let functions = reflect::functions();
+    let module_export_names = reflect::get(module, "exports");
+    let listed_export_names = reflect::get(modules[0], "exports");
+    if reflect::has_module("game::reward")
+        && !reflect::has_module("game::missing")
+        && reflect::has_function("game::reward::grant")
+        && !reflect::has_function("game::reward::hidden")
+        && !reflect::has_function("game::reward::private")
+        && !reflect::has_function("game::reward::admin") {
+        if module_export_names[0] == "game::reward::grant"
+            && exports[0] == "game::reward::grant"
+            && module_exports[0] == "game::reward::grant"
+            && reflect::get(functions[0], "name") == "game::reward::grant"
+            && listed_export_names[0] == "game::reward::grant" {
+            return 11111;
+        }
+    }
+    return 0;
+}

@@ -1,0 +1,9 @@
+
+fn countdown(value) {
+    if value == 0 { return 42; }
+    return countdown(value - 1);
+}
+
+fn main() {
+    return countdown(10_000);
+}

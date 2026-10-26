@@ -3,13 +3,7 @@ use super::*;
 fn context_fixture() -> (Vm, Arc<LinkedArtifact>) {
     let program = compile_standard_program_source_with_native_functions(
         SourceId::new(91),
-        r#"
-fn nested() {
-    return [41].map(|value| bridge::value(value))[0];
-}
-fn main() { return nested() + 1; }
-fn reenter() { return [7, 8]; }
-"#,
+        include_str!("../../tests/fixtures/dispatch/context_callback.vela"),
         &["bridge::value"],
     )
     .expect("compile synchronous callback with a context native");

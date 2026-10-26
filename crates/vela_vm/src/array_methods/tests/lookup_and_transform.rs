@@ -199,39 +199,7 @@ fn main() {
 
 #[test]
 fn array_predicate_search_uses_partial_eq_but_lookup_and_distinct_use_value_key() {
-    let source = r#"
-struct Reward { code: String, amount: i64 }
-impl PartialEq for Reward {
-    fn eq(self, other: Reward) -> bool {
-        return self.code == other.code;
-    }
-}
-
-fn main() {
-    let rewards = [
-        Reward { code: "xp", amount: 10 },
-        Reward { code: "xp", amount: 99 },
-        Reward { code: "gold", amount: 1 },
-    ];
-    let expected_xp = Reward { code: "xp", amount: 0 };
-    let expected_gold = Reward { code: "gold", amount: 999 };
-    let unique = rewards.distinct();
-    let found = rewards.find(|reward| reward == expected_gold);
-    let found_reward = option::unwrap_or(found, Reward { code: "missing", amount: -1 });
-    if rewards.any(|reward| reward == expected_xp)
-        && found_reward.amount == 1
-        && !rewards.contains(expected_xp)
-        && option::unwrap_or(rewards.index_of(expected_gold), -1) == -1
-        && unique.len() == 3
-        && unique[0].amount == 10
-        && unique[1].amount == 99
-        && unique[2].code == "gold"
-    {
-        return 1;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_predicate_identity.vela");
     let program = compile_test_program(SourceId::new(1), source)
         .expect("array PartialEq method source should compile");
 
@@ -266,25 +234,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_array_distinct_method() {
-    let source = r#"
-fn main() {
-    let scores = [3, 1, 3, 2, 1];
-    let tags = ["raid", "quest", "raid", "daily", "quest"];
-    let unique_scores = scores.distinct();
-    let unique_tags = tags.distinct();
-    if scores.len() == 5
-        && unique_scores.len() == 3
-        && unique_scores[0] == 3
-        && unique_scores[1] == 1
-        && unique_scores[2] == 2
-        && tags.len() == 5
-        && unique_tags.join(",") == "raid,quest,daily"
-    {
-        return unique_scores.sum();
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_array_distinct.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array distinct source should compile");
     let mut budget = ExecutionBudget::unbounded();
@@ -296,24 +246,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_array_reverse_method() {
-    let source = r#"
-fn main() {
-    let rewards = [
-        Reward { item_id: "gold", count: 2 },
-        Reward { item_id: "xp", count: 1 },
-    ];
-    let reversed = [1, 2, 3].reverse();
-    let reversed_rewards = rewards.reverse();
-    if reversed[0] == 3
-        && reversed[2] == 1
-        && rewards[0].item_id == "gold"
-        && reversed_rewards[0].item_id == "xp"
-    {
-        return reversed_rewards[1].count;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_reverse.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array reverse source should compile");
 
@@ -323,25 +256,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_array_reverse_method() {
-    let source = r#"
-fn main() {
-    let tags = ["daily", "quest", "raid"];
-    let scores = [9, 2, 5, 2, 8];
-    let nested = [["daily", "quest"], ["raid"]];
-    let reversed_tags = tags.reverse();
-    let reversed_scores = scores.reverse();
-    let reversed_nested = nested.reverse();
-    if tags.join(",") == "daily,quest,raid"
-        && reversed_tags.join(",") == "raid,quest,daily"
-        && reversed_scores[0] == 8
-        && reversed_scores[4] == 9
-        && reversed_nested[0].join("|") == "raid"
-    {
-        return reversed_scores.sum();
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_array_reverse.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array reverse source should compile");
     let mut budget = ExecutionBudget::unbounded();
@@ -356,27 +271,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_array_slice_method() {
-    let source = r#"
-fn main() {
-    let rewards = [
-        Reward { item_id: "gold", count: 2 },
-        Reward { item_id: "xp", count: 1 },
-        Reward { item_id: "gem", count: 3 },
-    ];
-    let middle = [10, 20, 30, 40].slice(1, 3);
-    let reward_slice = rewards.slice(0, 2);
-    let empty = rewards.slice(2, 2);
-    if middle[0] == 20
-        && middle[1] == 30
-        && reward_slice[1].item_id == "xp"
-        && rewards.len() == 3
-        && empty.is_empty()
-    {
-        return reward_slice[0].count;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_slice.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array slice source should compile");
 
@@ -386,24 +281,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_array_slice_method() {
-    let source = r#"
-fn main() {
-    let tags = ["daily", "quest", "raid", "bonus"];
-    let scores = [9, 2, 5, 2, 8, 1, 9, 3];
-    let nested = [["daily", "quest"], ["raid"], ["bonus"]];
-    let tag_slice = tags.slice(1, 3);
-    let score_slice = scores.slice(2, 6);
-    let nested_slice = nested.slice(0, 2);
-    if tags.join(",") == "daily,quest,raid,bonus"
-        && tag_slice.join("|") == "quest|raid"
-        && score_slice.sum() == 16
-        && nested_slice[0].join("|") == "daily|quest"
-    {
-        return score_slice[3];
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/managed_array_slice.vela");
     let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array slice source should compile");
     let mut budget = ExecutionBudget::unbounded();

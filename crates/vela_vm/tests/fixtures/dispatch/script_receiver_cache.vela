@@ -1,0 +1,29 @@
+
+struct LabelA {
+    text: String,
+}
+
+struct LabelB {
+    text: String,
+}
+
+impl LabelA {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+impl LabelB {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn main(use_a, text) {
+    let value = if use_a {
+        LabelA { text: text }
+    } else {
+        LabelB { text: text }
+    };
+    return value.starts_with("q");
+}

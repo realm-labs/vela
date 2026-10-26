@@ -1,0 +1,15 @@
+
+#[doc("Damage protocol.")]
+trait Damageable {
+    #[doc("Apply damage.")]
+    fn damage(self, amount: i64) -> i64;
+    fn alive(self) -> bool { return true; }
+}
+
+struct Player { hp: i64 }
+
+impl Damageable for Player {
+    fn damage(self, amount: i64) -> i64 {
+        return self.hp - amount;
+    }
+}

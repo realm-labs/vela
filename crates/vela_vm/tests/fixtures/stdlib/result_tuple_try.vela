@@ -1,0 +1,19 @@
+
+fn checked_pair(ok) -> Result<(i64, i64), String> {
+    if ok {
+        return result::ok((20, 22));
+    }
+    return result::err("missing");
+}
+
+fn sum_pair(ok) -> Result<i64, String> {
+    let (left, right) = checked_pair(ok)?;
+    return result::ok(left + right);
+}
+
+fn main() {
+    let ok = sum_pair(true);
+    let err = sum_pair(false);
+    return result::unwrap_or(ok, 0) == 42
+        && option::unwrap_or(result::to_error_option(err), "") == "missing";
+}

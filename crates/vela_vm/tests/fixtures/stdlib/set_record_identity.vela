@@ -1,0 +1,22 @@
+
+struct Player {
+    id
+    level
+}
+
+fn main() {
+    let a = Player { id: 1, level: 10 };
+    let b = Player { id: 1, level: 10 };
+    let seen = [].iter().collect_set();
+
+    let first_add = seen.add(a);
+    a.level += 1;
+    let duplicate_add = seen.add(a);
+    let second_add = seen.add(b);
+    let c = Player { id: 1, level: 11 };
+
+    if first_add && !duplicate_add && second_add && seen.has(a) && !seen.has(c) {
+        return seen.len();
+    }
+    return 0;
+}

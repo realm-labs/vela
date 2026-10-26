@@ -39,19 +39,7 @@ fn exec_reflection_permission_program(
 fn compiled_source_uses_reflection_natives_for_script_values() {
     let program = compile_reflection_permission_source(
         SourceId::new(1),
-        r#"
-fn main(player) {
-    let missing_type = ReflectType { name: "", kind: "missing" };
-    let player_type = reflect::type_of(player).unwrap_or(missing_type);
-    if reflect::name(player_type) == "Player" && reflect::kind(player_type) == "script_struct" {
-        if reflect::implements(player, "Damageable") {
-            let updated = reflect::set(player, "level", 10);
-            return reflect::get(updated, "level");
-        }
-    }
-    return 0;
-}
-"#,
+        include_str!("../../tests/fixtures/reflection/script_value_natives.vela"),
     )
     .expect("compile reflection source");
 

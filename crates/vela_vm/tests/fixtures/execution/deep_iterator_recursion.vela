@@ -1,0 +1,13 @@
+
+fn dive(value) {
+    if value == 0 { return true; }
+    return [value - 1]
+        .iter()
+        .map(|next| dive(next))
+        .next()
+        .unwrap_or(false);
+}
+
+fn main() {
+    return dive(10_000);
+}

@@ -1,0 +1,23 @@
+
+struct Player { id: i64, level: i64 }
+
+fn main() {
+    let alice = Player { id: 1, level: 10 };
+    let alice_copy = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+
+    scores[alice] = 10;
+    scores[alice] += 5;
+    alice.level += 1;
+    scores[alice_copy] = 3;
+
+    let removed_copy = scores.remove(alice_copy);
+    if scores[alice] == 15
+        && option::unwrap_or(removed_copy, 0) == 3
+        && scores.has(alice)
+        && !scores.has(alice_copy) {
+        return scores[alice] + alice.level;
+    }
+    return 0;
+}

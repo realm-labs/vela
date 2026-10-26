@@ -201,33 +201,7 @@ fn main(value) {
 fn linked_dynamic_script_method_resolves_by_runtime_receiver_type() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-fn f(x) {
-    return x.starts_with("q");
-}
-
-fn quest() {
-    return f(Label { text: "quest" });
-}
-
-fn raid() {
-    return f(Label { text: "raid" });
-}
-
-fn bad() {
-    return f(42);
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/runtime_script_receiver.vela"),
     )
     .expect("dynamic script method source should compile");
 
@@ -256,34 +230,7 @@ fn bad() {
 fn linked_dynamic_script_method_handles_heterogeneous_receivers() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-fn main() {
-    let values = [
-        Label { text: "quest" },
-        Label { text: "raid" },
-        "quick",
-    ];
-
-    let count = 0;
-    for value in values {
-        if value.starts_with("q") {
-            count += 1;
-        }
-    }
-
-    return count;
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/heterogeneous_receivers.vela"),
     )
     .expect("heterogeneous dynamic script method source should compile");
 
@@ -294,33 +241,7 @@ fn main() {
 fn linked_dynamic_script_method_materializes_named_and_default_args_after_resolution() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
-        return [prefix, self.text, suffix].join("");
-    }
-}
-
-fn wrap_named(x) {
-    return x.wrap(suffix = "}", prefix = "{");
-}
-
-fn wrap_defaulted(x) {
-    return x.wrap();
-}
-
-fn named_case() {
-    return wrap_named(Label { text: "quest" });
-}
-
-fn defaulted_case() {
-    return wrap_defaulted(Label { text: "quest" });
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/named_default_args.vela"),
     )
     .expect("dynamic script method named/default source should compile");
 
@@ -338,45 +259,7 @@ fn defaulted_case() {
 fn linked_dynamic_script_method_named_arg_errors_keep_source_span() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn wrap(self, prefix: String = "[", suffix: String = "]") -> String {
-        return [prefix, self.text, suffix].join("");
-    }
-
-    fn require(self, prefix: String) -> String {
-        return [prefix, self.text].join("");
-    }
-}
-
-fn missing_required(x) {
-    return x.require();
-}
-
-fn unknown_named(x) {
-    return x.wrap(extra = "!");
-}
-
-fn unsupported_receiver(x) {
-    return x.wrap(prefix = "{");
-}
-
-fn missing_case() {
-    return missing_required(Label { text: "quest" });
-}
-
-fn unknown_case() {
-    return unknown_named(Label { text: "quest" });
-}
-
-fn unsupported_case() {
-    return unsupported_receiver(42);
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/named_arg_errors.vela"),
     )
     .expect("dynamic script method named/default error source should compile");
 
@@ -479,26 +362,7 @@ fn linked_dynamic_method_cache_resolves_iterator_adapter_targets() {
 fn linked_dynamic_method_cache_guard_miss_resolves_script_after_standard_receiver() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-fn main(use_label, text) {
-    let value = if use_label {
-        Label { text: text }
-    } else {
-        text
-    };
-    return value.starts_with("q");
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/standard_to_script_cache.vela"),
     )
     .expect("dynamic std-to-script cache source should compile");
     let linked = link_test_program(&program);
@@ -564,36 +428,7 @@ fn main(use_label, text) {
 fn linked_dynamic_method_cache_guard_misses_between_script_receiver_types() {
     let program = compile_standard_program_source(
         SourceId::new(1),
-        r#"
-struct LabelA {
-    text: String,
-}
-
-struct LabelB {
-    text: String,
-}
-
-impl LabelA {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-impl LabelB {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-fn main(use_a, text) {
-    let value = if use_a {
-        LabelA { text: text }
-    } else {
-        LabelB { text: text }
-    };
-    return value.starts_with("q");
-}
-"#,
+        include_str!("../../tests/fixtures/dispatch/script_receiver_cache.vela"),
     )
     .expect("dynamic script guard miss source should compile");
     let linked = link_test_program(&program);

@@ -1,0 +1,25 @@
+
+fn main() {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(1.5f32, 4);
+    scores.set(1.5f64, 6);
+    scores.set(-0.0f64, 8);
+    scores.set(0.0f64, 9);
+
+    let values = set::from_array([]);
+    values.add(1.5f32);
+    values.add(1.5f64);
+    values.add(-0.0f64);
+    values.add(0.0f64);
+    let removed_zero = values.remove(-0.0f64);
+    if scores.has(1.5f32) && scores.has(1.5f64)
+        && scores.get_or(0.0f64, 0) == 9
+        && scores.get_or(-0.0f64, 0) == 9
+        && values.len() == 2
+        && removed_zero
+        && !values.has(0.0f64) {
+        return scores.get_or(1.5f32, 0) + scores.get_or(1.5f64, 0) + scores.get_or(0.0f64, 0);
+    }
+    return 0;
+}

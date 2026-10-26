@@ -222,52 +222,7 @@ fn main() {
 
 #[test]
 fn array_sort_and_extrema_use_builtin_ord_impl() {
-    let source = r#"
-struct Score { value: i64, label: String }
-impl PartialEq for Score {
-    fn eq(self, other: Score) -> bool {
-        return self.value == other.value;
-    }
-}
-impl Eq for Score {}
-impl PartialOrd for Score {
-    fn partial_cmp(self, other: Score) {
-        return 0;
-    }
-}
-impl Ord for Score {
-    fn cmp(self, other: Score) -> i64 {
-        if self.value < other.value {
-            return -1;
-        }
-        if self.value > other.value {
-            return 1;
-        }
-        return 0;
-    }
-}
-
-fn main() {
-    let values = [
-        Score { value: 30, label: "thirty" },
-        Score { value: 10, label: "ten" },
-        Score { value: 20, label: "twenty" },
-    ];
-    let sorted = values.sort();
-    let min = values.min().unwrap_or(Score { value: 0, label: "missing" });
-    let max = values.max().unwrap_or(Score { value: 0, label: "missing" });
-    if sorted[0].label == "ten"
-        && sorted[1].label == "twenty"
-        && sorted[2].label == "thirty"
-        && min.label == "ten"
-        && max.label == "thirty"
-        && values[0].label == "thirty"
-    {
-        return 1;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_ord.vela");
     let program = compile_test_program(SourceId::new(1), source)
         .expect("array Ord sort source should compile");
 
@@ -278,31 +233,7 @@ fn main() {
 
 #[test]
 fn array_sort_and_extrema_use_derived_record_ord() {
-    let source = r#"
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct Score { value: i64, label: String }
-
-fn main() {
-    let values = [
-        Score { value: 30, label: "thirty" },
-        Score { value: 10, label: "ten" },
-        Score { value: 20, label: "twenty" },
-    ];
-    let sorted = values.sort();
-    let min = values.min().unwrap_or(Score { value: 0, label: "missing" });
-    let max = values.max().unwrap_or(Score { value: 0, label: "missing" });
-    if sorted[0].label == "ten"
-        && sorted[1].label == "twenty"
-        && sorted[2].label == "thirty"
-        && min.label == "ten"
-        && max.label == "thirty"
-        && values[0].label == "thirty"
-    {
-        return 1;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_derived_ord.vela");
     let program = compile_test_program(SourceId::new(1), source)
         .expect("array derived Ord sort source should compile");
 
@@ -313,40 +244,7 @@ fn main() {
 
 #[test]
 fn array_sort_by_uses_builtin_ord_impl_for_keys() {
-    let source = r#"
-struct Rank { value: i64 }
-impl PartialEq for Rank {
-    fn eq(self, other: Rank) -> bool {
-        return self.value == other.value;
-    }
-}
-impl Eq for Rank {}
-impl PartialOrd for Rank {
-    fn partial_cmp(self, other: Rank) {
-        return 0;
-    }
-}
-impl Ord for Rank {
-    fn cmp(self, other: Rank) -> i64 {
-        if self.value < other.value {
-            return -1;
-        }
-        if self.value > other.value {
-            return 1;
-        }
-        return 0;
-    }
-}
-
-fn main() {
-    let values = [3, 1, 2];
-    let sorted = values.sort_by(|value| Rank { value: 0 - value });
-    if sorted[0] == 3 && sorted[1] == 2 && sorted[2] == 1 {
-        return 1;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/stdlib/array_sort_by_ord.vela");
     let program = compile_test_program(SourceId::new(1), source)
         .expect("array Ord sort_by key source should compile");
 

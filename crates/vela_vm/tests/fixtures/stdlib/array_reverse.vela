@@ -1,0 +1,17 @@
+
+fn main() {
+    let rewards = [
+        Reward { item_id: "gold", count: 2 },
+        Reward { item_id: "xp", count: 1 },
+    ];
+    let reversed = [1, 2, 3].reverse();
+    let reversed_rewards = rewards.reverse();
+    if reversed[0] == 3
+        && reversed[2] == 1
+        && rewards[0].item_id == "gold"
+        && reversed_rewards[0].item_id == "xp"
+    {
+        return reversed_rewards[1].count;
+    }
+    return 0;
+}

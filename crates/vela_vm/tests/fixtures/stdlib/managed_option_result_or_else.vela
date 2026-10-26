@@ -1,0 +1,20 @@
+
+fn fallback_tags() {
+    return option::some(["fallback"]);
+}
+
+fn fallback_result(errors) {
+    return result::ok(errors[0]);
+}
+
+fn main() {
+    let some = option::some(["keep"]).or_else(| | fallback_tags());
+    let none = option::none().or_else(| | fallback_tags());
+    let ok = result::ok("done").or_else(|errors| fallback_result(errors));
+    let err = result::err(["bad", "level"]).or_else(|errors| fallback_result(errors));
+
+    return option::unwrap_or(some, [""])[0] == "keep"
+        && option::unwrap_or(none, [""])[0] == "fallback"
+        && result::unwrap_or(ok, "") == "done"
+        && result::unwrap_or(err, "") == "bad";
+}

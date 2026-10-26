@@ -128,33 +128,7 @@ fn main() {
 fn runs_compiled_returning_expression_operands() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-fn sink(value) {
-    return value;
-}
-
-fn block_arg() {
-    sink({
-        return 7;
-    });
-    return 0;
-}
-
-fn if_value(flag) {
-    return if flag {
-        return 1;
-    } else {
-        return 2;
-    };
-}
-
-fn match_value(value) {
-    return match value {
-        1 => { return 10; },
-        _ => { return 11; },
-    };
-}
-"#,
+        include_str!("../../tests/fixtures/execution/returning_operands.vela"),
     )
     .expect("compile returning expression operands");
 

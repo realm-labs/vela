@@ -1,0 +1,14 @@
+
+fn main() {
+    let event = " Player.LevelUp ";
+    let pieces = event.trim_start().trim_end().replace(".", "_").to_lower().slice(0, 14).split("_");
+    let marker = "!".repeat(3);
+    if pieces[0] == "player"
+        && pieces[1] == "levelup"
+        && pieces[1].to_upper() == "LEVELUP"
+        && marker == "!!!"
+    {
+        return pieces[1];
+    }
+    return "";
+}

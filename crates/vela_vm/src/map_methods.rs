@@ -154,24 +154,7 @@ mod tests {
 
     #[test]
     fn runs_compiled_map_higher_order_methods() {
-        let source = r#"
-fn main() {
-    let rewards = {"gold": 4, "xp": 6, "quest": 8};
-    let doubled = rewards.map_values(|value| value * 2);
-    let keyed = rewards.map_values(|key, value| key.len() + value);
-    let filtered = rewards.filter(|key, value| key.contains("o") && value == 4);
-    let valuable = rewards.filter(|value| value >= 6);
-    if doubled["gold"] == 8 && doubled["quest"] == 16
-        && keyed["gold"] == 8 && keyed["xp"] == 8
-        && filtered.len() == 1 && filtered["gold"] == 4
-        && valuable.len() == 2 && valuable["xp"] == 6 && valuable["quest"] == 8
-        && rewards.any(|value| value == 6)
-    {
-        return rewards.count(|key, value| key.len() >= 2 && value > 4);
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/map_callbacks.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map higher-order methods should compile");
 
@@ -182,29 +165,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_map_higher_order_methods() {
-        let source = r#"
-fn main() {
-    let quests = {"boar": "done", "wolf": "active", "wyrm": "done"};
-    let lengths = quests.map_values(|value| value.len());
-    let scores = quests.map_values(|key, value| key.len() + value.len());
-    let done = quests.filter(|key, value| key.starts_with("w") && value == "done");
-    let active = quests.filter(|value| value == "active");
-    let grouped = quests.group_by(|key, value| if value == "done" { "closed" } else { key });
-    if lengths["wolf"] == 6 && lengths["boar"] == 4
-        && scores["boar"] == 8 && scores["wolf"] == 10
-        && done.len() == 1 && done["wyrm"] == "done"
-        && active.len() == 1 && active["wolf"] == "active"
-        && grouped["closed"].len() == 2
-        && grouped["closed"]["boar"] == "done"
-        && grouped["wolf"]["wolf"] == "active"
-        && quests.count(|key, value| key.starts_with("w") && value.len() >= 4) == 2
-    {
-        return quests.any(|key, value| key == "wolf" && value == "active")
-            && quests.all(|key, value| key.len() >= 4 && value.len() >= 4);
-    }
-    return false;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/managed_map_callbacks.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map higher-order methods should compile");
         let mut budget = ExecutionBudget::unbounded();
@@ -248,35 +209,7 @@ fn main() {
 
     #[test]
     fn managed_heap_map_uses_record_identity_keys() {
-        let source = r#"
-struct Player {
-    id
-    level
-}
-
-fn main() {
-    let a = Player { id: 1, level: 10 };
-    let b = Player { id: 1, level: 10 };
-    let rewards = {"seed": ""};
-    rewards.clear();
-
-    rewards.set(a, "first");
-    a.level += 1;
-    rewards.set(a, "updated");
-    rewards.set(b, "second");
-    let c = Player { id: 1, level: 11 };
-
-    if rewards.len() == 2
-        && rewards[a] == "updated"
-        && rewards.get_or(b, "missing") == "second"
-        && rewards.has(a)
-        && !rewards.has(c)
-    {
-        return rewards.keys().count();
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/map_record_identity.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity map source should compile");
         let mut vm = Vm::new();
@@ -420,26 +353,7 @@ fn main() {
 
     #[test]
     fn runs_compiled_map_introspection_methods() {
-        let source = r#"
-fn main() {
-    let rewards = {"xp": 6, "gold": 4, "quest": 8};
-    let keys = rewards.keys().collect_array();
-    let values = rewards.values().collect_array();
-    let entries = rewards.entries().collect_array();
-    if keys.join(",") == "xp,gold,quest"
-        && values[0] == 6
-        && values[1] == 4
-        && values[2] == 8
-        && entries[0].key == "xp"
-        && entries[0].value == 6
-        && entries[2].key == "quest"
-        && entries[2].value == 8
-    {
-        return values[1] + entries[0].value + keys[2].len();
-    }
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/map_introspection.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map introspection methods should compile");
         let mut vm = Vm::new();
@@ -455,25 +369,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_map_introspection_methods() {
-        let source = r#"
-fn main() {
-    let quests = {"raid": "active", "daily": "done", "world": "open"};
-    let keys = quests.keys().collect_array();
-    let values = quests.values().collect_array();
-    let entries = quests.entries().collect_array();
-    if keys.join(",") == "raid,daily,world"
-        && entries[0].key == "raid"
-        && entries[0].value == "active"
-        && entries[1].key == "daily"
-        && entries[1].value == "done"
-        && entries[2].key == "world"
-        && entries[2].value == "open"
-    {
-        return values.join("|");
-    }
-    return "";
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/managed_map_introspection.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map introspection methods should compile");
         let mut vm = Vm::new();
@@ -487,24 +383,7 @@ fn main() {
 
     #[test]
     fn managed_heap_execution_runs_map_lookup_methods() {
-        let source = r#"
-fn main() {
-    let states = {"daily": "done", "raid": "active", "boss": "ready"};
-    let scores = {"daily": 3, "raid": 8, "boss": 13};
-    if states.contains_key("raid")
-        && !states.contains_key("missing")
-        && states.has("boss")
-        && option::unwrap_or(states.get("boss"), "") == "ready"
-        && states.get_or("missing", "fallback") == "fallback"
-        && scores.get_or("raid", 0) == 8
-        && option::unwrap_or(scores.get("missing"), -1) == -1
-    {
-        return states.len() + scores.get_or("daily", 0);
-    }
-
-    return 0;
-}
-"#;
+        let source = include_str!("../tests/fixtures/stdlib/managed_map_lookup.vela");
         let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map lookup methods should compile");
         let mut vm = Vm::new();
