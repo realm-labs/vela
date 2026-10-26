@@ -1339,6 +1339,7 @@ name = "vela_language_service"
 version = "0.1.0"
 dependencies = [
  "percent-encoding",
+ "rstest",
  "serde",
  "serde_json",
  "vela_analysis",
@@ -1358,6 +1359,7 @@ dependencies = [
  "crossbeam-channel",
  "lsp-server",
  "lsp-types",
+ "rstest",
  "serde",
  "serde_json",
  "vela_common",

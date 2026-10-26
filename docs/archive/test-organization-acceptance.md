@@ -166,3 +166,25 @@ After, both feature modes: 56 unit + 8 + 6 + 2 pass. All 27 UI fixtures pass
 (one compile-pass, 22 interop compile-fail, four removal compile-fail). Discovery
 lists 56 unit tests; exact selection, scoped Clippy and formatting pass. The macro
 doctest harness has zero tests; broader removal doctests are covered in TO09.
+
+## TO06 — Language Service And Protocol
+
+Thirteen pure cursor classifications become `cursor_context_classifies_kind`
+cases, keeping SourceId, source bytes and expected kinds. Two line-index tests
+become four `utf16_offsets_resolve_exact_bytes` and two
+`utf16_offsets_reject_unaddressable_columns` cases. Completion projection becomes
+four `completion_edit_projection_converts_unicode` and five
+`completion_edit_projection_rejects_invalid_byte_ranges` cases. Byte/UTF-16 and
+LF/CRLF expectations remain independently authored, not computed by production.
+
+The 16 retired identities were unlinked after catalog/gate/review/filter audits;
+no evidence migration or support-code changes were needed. Linked cursor tests,
+ordered overlay/lifecycle/cancellation, frozen snapshots, cache equivalence and
+stdio framing/deadline/cleanup scenarios remain unchanged.
+
+Before/after passes: cursor 36/36, line index 5/9, projection 24/32; unchanged
+service lifecycle 18, shared markers 2, protocol lifecycle 69, cancellation 16 and
+stdio 10. All 28 new cases pass individual exact selection. Affected all-feature
+families, scoped Clippy and formatting pass. The source-snapshot aggregate hit
+240 seconds, so only bounded owner passes were claimed here; complete final
+identity coverage is reconciled in TO09 without an aggregate-success claim.

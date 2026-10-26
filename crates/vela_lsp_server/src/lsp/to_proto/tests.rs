@@ -1,3 +1,4 @@
+use rstest::rstest;
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, Position, SemanticToken as ServiceSemanticToken,
     SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
@@ -7,53 +8,42 @@ use vela_language_service::{
 use super::*;
 use crate::semantic_tokens::SemanticTokenProjection;
 
-#[test]
-fn completion_edit_projection_converts_unicode_and_rejects_invalid_byte_ranges() {
-    let text = "中😀 alpha\r\nnext";
+const COMPLETION_RANGE_TEXT: &str = "中😀 alpha\r\nnext";
+
+#[rstest]
+#[case::bmp(0, 3, lsp_types::Position::new(0, 0), lsp_types::Position::new(0, 1))]
+#[case::astral(3, 7, lsp_types::Position::new(0, 1), lsp_types::Position::new(0, 3))]
+#[case::ascii_after_unicode(8, 13, lsp_types::Position::new(0, 4), lsp_types::Position::new(0, 9))]
+#[case::across_crlf(13, 19, lsp_types::Position::new(0, 9), lsp_types::Position::new(1, 4))]
+fn completion_edit_projection_converts_unicode(
+    #[case] start: usize,
+    #[case] end: usize,
+    #[case] expected_start: lsp_types::Position,
+    #[case] expected_end: lsp_types::Position,
+) {
+    let text = COMPLETION_RANGE_TEXT;
     let bytes = LineIndex::new(text);
     let wire = crate::line_index::LineIndex::new(text);
-    for (start, end, expected) in [
-        (
-            0,
-            3,
-            lsp_types::Range::new(
-                lsp_types::Position::new(0, 0),
-                lsp_types::Position::new(0, 1),
-            ),
-        ),
-        (
-            3,
-            7,
-            lsp_types::Range::new(
-                lsp_types::Position::new(0, 1),
-                lsp_types::Position::new(0, 3),
-            ),
-        ),
-        (
-            8,
-            13,
-            lsp_types::Range::new(
-                lsp_types::Position::new(0, 4),
-                lsp_types::Position::new(0, 9),
-            ),
-        ),
-        (
-            13,
-            19,
-            lsp_types::Range::new(
-                lsp_types::Position::new(0, 9),
-                lsp_types::Position::new(1, 4),
-            ),
-        ),
-    ] {
-        assert_eq!(
-            completion_range(TextRange::new(start, end), text, &bytes, &wire).expect("range"),
-            expected
-        );
-    }
-    for (start, end) in [(1, 3), (3, 5), (13, 8), (0, 20), (14, 15)] {
-        assert!(completion_range(TextRange::new(start, end), text, &bytes, &wire).is_err());
-    }
+    assert_eq!(
+        completion_range(TextRange::new(start, end), text, &bytes, &wire).expect("range"),
+        lsp_types::Range::new(expected_start, expected_end)
+    );
+}
+
+#[rstest]
+#[case::split_bmp(1, 3)]
+#[case::split_astral(3, 5)]
+#[case::reversed(13, 8)]
+#[case::past_document(0, 20)]
+#[case::split_crlf(14, 15)]
+fn completion_edit_projection_rejects_invalid_byte_ranges(
+    #[case] start: usize,
+    #[case] end: usize,
+) {
+    let text = COMPLETION_RANGE_TEXT;
+    let bytes = LineIndex::new(text);
+    let wire = crate::line_index::LineIndex::new(text);
+    assert!(completion_range(TextRange::new(start, end), text, &bytes, &wire).is_err());
 }
 
 #[test]

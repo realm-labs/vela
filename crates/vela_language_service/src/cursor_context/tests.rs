@@ -1,4 +1,5 @@
 use super::*;
+use rstest::rstest;
 use vela_common::SourceId;
 use vela_syntax::parse::parse_source_with_id;
 
@@ -111,18 +112,62 @@ fn cursor_context_exposes_identifier_range_under_cursor() {
     assert_eq!(&text[29..34], "level");
 }
 
-#[test]
-fn cursor_context_classifies_type_hints() {
-    let cursor = classify("pub fn main(player: Pl) { return 1 }", "Pl");
-
-    assert_eq!(cursor.kind(), CursorContextKind::Type);
-}
-
-#[test]
-fn cursor_context_classifies_use_import_context() {
-    let cursor = classify("use re", "re");
-
-    assert_eq!(cursor.kind(), CursorContextKind::UseImport);
+#[rstest]
+#[case::type_hints("pub fn main(player: Pl) { return 1 }", "Pl", CursorContextKind::Type)]
+#[case::use_import("use re", "re", CursorContextKind::UseImport)]
+#[case::record_expression_fields(
+    "pub struct Player { level: i64 }\npub fn main() { let player = Player { xp } }",
+    "xp",
+    CursorContextKind::RecordExpressionField
+)]
+#[case::record_type_fields("pub struct Player { le }", "le", CursorContextKind::RecordTypeField)]
+#[case::struct_field_default(
+    "pub struct Player { level: i64 = rew }",
+    "rew",
+    CursorContextKind::Expression
+)]
+#[case::enum_record_variant_fields(
+    "pub enum Quest { Reward { am } }",
+    "am",
+    CursorContextKind::RecordTypeField
+)]
+#[case::record_field_type_hint(
+    "pub struct Player { level: Score }",
+    "Score",
+    CursorContextKind::Type
+)]
+#[case::map_keys(
+    "pub fn main() { let rewards: Map<QuestState, i64> = { Co: 2 } }",
+    "Co",
+    CursorContextKind::MapKey
+)]
+#[case::for_loop_pattern(
+    "pub fn main(items) { for re in items { } }",
+    "re",
+    CursorContextKind::Pattern
+)]
+#[case::indexed_for_loop_pattern(
+    "pub fn main(items) { for index, Reward::Grant { amount } in items { } }",
+    "Reward::Grant",
+    CursorContextKind::Pattern
+)]
+#[case::match_arm_pattern(
+    "pub fn main(state) { match state { Quest::Active { amount } => amount } }",
+    "Active",
+    CursorContextKind::Pattern
+)]
+#[case::record_pattern_fields(
+    "pub fn main(state) { match state { Quest::Active { amount } => amount } }",
+    "amount",
+    CursorContextKind::Pattern
+)]
+#[case::expression("pub fn main() { Pla }", "Pla", CursorContextKind::Expression)]
+fn cursor_context_classifies_kind(
+    #[case] text: &str,
+    #[case] needle: &str,
+    #[case] expected: CursorContextKind,
+) {
+    assert_eq!(classify(text, needle).kind(), expected);
 }
 
 #[test]
@@ -201,26 +246,11 @@ fn cursor_context_marks_type_module_path_role() {
 }
 
 #[test]
-fn cursor_context_classifies_record_expression_fields() {
-    let text = "pub struct Player { level: i64 }\npub fn main() { let player = Player { xp } }";
-    let cursor = classify(text, "xp");
-
-    assert_eq!(cursor.kind(), CursorContextKind::RecordExpressionField);
-}
-
-#[test]
 fn cursor_context_recovers_empty_record_expression_body_as_record_expression_field() {
     let text = "pub struct Player { level: i64 }\npub fn main() { let player = Player {  } }";
     let cursor = classify_offset(text, text.rfind("{  }").expect("record body") + "{ ".len());
 
     assert_eq!(cursor.kind(), CursorContextKind::RecordExpressionField);
-}
-
-#[test]
-fn cursor_context_classifies_record_type_fields() {
-    let cursor = classify("pub struct Player { le }", "le");
-
-    assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
 }
 
 #[test]
@@ -232,40 +262,11 @@ fn cursor_context_recovers_empty_struct_body_as_record_type_field() {
 }
 
 #[test]
-fn cursor_context_keeps_struct_field_defaults_as_expression_context() {
-    let cursor = classify("pub struct Player { level: i64 = rew }", "rew");
-
-    assert_eq!(cursor.kind(), CursorContextKind::Expression);
-}
-
-#[test]
-fn cursor_context_classifies_enum_record_variant_fields() {
-    let cursor = classify("pub enum Quest { Reward { am } }", "am");
-
-    assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
-}
-
-#[test]
 fn cursor_context_recovers_empty_enum_record_variant_body_as_record_type_field() {
     let text = "pub enum Quest { Reward {  } }";
     let cursor = classify_offset(text, text.find("{  }").expect("variant body") + "{ ".len());
 
     assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
-}
-
-#[test]
-fn cursor_context_keeps_record_type_field_type_hints_as_type_context() {
-    let cursor = classify("pub struct Player { level: Score }", "Score");
-
-    assert_eq!(cursor.kind(), CursorContextKind::Type);
-}
-
-#[test]
-fn cursor_context_classifies_map_keys() {
-    let text = "pub fn main() { let rewards: Map<QuestState, i64> = { Co: 2 } }";
-    let cursor = classify(text, "Co");
-
-    assert_eq!(cursor.kind(), CursorContextKind::MapKey);
 }
 
 #[test]
@@ -338,43 +339,6 @@ fn cursor_context_keeps_lambda_body_as_call_argument() {
 }
 
 #[test]
-fn cursor_context_classifies_for_loop_patterns() {
-    let cursor = classify("pub fn main(items) { for re in items { } }", "re");
-
-    assert_eq!(cursor.kind(), CursorContextKind::Pattern);
-}
-
-#[test]
-fn cursor_context_classifies_indexed_for_loop_patterns() {
-    let cursor = classify(
-        "pub fn main(items) { for index, Reward::Grant { amount } in items { } }",
-        "Reward::Grant",
-    );
-
-    assert_eq!(cursor.kind(), CursorContextKind::Pattern);
-}
-
-#[test]
-fn cursor_context_classifies_match_arm_patterns() {
-    let cursor = classify(
-        "pub fn main(state) { match state { Quest::Active { amount } => amount } }",
-        "Active",
-    );
-
-    assert_eq!(cursor.kind(), CursorContextKind::Pattern);
-}
-
-#[test]
-fn cursor_context_classifies_record_pattern_fields() {
-    let cursor = classify(
-        "pub fn main(state) { match state { Quest::Active { amount } => amount } }",
-        "amount",
-    );
-
-    assert_eq!(cursor.kind(), CursorContextKind::Pattern);
-}
-
-#[test]
 fn cursor_context_keeps_match_arm_body_as_expression() {
     let text = "pub fn main(state) { match state { Quest::Active { amount } => amount } }";
     let offset = text.rfind("amount").expect("body expression") + "amount".len();
@@ -390,13 +354,6 @@ fn cursor_context_classifies_statement_boundary() {
 
     assert_eq!(cursor.kind(), CursorContextKind::Statement);
     assert_eq!(cursor.prefix(), "");
-}
-
-#[test]
-fn cursor_context_classifies_expression_position() {
-    let cursor = classify("pub fn main() { Pla }", "Pla");
-
-    assert_eq!(cursor.kind(), CursorContextKind::Expression);
 }
 
 #[test]

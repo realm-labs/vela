@@ -76,6 +76,10 @@ TO05 completes ordinary macro signature/classification cases with exact diagnost
 Trybuild and stderr expectations are unchanged; both feature modes pass all 27 UI
 fixtures and the native/value execution suites.
 
+TO06 completes unlinked cursor/Unicode/protocol cases. Existing LSP evidence IDs,
+linked test identities, stateful sessions and Rust support remain unchanged;
+focused protocol, lifecycle, cancellation and real stdio validation pass.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits

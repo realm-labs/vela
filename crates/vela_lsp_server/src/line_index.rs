@@ -170,6 +170,7 @@ fn utf16_character_offset_clamped(line_text: &str, character: usize) -> Result<u
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn diagnostic_crlf_boundaries_preserve_visible_unicode_line_ends() {
@@ -208,74 +209,39 @@ mod tests {
         }
     }
 
-    #[test]
-    fn utf16_offsets_count_wide_characters_as_two_units() {
-        let text = "let icon = \"💎\"\nnext";
-        let index = LineIndex::new(text);
-        let diamond_start = text.find('💎').expect("diamond should exist");
-        let after_diamond = diamond_start + '💎'.len_utf8();
+    const DIAMOND_TEXT: &str = "let icon = \"💎\"\nnext";
+    const CRLF_TEXT: &str = "one\r\ntwo";
 
+    #[rstest]
+    #[case::before_astral(DIAMOND_TEXT, 0, 12, 12)]
+    #[case::after_astral(DIAMOND_TEXT, 0, 14, 16)]
+    #[case::crlf_visible_end(CRLF_TEXT, 0, 3, 3)]
+    #[case::crlf_next_line(CRLF_TEXT, 1, 0, 5)]
+    fn utf16_offsets_resolve_exact_bytes(
+        #[case] text: &str,
+        #[case] line: u32,
+        #[case] character: u32,
+        #[case] expected: usize,
+    ) {
+        let index = LineIndex::new(text);
         assert_eq!(
             index
-                .offset(LspPosition {
-                    line: 0,
-                    character: 12
-                })
-                .expect("position before diamond should resolve"),
-            diamond_start
-        );
-        assert_eq!(
-            index
-                .offset(LspPosition {
-                    line: 0,
-                    character: 14
-                })
-                .expect("position after diamond should resolve"),
-            after_diamond
-        );
-        assert!(
-            index
-                .offset(LspPosition {
-                    line: 0,
-                    character: 13
-                })
-                .is_err(),
-            "halfway through a surrogate pair must be rejected"
+                .offset(LspPosition { line, character })
+                .expect("position should resolve"),
+            expected
         );
     }
 
-    #[test]
-    fn crlf_line_endings_do_not_expose_carriage_return_columns() {
-        let text = "one\r\ntwo";
+    #[rstest]
+    #[case::split_surrogate(DIAMOND_TEXT, 0, 13)]
+    #[case::carriage_return_column(CRLF_TEXT, 0, 4)]
+    fn utf16_offsets_reject_unaddressable_columns(
+        #[case] text: &str,
+        #[case] line: u32,
+        #[case] character: u32,
+    ) {
         let index = LineIndex::new(text);
-
-        assert_eq!(
-            index
-                .offset(LspPosition {
-                    line: 0,
-                    character: 3
-                })
-                .expect("end of first line should resolve"),
-            3
-        );
-        assert!(
-            index
-                .offset(LspPosition {
-                    line: 0,
-                    character: 4
-                })
-                .is_err(),
-            "the carriage return is not an addressable LSP column"
-        );
-        assert_eq!(
-            index
-                .offset(LspPosition {
-                    line: 1,
-                    character: 0
-                })
-                .expect("second line start should resolve"),
-            5
-        );
+        assert!(index.offset(LspPosition { line, character }).is_err());
     }
 
     #[test]
