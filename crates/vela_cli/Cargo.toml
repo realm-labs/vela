@@ -13,6 +13,7 @@ vela_language_service = { workspace = true }
 vela_vm = { workspace = true }
 
 [dev-dependencies]
+rstest.workspace = true
 vela_def = { workspace = true }
 vela_macros = { workspace = true }
 vela_reflect = { workspace = true }

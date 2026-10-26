@@ -1,3 +1,4 @@
+use rstest::rstest;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -61,16 +62,27 @@ fn write_script(name: &str, source: &str) -> ScriptFixture {
     ScriptFixture { root, script }
 }
 
-#[test]
-fn cli_runs_script_main() {
-    let fixture = write_script(
-        "basic",
-        r#"
+#[rstest]
+#[case::script_main(
+    "basic",
+    r#"
 fn main() {
     return 2 + 3;
 }
 "#,
-    );
+    "Scalar(I64(5))\n"
+)]
+#[case::standard_time_and_random_helpers(
+    "stdlib",
+    r#"
+fn main() {
+    return time::elapsed_since(1699999990) + math::random(1, 6);
+}
+"#,
+    "Scalar(I64(13))\n"
+)]
+fn cli_runs_script(#[case] name: &str, #[case] source: &str, #[case] expected: &str) {
+    let fixture = write_script(name, source);
 
     let output = run_cli(
         fixture
@@ -87,32 +99,8 @@ fn main() {
     );
     assert_eq!(
         String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        "Scalar(I64(5))\n"
+        expected
     );
-}
-
-#[test]
-fn cli_rejects_async_source() {
-    let fixture = write_script(
-        "async_default",
-        r#"
-async fn main() {
-    return 42;
-}
-"#,
-    );
-    let script = fixture
-        .script()
-        .to_str()
-        .expect("script path should be utf8");
-
-    let output = run_cli(script);
-
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("error["));
-    assert!(stderr.contains("async"));
-    assert!(!stderr.contains("rerun with `--async`"));
 }
 
 #[test]
@@ -141,66 +129,34 @@ async fn main() {
     assert!(stderr.contains("unexpected argument '--async'"));
 }
 
-#[test]
-fn cli_runs_standard_time_and_random_helpers() {
-    let fixture = write_script(
-        "stdlib",
-        r#"
-fn main() {
-    return time::elapsed_since(1699999990) + math::random(1, 6);
+#[rstest]
+#[case::removed_async_source(
+    "async_default",
+    r#"
+async fn main() {
+    return 42;
 }
 "#,
-    );
-
-    let output = run_cli(
-        fixture
-            .script()
-            .to_str()
-            .expect("script path should be utf8"),
-    );
-
-    assert!(
-        output.status.success(),
-        "cli stdlib script failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        "Scalar(I64(13))\n"
-    );
-}
-
-#[test]
-fn cli_reports_rendered_compile_diagnostics() {
-    let fixture = write_script(
-        "invalid",
-        r#"
+    &["error[", "async"],
+    &["rerun with `--async`"],
+)]
+#[case::compile_diagnostic(
+    "invalid",
+    r#"
 fn main() {
     return missing_value;
 }
 "#,
-    );
-
-    let output = run_cli(
-        fixture
-            .script()
-            .to_str()
-            .expect("script path should be utf8"),
-    );
-
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("error[hir::unresolved_name]: unresolved name `missing_value`"));
-    assert!(stderr.contains("invalid.vela:3:12"));
-    assert!(stderr.contains("return missing_value;"));
-}
-
-#[test]
-fn cli_reports_rendered_runtime_diagnostics() {
-    let fixture = write_script(
-        "runtime_error",
-        r#"
+    &[
+        "error[hir::unresolved_name]: unresolved name `missing_value`",
+        "invalid.vela:3:12",
+        "return missing_value;",
+    ],
+    &[],
+)]
+#[case::runtime_diagnostic(
+    "runtime_error",
+    r#"
 fn helper() {
     return 10 / 0;
 }
@@ -209,7 +165,23 @@ fn main() {
     return helper();
 }
 "#,
-    );
+    &[
+        "error[vm::division_by_zero]: division by zero",
+        "runtime_error.vela:3:12",
+        "return 10 / 0;",
+        "runtime_error.vela:7:12",
+        "return helper();",
+        "while executing `helper`",
+    ],
+    &[],
+)]
+fn cli_reports_script_diagnostics(
+    #[case] name: &str,
+    #[case] source: &str,
+    #[case] expected: &[&str],
+    #[case] forbidden: &[&str],
+) {
+    let fixture = write_script(name, source);
 
     let output = run_cli(
         fixture
@@ -220,12 +192,18 @@ fn main() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("error[vm::division_by_zero]: division by zero"));
-    assert!(stderr.contains("runtime_error.vela:3:12"));
-    assert!(stderr.contains("return 10 / 0;"));
-    assert!(stderr.contains("runtime_error.vela:7:12"));
-    assert!(stderr.contains("return helper();"));
-    assert!(stderr.contains("while executing `helper`"));
+    for expected in expected {
+        assert!(
+            stderr.contains(expected),
+            "missing `{expected}` in {stderr}"
+        );
+    }
+    for forbidden in forbidden {
+        assert!(
+            !stderr.contains(forbidden),
+            "unexpected `{forbidden}` in {stderr}"
+        );
+    }
 }
 
 #[test]

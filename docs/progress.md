@@ -80,6 +80,10 @@ TO06 completes unlinked cursor/Unicode/protocol cases. Existing LSP evidence IDs
 linked test identities, stateful sessions and Rust support remain unchanged;
 focused protocol, lifecycle, cancellation and real stdio validation pass.
 
+TO07 replaces both example registration macros with rstest families covering all
+14 real bins, and organizes CLI/WASM route-specific cases. Exact/substring output
+contracts remain distinct; both feature modes, Clippy and wasm32 checking pass.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits

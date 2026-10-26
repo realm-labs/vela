@@ -16,5 +16,8 @@ vela_engine = { workspace = true }
 vela_vm = { workspace = true }
 wasm-bindgen = { workspace = true }
 
+[dev-dependencies]
+rstest.workspace = true
+
 [lints]
 workspace = true

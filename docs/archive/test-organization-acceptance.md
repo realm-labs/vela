@@ -188,3 +188,29 @@ stdio 10. All 28 new cases pass individual exact selection. Affected all-feature
 families, scoped Clippy and formatting pass. The source-snapshot aggregate hit
 240 seconds, so only bounded owner passes were claimed here; complete final
 identity coverage is reconciled in TO09 without an aggregate-success claim.
+
+## TO07 — CLI, Browser Boundary And Examples
+
+The two example registration macros are removed after accounting for every
+consumer: `example_exact_output` has eight cases and `example_contains_output`
+has six. All 13 existing executable/output pairs and comparison policies remain;
+the package-demo adds real subprocess coverage for the fourteenth retained bin.
+The five-source removal loop becomes named rejection cases with fresh Engines.
+Examples remain a separate workspace with an explicit dev dependency; its lock
+adds ten packages and upgrades/removes none.
+
+CLI success maps to `cli_runs_script::{case_1_script_main,
+case_2_standard_time_and_random_helpers}`; diagnostic cases use
+`cli_reports_script_diagnostics` for removed async source, compile error and
+runtime error. Status, streams, filenames, coordinates and stack assertions remain;
+removed flags and help stay separate tests.
+WASM's two JSON successes share `run_script_returns_json_value`; the array check
+is strengthened to complete equality. Four removed-source cases retain both
+compile/run routes, independently discovered as eight cases. Production code,
+error codes, null results, severity and span-object assertions are unchanged.
+
+Before/after combined CLI/WASM/example gates: 31/43 passes per feature mode.
+After: CLI 8, host WASM 14, examples 21 (14 real bins, six removal/trait tests and
+one package lifecycle test). All-feature Clippy, wasm32 release check, default
+CLI/WASM Clippy, discovery, eight exact selections and scoped formatting pass.
+Cross-compilation and host tests are not browser execution evidence.

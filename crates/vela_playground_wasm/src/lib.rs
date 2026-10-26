@@ -358,24 +358,8 @@ fn response_to_json(response: PlaygroundResponse) -> String {
 #[cfg(test)]
 mod tests {
     use super::{compile_script, run_script};
-    use serde_json::Value as JsonValue;
-
-    #[test]
-    fn run_script_returns_json_value() {
-        let response: JsonValue = serde_json::from_str(&run_script(
-            r#"
-            fn main() {
-                return ["vela", 42];
-            }
-            "#,
-            "main",
-        ))
-        .expect("valid playground response");
-
-        assert_eq!(response["ok"], true);
-        assert_eq!(response["value"][0], "vela");
-        assert_eq!(response["value"][1], 42);
-    }
+    use rstest::rstest;
+    use serde_json::{Value as JsonValue, json};
 
     #[test]
     fn run_script_reports_runtime_error() {
@@ -446,48 +430,61 @@ mod tests {
         );
     }
 
-    #[test]
-    fn compile_and_run_reject_removed_async_and_task_sources() {
-        for (source, code) in [
-            ("async fn main() { return 1; }", "syntax::removed_async"),
-            (
-                "fn main() { return load().await; }",
-                "syntax::removed_async",
-            ),
-            (
-                "fn worker() {} fn main() { task::spawn_scoped(worker()); }",
-                "syntax::removed_task",
-            ),
-            (
-                "fn worker() {} fn done(result: Any) {} fn main() { task::spawn_scoped_then(worker(), done); }",
-                "syntax::removed_task",
-            ),
-        ] {
-            for response in [compile_script(source), run_script(source, "main")] {
-                let response: JsonValue = serde_json::from_str(&response).expect("playground JSON");
-                assert_eq!(response["ok"], false, "{source}: {response}");
-                assert!(
-                    response["value"].is_null(),
-                    "removed source must not execute"
-                );
-                assert!(
-                    response["diagnostics"]
-                        .as_array()
-                        .expect("diagnostics")
-                        .iter()
-                        .any(|diagnostic| diagnostic["code"] == code
-                            && diagnostic["severity"] == "error"
-                            && diagnostic["span"].is_object()),
-                    "{source}: {response}"
-                );
-            }
-        }
+    #[derive(Clone, Copy, Debug)]
+    enum EntryRoute {
+        Compile,
+        Run,
     }
 
-    #[test]
-    fn run_script_runs_level_reward_playground_example() {
-        let response: JsonValue = serde_json::from_str(&run_script(
-            r#"
+    #[rstest]
+    #[case::async_function("async fn main() { return 1; }", "syntax::removed_async")]
+    #[case::await_expression("fn main() { return load().await; }", "syntax::removed_async")]
+    #[case::task_spawn(
+        "fn worker() {} fn main() { task::spawn_scoped(worker()); }",
+        "syntax::removed_task"
+    )]
+    #[case::task_continuation(
+        "fn worker() {} fn done(result: Any) {} fn main() { task::spawn_scoped_then(worker(), done); }",
+        "syntax::removed_task"
+    )]
+    fn compile_and_run_reject_removed_async_and_task_sources(
+        #[case] source: &str,
+        #[case] code: &str,
+        #[values(EntryRoute::Compile, EntryRoute::Run)] route: EntryRoute,
+    ) {
+        let response = match route {
+            EntryRoute::Compile => compile_script(source),
+            EntryRoute::Run => run_script(source, "main"),
+        };
+        let response: JsonValue = serde_json::from_str(&response).expect("playground JSON");
+        assert_eq!(response["ok"], false, "{source}: {response}");
+        assert!(
+            response["value"].is_null(),
+            "removed source must not execute"
+        );
+        assert!(
+            response["diagnostics"]
+                .as_array()
+                .expect("diagnostics")
+                .iter()
+                .any(|diagnostic| diagnostic["code"] == code
+                    && diagnostic["severity"] == "error"
+                    && diagnostic["span"].is_object()),
+            "{source}: {response}"
+        );
+    }
+
+    #[rstest]
+    #[case::json_array(
+        r#"
+            fn main() {
+                return ["vela", 42];
+            }
+            "#,
+        json!(["vela", 42]),
+    )]
+    #[case::level_reward(
+        r#"
             struct Reward {
                 enabled: bool,
                 base: int,
@@ -510,11 +507,13 @@ mod tests {
                 return score_reward(reward) + 4;
             }
             "#,
-            "main",
-        ))
-        .expect("valid playground response");
+        json!(40),
+    )]
+    fn run_script_returns_json_value(#[case] source: &str, #[case] expected: JsonValue) {
+        let response: JsonValue =
+            serde_json::from_str(&run_script(source, "main")).expect("valid playground response");
 
         assert_eq!(response["ok"], true, "{response:#}");
-        assert_eq!(response["value"], 40);
+        assert_eq!(response["value"], expected);
     }
 }

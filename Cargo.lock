@@ -1247,6 +1247,7 @@ name = "vela_cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "rstest",
  "vela_bytecode",
  "vela_common",
  "vela_def",
@@ -1412,6 +1413,7 @@ dependencies = [
 name = "vela_playground_wasm"
 version = "0.1.0"
 dependencies = [
+ "rstest",
  "serde",
  "serde_json",
  "vela_bytecode",

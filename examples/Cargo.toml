@@ -16,6 +16,9 @@ vela_package = { path = "../crates/vela_package" }
 vela_reflect = { path = "../crates/vela_reflect" }
 vela_vm = { path = "../crates/vela_vm" }
 
+[dev-dependencies]
+rstest = { version = "0.28.0", default-features = false }
+
 [profile.dev]
 debug = "line-tables-only"
 
