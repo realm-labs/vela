@@ -928,55 +928,22 @@ fn main() {
     );
 }
 
-#[test]
-fn runs_compiled_nested_record_field_write_source() {
-    let code = compile_test_function(
-        SourceId::new(1),
-        r#"
-fn main() {
-    let player = Player {
-        stats: Stats {
-            level: 2,
-            exp: 5,
-        },
-    };
-    player.stats.level += 3;
-    player.stats.exp = player.stats.level + 1;
-    return player.stats.level + player.stats.exp;
-}
-"#,
-        "main",
-    )
-    .expect("compile nested record field write source");
+#[rstest::rstest]
+#[case::nested(
+    include_str!("../../../../tests/fixtures/conformance/record_writes/nested.vela"),
+    11
+)]
+#[case::indexed(
+    include_str!("../../../../tests/fixtures/conformance/record_writes/indexed.vela"),
+    14
+)]
+fn runs_compiled_record_writeback(#[case] source: &str, #[case] expected: i64) {
+    let code = compile_test_function(SourceId::new(1), source, "main")
+        .expect("compile record writeback source");
 
     assert_eq!(
         run_linked_test_code(code),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
-    );
-}
-
-#[test]
-fn runs_compiled_indexed_record_field_write_source() {
-    let code = compile_test_function(
-        SourceId::new(1),
-        r#"
-fn main() {
-    let players = [
-        Player { level: 2, exp: 5 },
-        Player { level: 7, exp: 1 },
-    ];
-    players[0].level += 3;
-    players[1].exp = players[0].level + 4;
-    return players[0].level + players[1].exp;
-}
-"#,
-        "main",
-    )
-    .expect("compile indexed record field write source");
-
-    assert_eq!(
-        run_linked_test_code(code),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14)))
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(expected)))
     );
 }
 

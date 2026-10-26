@@ -96,6 +96,15 @@ execution; native Rust remains trusted and must bound its own blocking work.
   rendered-output evidence, and stale/cancelled generations.
 - Bench/fuzz builds and selected stress runs cover physical plans, GC and codecs.
 
+Use the workspace-managed `rstest` dev dependency for homogeneous named
+`#[case]` tests and file-discovered `#[files]` inputs. Do not introduce a custom
+registration macro, discovery harness or expectation DSL. Share identical source
+fixtures and compatible setup, but retain each semantic owner's assertions and
+keep stateful lifecycle scenarios explicit. Each parameterized case must remain
+independently selectable; do not hide a directory in one serial test loop.
+The [repository test organization plan](../test-organization-plan.md) records
+current owners, concrete cleanup candidates and TO00–TO09 execution stages.
+
 Do not delete tests just to obtain green gates. Move obsolete success expectations
 with their removal while retaining safety/rejection coverage. Run commands from
 [validation.md](../validation.md) and record exactly what ran. The

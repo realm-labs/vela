@@ -1,0 +1,10 @@
+
+fn main() {
+    let players = [
+        Player { level: 2, exp: 5 },
+        Player { level: 7, exp: 1 },
+    ];
+    players[0].level += 3;
+    players[1].exp = players[0].level + 4;
+    return players[0].level + players[1].exp;
+}

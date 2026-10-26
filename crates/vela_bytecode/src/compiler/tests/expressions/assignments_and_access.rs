@@ -263,26 +263,24 @@ fn main(counter: Counter) {
     )));
 }
 
-#[test]
-fn compiler_lowers_nested_record_field_writes() {
-    let code = compile_test_function(
-        SourceId::new(1),
-        r#"
-fn main() {
-    let player = Player {
-        stats: Stats {
-            level: 2,
-            exp: 5,
-        },
-    };
-    player.stats.level += 3;
-    player.stats.exp = player.stats.level + 1;
-    return player.stats.level + player.stats.exp;
-}
-"#,
-        "main",
-    )
-    .expect("nested record field writes should compile");
+#[rstest::rstest]
+#[case::nested(
+    include_str!("../../../../../../tests/fixtures/conformance/record_writes/nested.vela"),
+    3,
+    false
+)]
+#[case::indexed(
+    include_str!("../../../../../../tests/fixtures/conformance/record_writes/indexed.vela"),
+    1,
+    true
+)]
+fn compiler_lowers_record_writeback(
+    #[case] source: &str,
+    #[case] minimum_slot_writes: usize,
+    #[case] requires_index_write: bool,
+) {
+    let code = compile_test_function(SourceId::new(1), source, "main")
+        .expect("record writeback should compile");
     assert!(
         code.instructions
             .iter()
@@ -293,46 +291,14 @@ fn main() {
                 )
             })
             .count()
-            >= 3
+            >= minimum_slot_writes
     );
-    assert!(!code.instructions.iter().any(|instruction| {
-        matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::GetRecordField { .. }
-                | UnlinkedInstructionKind::SetRecordField { .. }
-        )
-    }));
-}
-#[test]
-fn compiler_lowers_indexed_record_field_writes() {
-    let code = compile_test_function(
-        SourceId::new(1),
-        r#"
-fn main() {
-    let players = [
-        Player { level: 2, exp: 5 },
-        Player { level: 7, exp: 1 },
-    ];
-    players[0].level += 3;
-    players[1].exp = players[0].level + 4;
-    return players[0].level + players[1].exp;
-}
-"#,
-        "main",
-    )
-    .expect("indexed record field writes should compile");
-    assert!(
-        code.instructions.iter().any(|instruction| matches!(
+    if requires_index_write {
+        assert!(code.instructions.iter().any(|instruction| matches!(
             instruction.kind,
             UnlinkedInstructionKind::SetIndex { .. }
-        ))
-    );
-    assert!(code.instructions.iter().any(|instruction| {
-        matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::SetRecordSlot { .. }
-        )
-    }));
+        )));
+    }
     assert!(!code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,

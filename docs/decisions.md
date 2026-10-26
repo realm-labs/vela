@@ -4,6 +4,15 @@ This file is the active architecture decision index. Full pre-compaction
 decision history lives in
 [archive/decisions-full-2026-06-01.md](archive/decisions-full-2026-06-01.md).
 
+## Parameterized Test Organization
+
+Use workspace-managed `rstest` as a dev dependency with default features disabled.
+Homogeneous tests use named cases or file discovery rather than a custom runner,
+registration macro or expectation DSL. Shared source fixtures do not merge
+compiler, VM or editor proof into one layer; execution conditions and independent
+assertions stay with their semantic owner. Stateful lifecycle tests remain
+explicit scenarios rather than uncontrolled parameter products.
+
 ## Synchronous Runtime With Value And Opaque Object Interop
 
 The accepted product direction is a synchronous interpreted dynamic language

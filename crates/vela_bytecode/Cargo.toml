@@ -30,6 +30,7 @@ vela_registry = { workspace = true }
 vela_stdlib = { workspace = true }
 
 [dev-dependencies]
+rstest = { workspace = true }
 vela_mir = { workspace = true, features = ["test-support"] }
 
 [lints]

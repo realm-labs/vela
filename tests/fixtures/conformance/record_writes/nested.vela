@@ -1,0 +1,12 @@
+
+fn main() {
+    let player = Player {
+        stats: Stats {
+            level: 2,
+            exp: 5,
+        },
+    };
+    player.stats.level += 3;
+    player.stats.exp = player.stats.level + 1;
+    return player.stats.level + player.stats.exp;
+}

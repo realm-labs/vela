@@ -41,6 +41,19 @@ Current formats are **portable program 8 / Rust-binding schema 7 / tooling
 schema 4**. Incompatible formats reject before use/link/activation. Package
 metadata remains unsupported by the portable codec; no new encoding was added.
 
+## Current Task: Test Organization
+
+The [repository test organization plan](test-organization-plan.md) inventories
+all 23 root-workspace crates and the separate example/fuzz/editor/site owners.
+Execution is authorized in TO00–TO09 order, with one commit per stage.
+
+TO00 accepts the compiler/VM record-writeback pilot: two byte-preserved shared
+sources, four independently named cases, unchanged lowering/result assertions.
+The fast-lane filter now names `removed_macros_and_borrow_apis_are_unavailable`;
+full validation retains both trybuild runners. Focused pilot tests passed again.
+Later stages preserve stateful/safety scenarios, specialized runners and existing
+LSP evidence obligations; no full-migration acceptance is claimed yet.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits
