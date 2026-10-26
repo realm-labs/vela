@@ -1,0 +1,11 @@
+
+fn make_nested(base) {
+    return |amount| {
+        return |bonus| base + amount + bonus;
+    };
+}
+fn main() {
+    let make = make_nested(10);
+    let add = make(4);
+    return add(3);
+}

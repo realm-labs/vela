@@ -1,0 +1,13 @@
+
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
+impl BonusSource for Player {
+    fn bonus(self, amount) -> i64 {
+        return self.level + amount;
+    }
+}
+fn main() {
+    let player = Player { level: 7 };
+    let bonus = |ignored| player.bonus(5);
+    return bonus(true);
+}

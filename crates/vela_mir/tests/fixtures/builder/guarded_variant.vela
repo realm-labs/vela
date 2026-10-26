@@ -1,0 +1,9 @@
+
+enum State { Ready { value }, Idle }
+fn main(state, gate) {
+    return match state {
+        State::Ready { value } if gate => value,
+        State::Idle => 0,
+        _ => 9,
+    };
+}

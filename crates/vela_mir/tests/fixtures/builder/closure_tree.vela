@@ -1,0 +1,7 @@
+
+fn main(base, callback = (|seed: i64| base + seed)) {
+    let outer = |amount: i64| {
+        return |bonus: i64| base + amount + bonus;
+    };
+    return outer;
+}

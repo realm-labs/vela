@@ -1,0 +1,10 @@
+
+fn main(array: Array<u8>, map: Map<u16, i32>, set: Set<u64>, value) {
+    array.push(value);
+    array.insert(0, value);
+    array.extend(value);
+    map.set(value, value);
+    map.extend(value);
+    set.add(value);
+    set.extend(value);
+}

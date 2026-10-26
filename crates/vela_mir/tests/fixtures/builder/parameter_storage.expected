@@ -1,0 +1,13 @@
+mir {
+  target function#700 CompileFunctionDescriptor { id: FunctionId(700), class: Script, canonical_symbol: "builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  fn f0 body h0 owner function#700 symbol="builder::main" @70:15..49/h0 {
+    param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @70:8..13/h0
+    local l0: Script(HirLocalId(0)) Dynamic @70:8..13/h0
+    local l1: Script(HirLocalId(1)) Dynamic @70:21..25/h0
+    debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @70:8..13/h0
+    debug dl1: copy -> l1 kind=Local hir=Some(1) scope=h0 live=[] @70:21..25/h0
+    bb0:
+      s0: l1 = l0 [pure] @70:17..34/s0
+      -> return l1 [pure] @70:35..47/s1
+  }
+}

@@ -1,0 +1,7 @@
+fn main(left: i32, right: i32) {
+    let minimum = -128i8;
+    let negated = -left;
+    let inverted = !(left < right);
+    let span = left..=right;
+    return (left + 1i32) * (right - 2i32);
+}

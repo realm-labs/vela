@@ -43,18 +43,7 @@ fn required_signature_lambdas_do_not_enter_runtime_targets() {
 #[test]
 fn selected_root_owns_nested_script_and_primitive_lambda_contracts() {
     let fixture = prepare_source(
-        r#"
-struct Reward { amount: i64 }
-
-fn selected() {
-    let outer = |reward: Reward, count: i64| {
-        return |flag: bool| reward;
-    };
-    return outer;
-}
-
-fn ignored() { return |text: String| text; }
-"#,
+        include_str!("../../../../tests/fixtures/semantic_input/selected_lambdas.vela"),
         FixtureRoots::Function("selected"),
     )
     .expect("typed nested lambda targets should close for the selected root");

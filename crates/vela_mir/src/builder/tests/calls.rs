@@ -337,11 +337,7 @@ fn main() { return target(second = "second", first = "first"); }
 
 #[test]
 fn mir_builder_captures_dynamic_method_receiver_before_named_arguments() {
-    let source = r#"
-fn main(receiver, first, second) {
-    return receiver.invoke(second, label = first);
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/builder/dynamic_method_order.vela");
     let program = try_build_calls(source, |_graph, body, targets| {
         let (expression, call) = only_call(body);
         let values = argument_values(&call);
@@ -384,30 +380,7 @@ fn main(receiver, first, second) {
     assert!(dump.contains("receiver=t0(t1, label=t2)"), "{dump}");
     assert_eq!(
         complete_function_dump(&program),
-        r#"  fn f0 body h0 owner function#700 symbol="calls::main" @73:34..88/h0 {
-    param p0: receiver -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @73:9..17/h0
-    param p1: first -> l1 kind=Explicit(HirParamId(1)) contract=None default=None hir=l1 @73:19..24/h0
-    param p2: second -> l2 kind=Explicit(HirParamId(2)) contract=None default=None hir=l2 @73:26..32/h0
-    local l0: Script(HirLocalId(0)) Dynamic @73:9..17/h0
-    local l1: Script(HirLocalId(1)) Dynamic @73:19..24/h0
-    local l2: Script(HirLocalId(2)) Dynamic @73:26..32/h0
-    temp t0: Dynamic def=s0 @73:47..55/e2
-    temp t1: Dynamic def=s1 @73:63..69/e3
-    temp t2: Dynamic def=s2 @73:79..84/e4
-    temp t3: Dynamic def=s3 @73:47..85/e0
-    debug dl0: receiver -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @73:9..17/h0
-    debug dl1: first -> l1 kind=Parameter hir=Some(1) scope=h0 live=[] @73:19..24/h0
-    debug dl2: second -> l2 kind=Parameter hir=Some(2) scope=h0 live=[] @73:26..32/h0
-    safepoint sp0: live={} @73:47..85/e0
-    bb0:
-      s0: t0 = l0 [pure] @73:47..55/e2
-      s1: t1 = l2 [pure] @73:63..69/e3
-      s2: t2 = l1 [pure] @73:79..84/e4
-      s3: t3 = call dynamic-method invoke receiver=t0(t1, label=t2) [trap|alloc|dynamic-call, sp0] @73:47..85/e0
-      -> return t3 [pure] @73:40..86/s0
-  }
-}
-"#
+        include_str!("../../../tests/fixtures/builder/dynamic_method_order.expected")
     );
 }
 

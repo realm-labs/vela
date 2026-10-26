@@ -122,22 +122,7 @@ fn main(limit: i64) -> i64 {
 fn compiler_lowers_proven_i64_scalar_loop_ops_to_typed_bytecode() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let total = 0;
-    for value in 0..200 {
-        if value % 3 == 0 {
-            total += value * 2;
-            continue;
-        }
-        if value > 180 {
-            break;
-        }
-        total += (value * 5) % 17;
-    }
-    return total;
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/scalar_loop.vela"),
         "main",
     )
     .expect("proven i64 scalar loop should compile");

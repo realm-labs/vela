@@ -339,17 +339,7 @@ fn imported_and_qualified_const_and_state_paths_share_declaration_lowering() {
         SourceId::new(102),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
-        r#"
-use game::config::LIMIT as IMPORTED_LIMIT
-use game::config::state as imported_state
-fn main() {
-    let imported_const = IMPORTED_LIMIT;
-    let qualified_const = game::config::LIMIT;
-    let imported_state = imported_state;
-    let qualified_state = game::config::state;
-    return qualified_const;
-}
-"#,
+        include_str!("../../../tests/fixtures/builder/imported_declarations.vela"),
     ));
     let program = try_build_declaration_graph(graph, |graph, body, targets| {
         let limit = declaration(graph, "LIMIT");

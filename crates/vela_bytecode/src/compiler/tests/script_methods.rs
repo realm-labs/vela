@@ -264,21 +264,7 @@ impl BonusSource for Player {
 fn compiler_lowers_named_and_default_script_method_args() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource {
-    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64;
-}
-struct Player { level: i64 }
-impl BonusSource for Player {
-    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64 {
-        return self.level + amount * multiplier + offset;
-    }
-}
-fn main() {
-    let player = Player { level: 7 };
-    return player.bonus(offset = 4, amount = 5);
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/named_default_method.vela"),
     )
     .expect("named/default method call should compile");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
@@ -377,21 +363,7 @@ fn main() {
 fn compiler_specializes_self_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource {
-    fn label(self) -> String;
-    fn summary(self) -> String { return self.label(); }
-}
-struct Player { name: String }
-impl BonusSource for Player {
-    fn label(self) -> String {
-        return self.name;
-    }
-}
-fn main() {
-    return Player { name: "hero" }.summary();
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/self_method.vela"),
     )
     .expect("self method calls should specialize by method id");
     let label_id = stable_test_trait_method_id("main::BonusSource", "label");
@@ -410,20 +382,7 @@ fn main() {
 fn compiler_specializes_captured_receiver_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn main() {
-    let player = Player { level: 7 };
-    let bonus = |ignored| player.bonus(5);
-    return bonus(true);
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/captured_method.vela"),
     )
     .expect("captured receiver method should specialize by method id");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
@@ -450,21 +409,7 @@ fn main() {
 fn compiler_specializes_binding_pattern_receiver_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn main() {
-    let player = Player { level: 7 };
-    return match player {
-        bound => bound.bonus(5),
-    };
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/binding_pattern_method.vela"),
     )
     .expect("binding pattern receiver method should specialize by method id");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
@@ -481,26 +426,7 @@ fn main() {
 fn compiler_specializes_record_variant_field_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-enum Event {
-    Grant { player: Player },
-    None,
-}
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn main() {
-    let event = Event::Grant { player: Player { level: 7 } };
-    return match event {
-        Event::Grant { player } => player.bonus(5),
-        _ => 0,
-    };
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/record_variant_method.vela"),
     )
     .expect("record variant field receiver method should specialize by method id");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
@@ -517,26 +443,7 @@ fn main() {
 fn compiler_specializes_tuple_variant_field_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-enum Event {
-    Grant(player: Player),
-    None,
-}
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn main() {
-    let event = Event::Grant(Player { level: 7 });
-    return match event {
-        Event::Grant(player) => player.bonus(5),
-        _ => 0,
-    };
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/tuple_variant_method.vela"),
     )
     .expect("tuple variant field receiver method should specialize by method id");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
@@ -610,22 +517,7 @@ fn main(player: Player) {
 fn compiler_specializes_typed_let_method_calls_by_method_id() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn source() {
-    return Player { level: 7 };
-}
-fn main() {
-    let player: Player = source();
-    return player.bonus(5);
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/typed_let_method.vela"),
     )
     .expect("typed let method should specialize by method id");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");

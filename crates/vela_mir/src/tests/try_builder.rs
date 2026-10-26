@@ -421,40 +421,13 @@ fn try_regions(function: &MirFunction) -> Vec<TryRegion> {
 #[test]
 fn mir_builder_expected_option_try_is_explicit_cfg() {
     let fixture = build(
-        "fn main(value) { let inner = value?; return inner; }",
+        include_str!("../../tests/fixtures/builder/option_try.vela"),
         |_, _| Some(CompileTryTarget::Expected(OPTION_LAYOUT)),
     )
     .expect("expected Option try MIR");
     assert_eq!(
         fixture.program.dump(),
-        r#"mir {
-  target function#9200 CompileFunctionDescriptor { id: FunctionId(9200), class: Script, canonical_symbol: "try_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: Some(MirSourceOrigin { body: Some(HirBodyId(0)), node: Body(HirBodyId(0)), span: Span { source: SourceId(92), start: 8, end: 13 } }) }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
-  target type#9210 CompileTypeDescriptor { id: TypeId(9210), canonical_name: "std::Option", runtime_name: "std::Option", class: Standard, shape: None, fields: [], variants: [VariantId(9211), VariantId(9212)] }
-  target variant#9211 CompileVariantDescriptor { id: VariantId(9211), owner: TypeId(9210), name: "Some", fields: [FieldId(9213)], declaration_order: 0 }
-  target variant#9212 CompileVariantDescriptor { id: VariantId(9212), owner: TypeId(9210), name: "None", fields: [], declaration_order: 1 }
-  target field#9213 CompileFieldDescriptor { id: FieldId(9213), owner: TypeId(9210), variant: Some(VariantId(9211)), name: "0", contract: None, declaration_order: 0, access: CompileFieldAccess { readable: true, writable: true, reflect_readable: true, reflect_writable: true, required_permissions: [] } }
-  fn f0 body h0 owner function#9200 symbol="try_builder::main" @92:15..52/h0 {
-    param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @92:8..13/h0
-    local l0: Script(HirLocalId(0)) Dynamic @92:8..13/h0
-    local l1: Script(HirLocalId(1)) Dynamic @92:21..26/h0
-    local l2: Synthetic Dynamic @92:29..35/e0
-    debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @92:8..13/h0
-    debug dl1: inner -> l1 kind=Local hir=Some(1) scope=h0 live=[] @92:21..26/h0
-    bb0:
-      -> try.switch l0 target=Expected(CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }) result=l2 continuations=[MirTryContinue { layout: CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }, block: MirBlockId(4) }] propagate=bb2 invalid=bb3 join=bb1 [pure] @92:29..35/e0
-    bb1:
-      s1: l1 = l2 [pure] @92:17..36/s0
-      -> return l1 [pure] @92:37..50/s1
-    bb2:
-      -> return l0 [pure] @92:29..35/e0
-    bb3:
-      -> try.type-mismatch target=Expected(CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }) [trap] @92:29..35/e0
-    bb4:
-      s0: l2 = field.read l0 VariantSlot { type_id: TypeId(9210), variant: VariantId(9211), field: FieldId(9213) } [trap] @92:29..35/e0
-      -> jump bb1 [pure] @92:29..35/e0
-  }
-}
-"#
+        include_str!("../../tests/fixtures/builder/option_try.expected")
     );
     let function = only_function(&fixture);
     let regions = try_regions(function);
@@ -630,13 +603,7 @@ fn mir_builder_nested_try_and_effectful_operand_are_evaluated_once() {
 #[test]
 fn mir_builder_try_targets_survive_defaults_root_and_lambda_bodies() {
     let fixture = build(
-        r#"
-fn main(fallback, value = fallback?) {
-    let unwrap = || value?;
-    let inner = fallback?;
-    return unwrap;
-}
-"#,
+        include_str!("../../tests/fixtures/builder/try_body_owners.vela"),
         |body, _| match body.owner {
             HirBodyOwner::ParameterDefault { .. } => {
                 Some(CompileTryTarget::Expected(OPTION_LAYOUT))

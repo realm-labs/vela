@@ -1,0 +1,20 @@
+
+fn main() {
+    let some = option::some(["quest", "done"]);
+    let none = option::none();
+    let ok = result::ok(["done"]);
+    let err = result::err(["blocked"]);
+    let converted_ok = some.ok_or(["missing"]);
+    let converted_err = none.ok_or(["missing"]);
+    let flattened_some = option::some(option::some(["quest", "done"])).flatten();
+    let flattened_ok = result::ok(result::ok(["done"])).flatten();
+    return some.unwrap_or([]).join(".")
+        + none.unwrap_or(["fallback"]).join(".")
+        + ok.unwrap_or([]).join(".")
+        + err.unwrap_or(["fallback"]).join(".")
+        + converted_ok.to_option().unwrap_or([]).join(".")
+        + converted_err.to_option().unwrap_or(["fallback"]).join(".")
+        + converted_err.to_error_option().unwrap_or(["fallback"]).join(".")
+        + flattened_some.unwrap_or([]).join(".")
+        + flattened_ok.unwrap_or([]).join(".");
+}

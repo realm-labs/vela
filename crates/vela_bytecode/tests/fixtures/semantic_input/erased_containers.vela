@@ -1,0 +1,26 @@
+
+fn main(
+    array: Array,
+    any_array: Array<Any>,
+    map: Map,
+    partial_map: Map<Any, i32>,
+    partial_key_map: Map<u16, Any>,
+    string_map: Map<String, i32>,
+    set: Set,
+    value,
+) {
+    let inferred_but_erased: Array = [1i32];
+    array.push(value);
+    any_array.push(value);
+    inferred_but_erased.push(value);
+    map.set(value, value);
+    partial_map.set(value, value);
+    partial_key_map.set(value, value);
+    string_map.set(value, value);
+    set.add(value);
+    array.extend(value);
+    any_array.extend(value);
+    map.extend(value);
+    partial_map.extend(value);
+    set.extend(value);
+}

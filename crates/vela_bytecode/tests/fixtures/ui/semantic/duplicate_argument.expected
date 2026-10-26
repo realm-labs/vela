@@ -1,0 +1,13 @@
+error[compiler::duplicate_argument]: duplicate argument for parameter `base`
+  --> duplicate_argument.vela:2:30
+    |
+  2 | fn main() { return grant(41, base = 2); }
+    |                              ^^^^^^^^ duplicate argument for parameter `base`
+  --> duplicate_argument.vela:2:26
+    |
+  2 | fn main() { return grant(41, base = 2); }
+    |                          ^^ previous argument is here
+  --> duplicate_argument.vela:2:30
+    |
+  2 | fn main() { return grant(41, base = 2); }
+    |                              ^^^^^^^^ duplicate argument is here

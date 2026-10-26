@@ -135,21 +135,7 @@ fn schema_rejects_obsolete_versions_before_decoding_binding_facts() {
 fn schema_exports_public_functions_and_methods_with_structural_contracts() {
     let program = compile_test_program(
         SourceId::new(501),
-        r#"
-#[doc("Calculate a value")]
-pub fn calculate(input: Array<i64>, scale: i64 = 2) -> Result<i64, String> {
-return scale;
-}
-
-fn hidden() { return 0; }
-
-pub struct Counter { value: i64 }
-
-impl Counter {
-pub fn add(self, amount: i64) -> i64 { return amount; }
-fn secret(self) -> i64 { return 0; }
-}
-"#,
+        include_str!("../../tests/fixtures/compiler/public_binding_schema.vela"),
     )
     .expect("binding schema source should compile");
     let schema = program.binding_schema();

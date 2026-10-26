@@ -381,14 +381,7 @@ fn function_for_body(
 #[test]
 fn complete_closure_tree_preserves_topology_parameters_captures_and_origins() {
     let fixture = build_fixture(
-        r#"
-fn main(base, callback = (|seed: i64| base + seed)) {
-    let outer = |amount: i64| {
-        return |bonus: i64| base + amount + bonus;
-    };
-    return outer;
-}
-"#,
+        include_str!("../../../tests/fixtures/builder/closure_tree.vela"),
         &[(
             "callback",
             MirTypeContract::Callable {

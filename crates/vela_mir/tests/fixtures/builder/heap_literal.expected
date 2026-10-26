@@ -1,0 +1,13 @@
+mir {
+  target function#700 CompileFunctionDescriptor { id: FunctionId(700), class: Script, canonical_symbol: "builder::main", debug_name: "main", signature: CompileSignature { parameters: [], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  fn f0 body h0 owner function#700 symbol="builder::main" @70:10..54/h0 {
+    local l0: Script(HirLocalId(0)) Primitive(String) @70:16..24/h0
+    temp t0: Primitive(String) def=s0 @70:27..34/e0
+    debug dl0: greeting -> l0 kind=Local hir=Some(0) scope=h0 live=[] @70:16..24/h0
+    safepoint sp0: live={} @70:27..34/e0
+    bb0:
+      s0: t0 = const.materialize "hello" [trap|alloc, sp0] @70:27..34/e0
+      s1: l0 = t0 [pure] @70:12..35/s0
+      -> return l0 [pure] @70:36..52/s1
+  }
+}

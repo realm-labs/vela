@@ -1,6 +1,8 @@
 use super::*;
 use vela_common::{Diagnostic, Severity};
 
+use super::ui_semantic::assert_ui_golden;
+
 #[derive(Clone, Copy)]
 struct ExpectedLabel<'a> {
     span_text: &'a str,
@@ -282,8 +284,7 @@ fn target_diagnostic_contract_pins_unresolved_compile_target() {
 #[test]
 fn type_contract_diagnostic_contract_pins_expected_and_actual_types() {
     const SOURCE_ID: SourceId = SourceId::new(705);
-    const SOURCE: &str =
-        "fn grant(amount: i64) { return amount; }\nfn main() { return grant(\"x\"); }";
+    const SOURCE: &str = include_str!("../../../tests/fixtures/ui/semantic/type_contract.vela");
     let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("statically incompatible script argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -300,12 +301,19 @@ fn type_contract_diagnostic_contract_pins_expected_and_actual_types() {
             message: "expected `i64`, found `String`",
         }],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        SOURCE_ID,
+        SOURCE,
+        "type_contract.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/type_contract.expected"),
+    );
 }
 
 #[test]
 fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
     const SOURCE_ID: SourceId = SourceId::new(706);
-    const SOURCE: &str = "fn main() { return 128i8; }";
+    const SOURCE: &str = include_str!("../../../tests/fixtures/ui/semantic/literal_range.vela");
     let error = compile_test_function(SOURCE_ID, SOURCE, "main")
         .expect_err("out-of-range suffixed literal should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -319,14 +327,27 @@ fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
         "128i8",
         &[],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        SOURCE_ID,
+        SOURCE,
+        "literal_range.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/literal_range.expected"),
+    );
 }
 
 #[test]
 fn literal_diagnostic_contract_pins_negated_const_origin() {
     const SOURCE_ID: SourceId = SourceId::new(710);
-    const SOURCE: &str = "const BAD = -129i8;\nfn main() { return BAD; }";
+    const SOURCE: &str =
+        include_str!("../../../tests/fixtures/ui/semantic/negated_const_range.vela");
     let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("out-of-range negated const literal should fail compilation");
+    assert!(matches!(
+        &error.kind,
+        CompileErrorKind::InvalidIntLiteral { literal, error }
+            if literal == "129i8" && error == "integer literal out of range"
+    ));
     let diagnostic = error
         .to_diagnostic()
         .expect("negated const conversion errors should project to a user diagnostic");
@@ -340,12 +361,20 @@ fn literal_diagnostic_contract_pins_negated_const_origin() {
         "129i8",
         &[],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        SOURCE_ID,
+        SOURCE,
+        "negated_const_range.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/negated_const_range.expected"),
+    );
 }
 
 #[test]
 fn named_argument_diagnostic_contract_pins_parameter_candidates() {
     const SOURCE_ID: SourceId = SourceId::new(707);
-    const SOURCE: &str = "fn grant(base, amount = 10) { return base + amount; }\nfn main() { return grant(amunt = 2, base = 1); }";
+    const SOURCE: &str =
+        include_str!("../../../tests/fixtures/ui/semantic/unknown_named_argument.vela");
     let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("unknown named argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -368,12 +397,20 @@ fn named_argument_diagnostic_contract_pins_parameter_candidates() {
             },
         ],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        SOURCE_ID,
+        SOURCE,
+        "unknown_named_argument.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/unknown_named_argument.expected"),
+    );
 }
 
 #[test]
 fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
     const POSITIONAL_SOURCE_ID: SourceId = SourceId::new(711);
-    const POSITIONAL_SOURCE: &str = "fn grant(first = 0, second = 10) { return 0; }\nfn main() { return grant(second = 2, 3); }";
+    const POSITIONAL_SOURCE: &str =
+        include_str!("../../../tests/fixtures/ui/semantic/positional_after_named.vela");
     let error = compile_test_program(POSITIONAL_SOURCE_ID, POSITIONAL_SOURCE)
         .expect_err("a positional argument after a named argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -389,9 +426,17 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
             message: "positional arguments must appear before named arguments",
         }],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        POSITIONAL_SOURCE_ID,
+        POSITIONAL_SOURCE,
+        "positional_after_named.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/positional_after_named.expected"),
+    );
 
     const EXTRA_SOURCE_ID: SourceId = SourceId::new(712);
-    const EXTRA_SOURCE: &str = "fn grant(only) { return 0; }\nfn main() { return grant(1, 2); }";
+    const EXTRA_SOURCE: &str =
+        include_str!("../../../tests/fixtures/ui/semantic/too_many_arguments.vela");
     let error = compile_test_program(EXTRA_SOURCE_ID, EXTRA_SOURCE)
         .expect_err("an extra positional argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -407,10 +452,17 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
             message: "call accepts 1 positional argument(s)",
         }],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        EXTRA_SOURCE_ID,
+        EXTRA_SOURCE,
+        "too_many_arguments.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/too_many_arguments.expected"),
+    );
 
     const DUPLICATE_SOURCE_ID: SourceId = SourceId::new(713);
     const DUPLICATE_SOURCE: &str =
-        "fn grant(base, amount = 8) { return 0; }\nfn main() { return grant(41, base = 2); }";
+        include_str!("../../../tests/fixtures/ui/semantic/duplicate_argument.vela");
     let error = compile_test_program(DUPLICATE_SOURCE_ID, DUPLICATE_SOURCE)
         .expect_err("two arguments for the same parameter should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -432,10 +484,17 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
             },
         ],
     );
+    assert_ui_golden(
+        &[diagnostic],
+        DUPLICATE_SOURCE_ID,
+        DUPLICATE_SOURCE,
+        "duplicate_argument.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/duplicate_argument.expected"),
+    );
 
     const MISSING_SOURCE_ID: SourceId = SourceId::new(714);
     const MISSING_SOURCE: &str =
-        "fn grant(required, optional = 10) { return 0; }\nfn main() { return grant(); }";
+        include_str!("../../../tests/fixtures/ui/semantic/missing_argument.vela");
     let error = compile_test_program(MISSING_SOURCE_ID, MISSING_SOURCE)
         .expect_err("an omitted required argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
@@ -456,6 +515,13 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
                 message: "required parameter is declared here",
             },
         ],
+    );
+    assert_ui_golden(
+        &[diagnostic],
+        MISSING_SOURCE_ID,
+        MISSING_SOURCE,
+        "missing_argument.vela",
+        include_str!("../../../tests/fixtures/ui/semantic/missing_argument.expected"),
     );
 }
 

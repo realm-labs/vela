@@ -288,37 +288,7 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
     }
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    let target = reflect::type_info("Context");
-    let option_type = reflect::type_info("Option");
-    let fields = reflect::fields(target);
-    let methods = reflect::methods(target);
-    let functions = reflect::functions();
-    let variants = reflect::variants(option_type);
-    let emit = reflect::method(target, "emit");
-    let random = reflect::function("math::random");
-    let random_params = reflect::params(random);
-    let effects = reflect::effects(random);
-    return fields.len() > 0
-        && methods.len() > 0
-        && fields[0].name.len() > 0
-        && fields[0].access.reflect_readable
-        && functions[0].name.len() > 0
-        && random.public
-        && random.access.reflect_visible
-        && random.access.required_permissions.len() == 0
-        && random_params.len() == 0
-        && emit.owner.len() > 0
-        && emit.access.reflect_callable
-        && emit.params[0].name.len() > 0
-        && emit.params[0].defaulted == false
-        && variants[0].name.len() > 0
-        && variants[0].fields[0].name.len() > 0
-        && effects.uses_random
-        && !effects.reads_host;
-}
-"#,
+        include_str!("../../../../tests/fixtures/compiler/reflection_collections.vela"),
         registry.compile_view(),
     )
     .expect("reflection metadata collection value methods should compile");
@@ -351,20 +321,7 @@ fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    let option_chain = option::some("quest")
-        .map(|value| value.to_upper())
-        .filter(|value| value.starts_with("Q"));
-    let result_chain = result::ok(["gold", "xp"])
-        .map(|values| values.join("+"))
-        .and_then(|text| result::ok(text.replace("+", ".")));
-    let mapped_err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
-    return option_chain.unwrap_or("")
-        + result_chain.unwrap_or("")
-        + mapped_err.to_error_option().unwrap_or("");
-}
-"#,
+        include_str!("../../../../tests/fixtures/compiler/option_result_callbacks.vela"),
         registry.compile_view(),
     )
     .expect("Option/Result callback parameter value methods should compile");

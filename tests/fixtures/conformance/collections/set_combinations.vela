@@ -1,0 +1,22 @@
+
+fn main() {
+    let player = set::from_array(["daily", "quest", "raid"]);
+    let event = set::from_array(["quest", "bonus", "daily"]);
+    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let missing = player.difference(event).values().collect_array().join(",");
+    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let required = set::from_array(["daily", "quest"]);
+    if unioned == "bonus,daily,quest,raid"
+        && shared == "daily,quest"
+        && missing == "raid"
+        && changed == "bonus,raid"
+        && required.is_subset(player)
+        && player.is_superset(required)
+        && player.is_disjoint(set::from_array(["bonus"]))
+        && player.len() == 3
+    {
+        return shared;
+    }
+    return "";
+}

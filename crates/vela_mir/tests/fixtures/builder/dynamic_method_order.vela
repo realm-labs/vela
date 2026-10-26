@@ -1,0 +1,4 @@
+
+fn main(receiver, first, second) {
+    return receiver.invoke(second, label = first);
+}

@@ -1,0 +1,1 @@
+fn main(value: i64) { return value += 2; }

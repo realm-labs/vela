@@ -130,18 +130,7 @@ fn make_adder(base) {
 fn compiler_lowers_nested_lambda_transitive_captures() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-fn make_nested(base) {
-    return |amount| {
-        return |bonus| base + amount + bonus;
-    };
-}
-fn main() {
-    let make = make_nested(10);
-    let add = make(4);
-    return add(3);
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/nested_captures.vela"),
     )
     .expect("nested capturing lambda should compile");
     let make_nested = program

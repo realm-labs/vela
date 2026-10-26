@@ -1,0 +1,28 @@
+mir {
+  target function#710 CompileFunctionDescriptor { id: FunctionId(710), class: Script, canonical_symbol: "control_flow_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "condition", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  fn f0 body h0 owner function#710 symbol="control_flow_builder::main" @71:19..169/h0 {
+    param p0: condition -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @71:8..17/h0
+    local l0: Script(HirLocalId(0)) Dynamic @71:8..17/h0
+    local l1: Script(HirLocalId(1)) Primitive(I64) @71:65..70/h0
+    local l2: Script(HirLocalId(2)) Primitive(I64) @71:115..121/h0
+    local l3: Script(HirLocalId(3)) Primitive(I64) @71:29..35/h0
+    local l4: Synthetic Primitive(I64) @71:38..147/e0
+    temp t0: Primitive(I64) def=s0 @71:73..74/e2
+    temp t1: Primitive(I64) def=s3 @71:124..125/e4
+    bb0:
+      -> branch l0 -> bb1, bb2 [pure] @71:41..50/e1
+    bb1:
+      s0: t0 = constant.literal 1i64 [pure] @71:73..74/e2
+      s1: l1 = t0 [pure] @71:61..75/s1
+      s2: l4 = l1 [pure] @71:84..89/e3
+      -> jump bb3 [pure] @71:38..147/e0
+    bb2:
+      s3: t1 = constant.literal 2i64 [pure] @71:124..125/e4
+      s4: l2 = t1 [pure] @71:111..126/s3
+      s5: l4 = l2 [pure] @71:135..141/e5
+      -> jump bb3 [pure] @71:38..147/e0
+    bb3:
+      s6: l3 = l4 [pure] @71:25..148/s0
+      -> return l3 [pure] @71:153..167/s5
+  }
+}

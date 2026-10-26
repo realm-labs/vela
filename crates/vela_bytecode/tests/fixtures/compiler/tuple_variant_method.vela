@@ -1,0 +1,19 @@
+
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
+enum Event {
+    Grant(player: Player),
+    None,
+}
+impl BonusSource for Player {
+    fn bonus(self, amount) -> i64 {
+        return self.level + amount;
+    }
+}
+fn main() {
+    let event = Event::Grant(Player { level: 7 });
+    return match event {
+        Event::Grant(player) => player.bonus(5),
+        _ => 0,
+    };
+}

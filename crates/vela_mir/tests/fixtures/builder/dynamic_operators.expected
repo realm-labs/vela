@@ -1,0 +1,55 @@
+mir {
+  target function#700 CompileFunctionDescriptor { id: FunctionId(700), class: Script, canonical_symbol: "builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }, CompileParameter { name: "other", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  fn f0 body h0 owner function#700 symbol="builder::main" @70:22..259/h0 {
+    param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @70:8..13/h0
+    param p1: other -> l1 kind=Explicit(HirParamId(1)) contract=None default=None hir=l1 @70:15..20/h0
+    local l0: Script(HirLocalId(0)) Dynamic @70:8..13/h0
+    local l1: Script(HirLocalId(1)) Dynamic @70:15..20/h0
+    local l2: Script(HirLocalId(2)) Dynamic @70:32..39/h0
+    local l3: Script(HirLocalId(3)) Primitive(Bool) @70:58..66/h0
+    local l4: Script(HirLocalId(4)) Dynamic @70:85..95/h0
+    local l5: Script(HirLocalId(5)) Dynamic @70:117..125/h0
+    local l6: Script(HirLocalId(6)) Primitive(Bool) @70:147..155/h0
+    local l7: Script(HirLocalId(7)) Primitive(Bool) @70:182..186/h0
+    local l8: Script(HirLocalId(8)) Range @70:214..218/h0
+    temp t0: Dynamic def=s0 @70:42..48/e0
+    temp t1: Primitive(Bool) def=s2 @70:69..75/e2
+    temp t2: Dynamic def=s4 @70:98..107/e4
+    temp t3: Dynamic def=s6 @70:128..137/e7
+    temp t4: Dynamic def=s8 @70:158..172/e10
+    temp t5: Primitive(Bool) def=s9 @70:158..172/e10
+    temp t6: Dynamic def=s11 @70:189..204/e13
+    temp t7: Primitive(Bool) def=s12 @70:189..204/e13
+    temp t8: Dynamic def=s14 @70:221..233/e16
+    temp t9: Range def=s15 @70:221..233/e16
+    debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @70:8..13/h0
+    debug dl1: other -> l1 kind=Parameter hir=Some(1) scope=h0 live=[] @70:15..20/h0
+    debug dl2: negated -> l2 kind=Local hir=Some(2) scope=h0 live=[] @70:32..39/h0
+    debug dl3: inverted -> l3 kind=Local hir=Some(3) scope=h0 live=[] @70:58..66/h0
+    debug dl4: contextual -> l4 kind=Local hir=Some(4) scope=h0 live=[] @70:85..95/h0
+    debug dl5: reversed -> l5 kind=Local hir=Some(5) scope=h0 live=[] @70:117..125/h0
+    debug dl6: compared -> l6 kind=Local hir=Some(6) scope=h0 live=[] @70:147..155/h0
+    debug dl7: same -> l7 kind=Local hir=Some(7) scope=h0 live=[] @70:182..186/h0
+    debug dl8: span -> l8 kind=Local hir=Some(8) scope=h0 live=[] @70:214..218/h0
+    safepoint sp0: live={} @70:158..172/e10
+    bb0:
+      s0: t0 = dyn.Negate l0 [trap] @70:42..48/e0
+      s1: l2 = t0 [pure] @70:28..49/s0
+      s2: t1 = dyn.Not l0 [trap] @70:69..75/e2
+      s3: l3 = t1 [pure] @70:54..76/s1
+      s4: t2 = contextual.Add value=l0 literal=DeferredNumericLiteral { kind: Integer, text: "1" } side=Right [trap] @70:98..107/e4
+      s5: l4 = t2 [pure] @70:81..108/s2
+      s6: t3 = contextual.Subtract value=l0 literal=DeferredNumericLiteral { kind: Integer, text: "2" } side=Left [trap] @70:128..137/e7
+      s7: l5 = t3 [pure] @70:113..138/s3
+      s8: t4 = l0 [pure] @70:158..172/e10
+      s9: t5 = dyn.Equal t4, l1 [trap|alloc|dynamic-call, sp0] @70:158..172/e10
+      s10: l6 = t5 [pure] @70:143..173/s4
+      s11: t6 = l0 [pure] @70:189..204/e13
+      s12: t7 = identity.Equal t6, l1 [trap] @70:189..204/e13
+      s13: l7 = t7 [pure] @70:178..205/s5
+      s14: t8 = l0 [pure] @70:221..233/e16
+      s15: t9 = range.make t8, l1 inclusive=false [trap] @70:221..233/e16
+      s16: l8 = t9 [pure] @70:210..234/s6
+      -> return l4 [pure] @70:239..257/s7
+  }
+}

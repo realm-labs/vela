@@ -13,7 +13,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF01 | Complete | Byte-preserving formatter/reload extraction and discovery proof below. |
 | SF02 | Complete | [Syntax/UI-P evidence](test-input-sf02.md): 29 preserved inputs, parser goldens, typed/recovery controls and formatter subset. |
 | SF03 | Complete | [Semantic/package evidence](test-input-sf03.md): 75 extracted inputs, 11 UI-S cases and fresh package trees; 329 tests per feature lane. Archive packaging remains limited by existing versionless path dependencies. |
-| SF04–SF12 | Pending | No acceptance claimed. |
+| SF04 | Complete | [MIR/compiler evidence](test-input-sf04.md): 48 source inputs, 12 MIR expectations, eight UI-S cases; 650 default / 666 all-feature tests. |
+| SF05–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 
@@ -66,3 +67,18 @@ Validation (all Cargo commands locked, bounded; no timeout):
 
 Two formatter cases now have glob-generated identities; remaining named declaration
 rows retain labels with shifted ordinal suffixes. No other target was moved.
+
+## Cross-stage Review Notes
+
+Independent review expanded includes and compared original token content: 83 of
+91 changed Rust files in SF02–SF05 differed only in fixture substitution/formatting;
+the remaining eight contained reviewed additive tests, wiring or package-copy setup.
+It rechecked SF02/SF03/SF05 extraction ledgers and ran 52 focused UI tests plus
+workspace formatting successfully. Root set-combination LF protection was added.
+
+The SF03 staged whitespace audit additionally reports intentionally preserved
+trailing whitespace/blank EOF in eight analysis fixtures. These bytes came from
+original evaluated literals; they are not normalized to silence Git. Earlier
+scoped whitespace checks covered changed tracked files, not all new fixture bytes.
+Final acceptance must distinguish these byte-preservation exceptions from accidental
+whitespace in Rust or docs.

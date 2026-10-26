@@ -22,16 +22,7 @@ const GUARDED_RECORD: TypeId = TypeId::new(9_801);
 
 #[test]
 fn central_guards_cover_bindings_assignment_nested_values_control_flow_and_lambda_once() {
-    let source = r#"
-fn main(value, target, condition) {
-    let typed: i64 = value;
-    target = value;
-    let nested = Missing { field: ((value,),) };
-    let controlled = if condition { value } else { value };
-    let closure = |argument| value;
-    return controlled;
-}
-"#;
+    let source = include_str!("../../../tests/fixtures/builder/central_guards.vela");
     let graph = graph(source);
     let body = root_body(&graph);
     let bindings = graph.bindings_for_body(body.id).expect("bindings");

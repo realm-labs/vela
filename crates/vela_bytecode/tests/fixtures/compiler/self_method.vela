@@ -1,0 +1,14 @@
+
+trait BonusSource {
+    fn label(self) -> String;
+    fn summary(self) -> String { return self.label(); }
+}
+struct Player { name: String }
+impl BonusSource for Player {
+    fn label(self) -> String {
+        return self.name;
+    }
+}
+fn main() {
+    return Player { name: "hero" }.summary();
+}

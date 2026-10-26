@@ -1,0 +1,2 @@
+fn grant(only) { return 0; }
+fn main() { return grant(1, 2); }

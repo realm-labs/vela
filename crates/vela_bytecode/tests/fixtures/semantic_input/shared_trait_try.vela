@@ -1,0 +1,11 @@
+
+trait Probe {
+    fn probe(self, value: Option<i64>) -> Option<i64> {
+        let inner = value?;
+        return Option::Some(inner);
+    }
+}
+struct Player {}
+struct Monster {}
+impl Probe for Player {}
+impl Probe for Monster {}

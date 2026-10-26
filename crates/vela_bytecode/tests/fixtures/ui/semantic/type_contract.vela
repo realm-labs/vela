@@ -1,0 +1,2 @@
+fn grant(amount: i64) { return amount; }
+fn main() { return grant("x"); }

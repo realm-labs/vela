@@ -182,43 +182,13 @@ fn only_function(program: &MirProgram) -> &crate::MirFunction {
 #[test]
 fn mir_builder_match_literal_order_and_catch_all_snapshot() {
     let program = build(
-        "fn main(value) { return match value { 1 => 10, _ => 20 }; }",
+        include_str!("../../tests/fixtures/builder/match_order.vela"),
         &["value"],
         |_, _| Ok(()),
     );
     assert_eq!(
         program.dump(),
-        r#"mir {
-  target function#8700 CompileFunctionDescriptor { id: FunctionId(8700), class: Script, canonical_symbol: "patterns_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
-  fn f0 body h0 owner function#8700 symbol="patterns_builder::main" @87:15..59/h0 {
-    param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @87:8..13/h0
-    local l0: Script(HirLocalId(0)) Dynamic @87:8..13/h0
-    local l1: Synthetic Primitive(I64) @87:24..56/e0
-    temp t0: Dynamic def=s0 @87:30..35/e1
-    temp t1: Primitive(I64) def=s1 @87:38..39/p0
-    temp t2: Primitive(Bool) def=s2 @87:38..39/p0
-    temp t3: Primitive(I64) def=s3 @87:43..45/e2
-    temp t4: Primitive(I64) def=s5 @87:52..54/e3
-    debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @87:8..13/h0
-    safepoint sp0: live={} @87:38..39/p0
-    bb0:
-      s0: t0 = l0 [pure] @87:30..35/e1
-      s1: t1 = constant.pattern-literal 1i64 [pure] @87:38..39/p0
-      s2: t2 = dyn.Equal t0, t1 [trap|alloc|dynamic-call, sp0] @87:38..39/p0
-      -> branch t2 -> bb3, bb2 [pure] @87:38..39/p0
-    bb1:
-      -> return l1 [pure] @87:17..57/s0
-    bb2:
-      s5: t4 = constant.literal 20i64 [pure] @87:52..54/e3
-      s6: l1 = t4 [pure] @87:52..54/e3
-      -> jump bb1 [pure] @87:24..56/e0
-    bb3:
-      s3: t3 = constant.literal 10i64 [pure] @87:43..45/e2
-      s4: l1 = t3 [pure] @87:43..45/e2
-      -> jump bb1 [pure] @87:24..56/e0
-  }
-}
-"#
+        include_str!("../../tests/fixtures/builder/match_order.expected")
     );
 }
 
@@ -551,16 +521,7 @@ fn mir_builder_constructor_let_projects_bindings_without_matching_the_tag() {
 
 #[test]
 fn mir_builder_lowers_static_variant_patterns_and_guard_binding_visibility() {
-    let source = r#"
-enum State { Ready { value }, Idle }
-fn main(state, gate) {
-    return match state {
-        State::Ready { value } if gate => value,
-        State::Idle => 0,
-        _ => 9,
-    };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/builder/guarded_variant.vela");
     let program = build(source, &["state", "gate"], |body, targets| {
         let origin = MirSourceOrigin::body(body.id, body.origin.span);
         insert_static_enum_layout(targets, origin)?;

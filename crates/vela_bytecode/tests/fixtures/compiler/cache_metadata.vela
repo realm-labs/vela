@@ -1,0 +1,19 @@
+
+state bonus: i64 = 1;
+
+struct Reward {
+    gold: i64,
+}
+
+impl Reward {
+    fn score(self, amount) {
+        return self.gold + amount;
+    }
+}
+
+fn main() {
+    let reward = Reward { gold: bonus };
+    reward.gold = reward.gold + 1;
+    give_reward(reward.score(1));
+    return reward.gold;
+}

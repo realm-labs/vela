@@ -1,0 +1,2 @@
+fn grant(base, amount = 8) { return 0; }
+fn main() { return grant(41, base = 2); }

@@ -1,0 +1,5 @@
+error[compiler::invalid_int_literal]: invalid integer literal `129i8`: integer literal out of range
+  --> negated_const_range.vela:1:14
+    |
+  1 | const BAD = -129i8;
+    |              ^^^^^ invalid integer literal `129i8`: integer literal out of range

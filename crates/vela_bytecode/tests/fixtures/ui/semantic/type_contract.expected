@@ -1,0 +1,9 @@
+error[compiler::type_contract_mismatch]: type contract mismatch for parameter `amount`
+  --> type_contract.vela:2:26
+    |
+  2 | fn main() { return grant("x"); }
+    |                          ^^^ type contract mismatch for parameter `amount`
+  --> type_contract.vela:2:26
+    |
+  2 | fn main() { return grant("x"); }
+    |                          ^^^ expected `i64`, found `String`

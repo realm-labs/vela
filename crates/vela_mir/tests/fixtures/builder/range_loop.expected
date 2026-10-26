@@ -1,0 +1,27 @@
+mir {
+  target function#760 CompileFunctionDescriptor { id: FunctionId(760), class: Script, canonical_symbol: "loops_builder::main", debug_name: "main", signature: CompileSignature { parameters: [], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  fn f0 body h0 owner function#760 symbol="loops_builder::main" @76:10..53/h0 {
+    local l0: Script(HirLocalId(0)) Primitive(I64) @76:16..21/h0
+    local l1: Synthetic Primitive(I64) @76:25..30/e0
+    local l2: Synthetic Primitive(Bool) @76:25..30/e0
+    local l3: Synthetic Primitive(I64) @76:25..30/e0
+    temp t0: Primitive(I64) def=s0 @76:25..26/e1
+    temp t1: Primitive(I64) def=s1 @76:29..30/e2
+    temp t2: Primitive(I64) def=s5 @76:49..50/e4
+    debug dl0: value -> l0 kind=LoopBinding hir=Some(0) scope=h1 live=[] @76:16..21/h0
+    bb0:
+      s0: t0 = constant.literal 1i64 [pure] @76:25..26/e1
+      s1: t1 = constant.literal 3i64 [pure] @76:29..30/e2
+      s2: l1 = t0 [pure] @76:25..30/e0
+      s3: l2 = false [pure] @76:25..30/e0
+      -> jump bb1 [pure] @76:12..41/s0
+    bb1:
+      -> range.next cursor=l1 end=t1 exhausted=l2 inclusive=true item=l3 mode=I64Proven -> next bb2, done bb3 [pure] @76:25..30/e0
+    bb2:
+      s4: l0 = l3 [pure] @76:16..21/p0
+      -> jump bb1 [pure] @76:12..41/s0
+    bb3:
+      s5: t2 = constant.literal 9i64 [pure] @76:49..50/e4
+      -> return t2 [pure] @76:42..51/s2
+  }
+}

@@ -59,22 +59,7 @@ fn compiler_lowers_value_method_ids_after_computed_array_slice_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    let total = 0;
-    for tick in 0..64 {
-        let values = [
-            tick, tick + 1, tick + 2, tick + 3,
-            tick + 4, tick + 5, tick + 6, tick + 7,
-            tick + 8, tick + 9, tick + 10, tick + 11,
-        ];
-        let middle = values.slice(3, 7);
-        let tail = values.slice(8, 12);
-        total += middle.sum() + tail.sum();
-    }
-    return total;
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/computed_slice.vela"),
         registry.compile_view(),
     )
     .expect("computed array slice value methods should compile");
@@ -129,29 +114,7 @@ fn compiler_lowers_value_method_ids_after_set_combination_chains() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let main = compile_test_function_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    let player = set::from_array(["daily", "quest", "raid"]);
-    let event = set::from_array(["quest", "bonus", "daily"]);
-    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let missing = player.difference(event).values().collect_array().join(",");
-    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
-    let required = set::from_array(["daily", "quest"]);
-    if unioned == "bonus,daily,quest,raid"
-        && shared == "daily,quest"
-        && missing == "raid"
-        && changed == "bonus,raid"
-        && required.is_subset(player)
-        && player.is_superset(required)
-        && player.is_disjoint(set::from_array(["bonus"]))
-        && player.len() == 3
-    {
-        return shared;
-    }
-    return "";
-}
-"#,
+        include_str!("../../../../../tests/fixtures/conformance/collections/set_combinations.vela"),
         "main",
         registry.compile_view(),
     )
@@ -243,27 +206,7 @@ fn compiler_lowers_value_method_ids_in_option_result_helper_chains() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    let some = option::some(["quest", "done"]);
-    let none = option::none();
-    let ok = result::ok(["done"]);
-    let err = result::err(["blocked"]);
-    let converted_ok = some.ok_or(["missing"]);
-    let converted_err = none.ok_or(["missing"]);
-    let flattened_some = option::some(option::some(["quest", "done"])).flatten();
-    let flattened_ok = result::ok(result::ok(["done"])).flatten();
-    return some.unwrap_or([]).join(".")
-        + none.unwrap_or(["fallback"]).join(".")
-        + ok.unwrap_or([]).join(".")
-        + err.unwrap_or(["fallback"]).join(".")
-        + converted_ok.to_option().unwrap_or([]).join(".")
-        + converted_err.to_option().unwrap_or(["fallback"]).join(".")
-        + converted_err.to_error_option().unwrap_or(["fallback"]).join(".")
-        + flattened_some.unwrap_or([]).join(".")
-        + flattened_ok.unwrap_or([]).join(".");
-}
-"#,
+        include_str!("../../../tests/fixtures/compiler/option_result_helpers.vela"),
         registry.compile_view(),
     )
     .expect("Option/Result helper chains should compile");

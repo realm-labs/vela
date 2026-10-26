@@ -1,0 +1,6 @@
+
+fn main(fallback, value = fallback?) {
+    let unwrap = || value?;
+    let inner = fallback?;
+    return unwrap;
+}

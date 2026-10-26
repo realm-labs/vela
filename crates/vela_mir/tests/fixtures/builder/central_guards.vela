@@ -1,0 +1,9 @@
+
+fn main(value, target, condition) {
+    let typed: i64 = value;
+    target = value;
+    let nested = Missing { field: ((value,),) };
+    let controlled = if condition { value } else { value };
+    let closure = |argument| value;
+    return controlled;
+}

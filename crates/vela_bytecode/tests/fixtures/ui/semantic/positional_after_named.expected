@@ -1,0 +1,9 @@
+error[compiler::positional_after_named_argument]: positional argument after named argument
+  --> positional_after_named.vela:2:38
+    |
+  2 | fn main() { return grant(second = 2, 3); }
+    |                                      ^ positional argument after named argument
+  --> positional_after_named.vela:2:38
+    |
+  2 | fn main() { return grant(second = 2, 3); }
+    |                                      ^ positional arguments must appear before named arguments

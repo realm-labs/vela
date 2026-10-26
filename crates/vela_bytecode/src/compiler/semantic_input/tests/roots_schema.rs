@@ -79,14 +79,7 @@ enum State { Ready(value: i64), Idle }
 #[test]
 fn semantic_guards_retain_true_boundaries_indices_and_clean_names() {
     let fixture = prepare_source(
-        r#"
-struct Reward { amount: i64 }
-state current: i64 = 0;
-fn guarded(dynamic, required: i64, fallback: i64 = dynamic) -> i64 {
-    let local: i64 = dynamic;
-    return fallback;
-}
-"#,
+        include_str!("../../../../tests/fixtures/semantic_input/guard_boundaries.vela"),
         FixtureRoots::Program,
     )
     .expect("guard boundary metadata should be closed before MIR");

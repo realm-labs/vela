@@ -1,0 +1,1 @@
+fn main(pair: (i64, i64), rhs: i64) { return pair.1 = rhs; }

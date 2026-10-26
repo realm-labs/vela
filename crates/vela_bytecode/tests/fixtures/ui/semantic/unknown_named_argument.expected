@@ -1,0 +1,13 @@
+error[compiler::unknown_named_argument]: unknown named argument `amunt`
+  --> unknown_named_argument.vela:2:26
+    |
+  2 | fn main() { return grant(amunt = 2, base = 1); }
+    |                          ^^^^^^^^^ unknown named argument `amunt`
+  --> unknown_named_argument.vela:2:26
+    |
+  2 | fn main() { return grant(amunt = 2, base = 1); }
+    |                          ^^^^^^^^^ argument name does not match any parameter
+  --> unknown_named_argument.vela:2:26
+    |
+  2 | fn main() { return grant(amunt = 2, base = 1); }
+    |                          ^^^^^^^^^ available parameters: amount, base

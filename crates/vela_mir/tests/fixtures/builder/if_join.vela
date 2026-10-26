@@ -1,0 +1,10 @@
+fn main(condition) {
+    let result = if condition {
+        let first = 1;
+        first
+    } else {
+        let second = 2;
+        second
+    };
+    return result;
+}

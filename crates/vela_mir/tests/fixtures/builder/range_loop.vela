@@ -1,0 +1,1 @@
+fn main() { for value in 1..=3 { value; } return 9; }

@@ -412,28 +412,13 @@ fn only_function(program: &MirProgram) -> &crate::MirFunction {
 #[test]
 fn assignment_builder_lowers_typed_local_compound_and_returns_the_result() {
     let program = lower_selected(
-        "fn main(value: i64) { return value += 2; }",
+        include_str!("../../tests/fixtures/builder/compound_assignment.vela"),
         FixtureOptions::DYNAMIC,
     )
     .expect("typed local compound assignment");
     assert_eq!(
         program.dump(),
-        r#"mir {
-  target function#8200 CompileFunctionDescriptor { id: FunctionId(8200), class: Script, canonical_symbol: "assignments::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
-  fn f0 body h0 owner function#8200 symbol="assignments::main" @82:20..42/h0 {
-    param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @82:8..13/h0
-    local l0: Script(HirLocalId(0)) Primitive(I64) @82:8..13/h0
-    temp t0: Primitive(I64) def=s0 @82:38..39/e2
-    temp t1: Primitive(I64) def=s1 @82:29..39/e0
-    debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @82:8..13/h0
-    bb0:
-      s0: t0 = constant.literal 2i64 [pure] @82:38..39/e2
-      s1: t1 = Numeric { operation: Add, kind: I64 } l0, t0 [trap] @82:29..39/e0
-      s2: l0 = t1 [pure] @82:29..39/e0
-      -> return t1 [pure] @82:22..40/s0
-  }
-}
-"#
+        include_str!("../../tests/fixtures/builder/compound_assignment.expected")
     );
 }
 

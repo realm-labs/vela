@@ -1,0 +1,1 @@
+fn main(value) { let inner = value?; return inner; }

@@ -1,0 +1,10 @@
+fn main(value, other) {
+    let negated = -value;
+    let inverted = !value;
+    let contextual = value + 1;
+    let reversed = 2 - value;
+    let compared = value == other;
+    let same = value === other;
+    let span = value..other;
+    return contextual;
+}

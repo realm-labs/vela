@@ -1,0 +1,13 @@
+
+fn main() {
+    let option_chain = option::some("quest")
+        .map(|value| value.to_upper())
+        .filter(|value| value.starts_with("Q"));
+    let result_chain = result::ok(["gold", "xp"])
+        .map(|values| values.join("+"))
+        .and_then(|text| result::ok(text.replace("+", ".")));
+    let mapped_err = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+    return option_chain.unwrap_or("")
+        + result_chain.unwrap_or("")
+        + mapped_err.to_error_option().unwrap_or("");
+}

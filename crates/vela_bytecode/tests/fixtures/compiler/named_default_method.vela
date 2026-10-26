@@ -1,0 +1,14 @@
+
+trait BonusSource {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64;
+}
+struct Player { level: i64 }
+impl BonusSource for Player {
+    fn bonus(self, amount, multiplier = 2, offset = 1) -> i64 {
+        return self.level + amount * multiplier + offset;
+    }
+}
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(offset = 4, amount = 5);
+}

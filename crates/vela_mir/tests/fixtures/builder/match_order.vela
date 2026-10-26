@@ -1,0 +1,1 @@
+fn main(value) { return match value { 1 => 10, _ => 20 }; }

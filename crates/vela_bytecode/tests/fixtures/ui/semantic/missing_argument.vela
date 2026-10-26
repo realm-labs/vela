@@ -1,0 +1,2 @@
+fn grant(required, optional = 10) { return 0; }
+fn main() { return grant(); }

@@ -89,18 +89,7 @@ fn probe(value: Option<i64> = Option::Some(Option::Some(1)?)) -> Option<i64> {
 #[test]
 fn shared_trait_body_try_targets_are_scoped_by_function() {
     let fixture = prepare_source(
-        r#"
-trait Probe {
-    fn probe(self, value: Option<i64>) -> Option<i64> {
-        let inner = value?;
-        return Option::Some(inner);
-    }
-}
-struct Player {}
-struct Monster {}
-impl Probe for Player {}
-impl Probe for Monster {}
-"#,
+        include_str!("../../../../tests/fixtures/semantic_input/shared_trait_try.vela"),
         FixtureRoots::Program,
     )
     .expect("shared trait-default try input");
@@ -540,17 +529,7 @@ fn main(values: Array<u8>) {
 #[test]
 fn typed_container_mutations_own_all_dynamic_argument_guards() {
     let fixture = prepare_source(
-        r#"
-fn main(array: Array<u8>, map: Map<u16, i32>, set: Set<u64>, value) {
-    array.push(value);
-    array.insert(0, value);
-    array.extend(value);
-    map.set(value, value);
-    map.extend(value);
-    set.add(value);
-    set.extend(value);
-}
-"#,
+        include_str!("../../../../tests/fixtures/semantic_input/typed_containers.vela"),
         FixtureRoots::Program,
     )
     .expect("typed container mutation guard input");
@@ -633,33 +612,7 @@ fn main(array: Array<u8>, map: Map<u16, i32>, set: Set<u64>, value) {
 #[test]
 fn erased_container_receivers_keep_only_manifest_level_contracts() {
     let fixture = prepare_source(
-        r#"
-fn main(
-    array: Array,
-    any_array: Array<Any>,
-    map: Map,
-    partial_map: Map<Any, i32>,
-    partial_key_map: Map<u16, Any>,
-    string_map: Map<String, i32>,
-    set: Set,
-    value,
-) {
-    let inferred_but_erased: Array = [1i32];
-    array.push(value);
-    any_array.push(value);
-    inferred_but_erased.push(value);
-    map.set(value, value);
-    partial_map.set(value, value);
-    partial_key_map.set(value, value);
-    string_map.set(value, value);
-    set.add(value);
-    array.extend(value);
-    any_array.extend(value);
-    map.extend(value);
-    partial_map.extend(value);
-    set.extend(value);
-}
-"#,
+        include_str!("../../../../tests/fixtures/semantic_input/erased_containers.vela"),
         FixtureRoots::Program,
     )
     .expect("erased container mutation contracts");

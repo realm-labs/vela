@@ -1,0 +1,17 @@
+
+fn main(value: i64 = 1) {
+    let captured = value;
+    let callback = |input: i64| {
+        let nested = input + 1;
+        return nested + captured;
+    };
+    for item in [1] {
+        let loop_local = item + 1;
+        callback(loop_local);
+    }
+    match value {
+        1 => { let arm_local = 2; arm_local; },
+        _ => { let other_arm_local = 3; other_arm_local; },
+    }
+    return callback(value);
+}

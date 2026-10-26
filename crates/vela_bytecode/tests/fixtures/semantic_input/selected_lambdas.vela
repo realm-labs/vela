@@ -1,0 +1,11 @@
+
+struct Reward { amount: i64 }
+
+fn selected() {
+    let outer = |reward: Reward, count: i64| {
+        return |flag: bool| reward;
+    };
+    return outer;
+}
+
+fn ignored() { return |text: String| text; }

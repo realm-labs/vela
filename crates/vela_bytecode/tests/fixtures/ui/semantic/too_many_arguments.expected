@@ -1,0 +1,9 @@
+error[compiler::too_many_arguments]: too many arguments
+  --> too_many_arguments.vela:2:29
+    |
+  2 | fn main() { return grant(1, 2); }
+    |                             ^ too many arguments
+  --> too_many_arguments.vela:2:29
+    |
+  2 | fn main() { return grant(1, 2); }
+    |                             ^ call accepts 1 positional argument(s)

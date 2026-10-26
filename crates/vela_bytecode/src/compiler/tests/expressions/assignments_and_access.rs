@@ -477,21 +477,7 @@ fn main() {
 fn compiler_lowers_typed_record_field_writes_to_slots() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-struct Reward {
-    item_id: String,
-    count: i64,
-}
-fn make_reward() {
-    return Reward { item_id: "gold", count: 2 };
-}
-fn main() {
-    let reward: Reward = make_reward();
-    reward.count += 3;
-    reward.item_id = "xp";
-    return reward.count;
-}
-"#,
+        include_str!("../../../../tests/fixtures/compiler/typed_record_write.vela"),
     )
     .expect("typed record field writes should compile to slot bytecode");
     let main = program.function("main").expect("main function");

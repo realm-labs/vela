@@ -1,0 +1,5 @@
+error[compiler::invalid_int_literal]: invalid integer literal `128i8`: integer literal out of range
+  --> literal_range.vela:1:20
+    |
+  1 | fn main() { return 128i8; }
+    |                    ^^^^^ invalid integer literal `128i8`: integer literal out of range

@@ -440,24 +440,7 @@ fn every_bound_handle_resolves_one_verified_mir_function() {
 fn debug_availability_is_initialized_and_lexically_bounded_across_nested_regions() {
     let program = compile_test_program(
         SourceId::new(43),
-        r#"
-fn main(value: i64 = 1) {
-    let captured = value;
-    let callback = |input: i64| {
-        let nested = input + 1;
-        return nested + captured;
-    };
-    for item in [1] {
-        let loop_local = item + 1;
-        callback(loop_local);
-    }
-    match value {
-        1 => { let arm_local = 2; arm_local; },
-        _ => { let other_arm_local = 3; other_arm_local; },
-    }
-    return callback(value);
-}
-"#,
+        include_str!("../../tests/fixtures/compiler/debug_regions.vela"),
     )
     .expect("lexical debug fixture compiles");
 
@@ -593,26 +576,7 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
         .expect("give_reward function should register");
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-state bonus: i64 = 1;
-
-struct Reward {
-    gold: i64,
-}
-
-impl Reward {
-    fn score(self, amount) {
-        return self.gold + amount;
-    }
-}
-
-fn main() {
-    let reward = Reward { gold: bonus };
-    reward.gold = reward.gold + 1;
-    give_reward(reward.score(1));
-    return reward.gold;
-}
-"#,
+        include_str!("../../tests/fixtures/compiler/cache_metadata.vela"),
         registry.compile_view(),
     )
     .expect("program should compile");
@@ -729,10 +693,13 @@ mod loops_and_errors;
 mod module_resolution;
 mod native_effects;
 mod phase0_frozen_contracts;
+#[cfg(feature = "artifact-codec")]
+mod portable_fixtures;
 mod receiver_lowering;
 mod removed_type_hints;
 mod script_methods;
 mod service_impl;
 mod state;
 mod type_contract_constructors;
+mod ui_semantic;
 mod value_method_shapes;

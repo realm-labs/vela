@@ -1,0 +1,13 @@
+error[compiler::missing_required_argument]: missing required argument `required`
+  --> missing_argument.vela:2:20
+    |
+  2 | fn main() { return grant(); }
+    |                    ^^^^^^^ missing required argument `required`
+  --> missing_argument.vela:2:20
+    |
+  2 | fn main() { return grant(); }
+    |                    ^^^^^^^ call does not provide this required parameter
+  --> missing_argument.vela:1:10
+    |
+  1 | fn grant(required, optional = 10) { return 0; }
+    |          ^^^^^^^^ required parameter is declared here

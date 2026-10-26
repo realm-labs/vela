@@ -1,0 +1,1 @@
+fn main() { let answer = 42; { let enabled = true; enabled; } return answer; }

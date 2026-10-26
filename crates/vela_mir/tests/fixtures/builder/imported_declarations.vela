@@ -1,0 +1,10 @@
+
+use game::config::LIMIT as IMPORTED_LIMIT
+use game::config::state as imported_state
+fn main() {
+    let imported_const = IMPORTED_LIMIT;
+    let qualified_const = game::config::LIMIT;
+    let imported_state = imported_state;
+    let qualified_state = game::config::state;
+    return qualified_const;
+}
