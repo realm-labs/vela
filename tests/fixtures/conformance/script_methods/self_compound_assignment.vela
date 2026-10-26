@@ -1,0 +1,12 @@
+
+struct Counter { counter: i64 }
+impl Counter {
+    fn inc(self) {
+        self.counter += 1;
+    }
+}
+fn main() {
+    let counter = Counter { counter: 1 };
+    counter.inc();
+    return counter.counter;
+}

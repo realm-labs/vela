@@ -1,0 +1,6 @@
+
+fn main() {
+    let values = [2, 4, 8];
+    let rewards = { "xp": 6 };
+    return values[1] + rewards["xp"];
+}

@@ -49,19 +49,9 @@ fn main() {
 fn compiler_lowers_self_record_compound_assignment_in_script_method() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-struct Counter { counter: i64 }
-impl Counter {
-    fn inc(self) {
-        self.counter += 1;
-    }
-}
-fn main() {
-    let counter = Counter { counter: 1 };
-    counter.inc();
-    return counter.counter;
-}
-"#,
+        include_str!(
+            "../../../../../tests/fixtures/conformance/script_methods/self_compound_assignment.vela"
+        ),
     )
     .expect("self record compound assignment should compile");
     let method = program

@@ -60,21 +60,18 @@ fn compiler_rejects_contextual_negative_overflow_at_operand_span() {
     assert_eq!(&SOURCE[span.start as usize..span.end as usize], "129");
 }
 
-#[test]
-fn compiler_rejects_f32_and_f64_literal_overflow() {
-    for (source, literal) in [
-        ("fn main() { return 3.5e38f32; }", "3.5e38f32"),
-        ("fn main() { return 1.8e308f64; }", "1.8e308f64"),
-    ] {
-        let error = compile_test_function(SourceId::new(1), source, "main")
-            .expect_err("non-finite float literal should fail");
-        let span = semantic_literal_error_span(
-            error,
-            "compiler::invalid_float_literal",
-            &format!("invalid float literal `{literal}`: float literal out of range"),
-        );
-        assert_eq!(&source[span.start as usize..span.end as usize], literal);
-    }
+#[rstest::rstest]
+#[case::f32("fn main() { return 3.5e38f32; }", "3.5e38f32")]
+#[case::f64("fn main() { return 1.8e308f64; }", "1.8e308f64")]
+fn compiler_rejects_f32_and_f64_literal_overflow(#[case] source: &str, #[case] literal: &str) {
+    let error = compile_test_function(SourceId::new(1), source, "main")
+        .expect_err("non-finite float literal should fail");
+    let span = semantic_literal_error_span(
+        error,
+        "compiler::invalid_float_literal",
+        &format!("invalid float literal `{literal}`: float literal out of range"),
+    );
+    assert_eq!(&source[span.start as usize..span.end as usize], literal);
 }
 
 #[test]

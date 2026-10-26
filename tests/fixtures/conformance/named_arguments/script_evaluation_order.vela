@@ -1,0 +1,3 @@
+
+fn combine(first, second) { return first * 10 + second; }
+fn main() { return combine(second = mark(2), first = mark(1)); }

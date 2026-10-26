@@ -1,0 +1,14 @@
+
+fn main() {
+    let total = 0;
+    for value in [1, 2, 3, 4, 5] {
+        if value == 2 {
+            continue;
+        }
+        if value == 5 {
+            break;
+        }
+        total += value;
+    }
+    return total;
+}

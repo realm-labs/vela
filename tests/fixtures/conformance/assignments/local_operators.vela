@@ -1,0 +1,11 @@
+
+fn main() {
+    let value = 1;
+    value += 4;
+    value *= 3;
+    value -= 5;
+    value /= 2;
+    value %= 5;
+    let copy = (value = value + 10);
+    return value + copy;
+}

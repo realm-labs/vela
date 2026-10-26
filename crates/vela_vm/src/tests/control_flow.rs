@@ -14,21 +14,7 @@ fn run_control_program(
 fn runs_compiled_break_continue_source() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let total = 0;
-    for value in [1, 2, 3, 4, 5] {
-        if value == 2 {
-            continue;
-        }
-        if value == 5 {
-            break;
-        }
-        total += value;
-    }
-    return total;
-}
-"#,
+        include_str!("../../../../tests/fixtures/conformance/control_flow/break_continue.vela"),
         "main",
     )
     .expect("compile break and continue source");

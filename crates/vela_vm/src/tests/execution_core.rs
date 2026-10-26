@@ -799,18 +799,7 @@ fn or_case() {{
 fn runs_compiled_local_assignment_source() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let value = 1;
-    value += 4;
-    value *= 3;
-    value -= 5;
-    value /= 2;
-    value %= 5;
-    let copy = (value = value + 10);
-    return value + copy;
-}
-"#,
+        include_str!("../../../../tests/fixtures/conformance/assignments/local_operators.vela"),
         "main",
     )
     .expect("compile local assignment source");
@@ -825,13 +814,7 @@ fn main() {
 fn runs_compiled_index_read_source() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let values = [2, 4, 8];
-    let rewards = { "xp": 6 };
-    return values[1] + rewards["xp"];
-}
-"#,
+        include_str!("../../../../tests/fixtures/conformance/assignments/index_reads.vela"),
         "main",
     )
     .expect("compile index read source");

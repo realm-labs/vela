@@ -1,0 +1,12 @@
+
+fn terminated() {
+    return { 9; };
+}
+
+fn nonterminated() {
+    return { 9 };
+}
+
+fn defaulted(value = { 9; }) {
+    return value;
+}

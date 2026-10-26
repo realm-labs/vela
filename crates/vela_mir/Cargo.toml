@@ -22,5 +22,8 @@ vela_def = { workspace = true }
 vela_hir = { workspace = true }
 vela_package = { workspace = true }
 
+[dev-dependencies]
+rstest = { workspace = true }
+
 [lints]
 workspace = true

@@ -802,11 +802,7 @@ fn engine_compiler_options_lower_receiver_specific_named_standard_value_method_a
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
-}
-"#,
+            include_str!("../../../../../tests/fixtures/conformance/named_arguments/receiver_specific_contains.vela"),
         )
         .expect("receiver-specific named stdlib value method arguments should compile");
 
@@ -825,15 +821,7 @@ fn engine_compiler_options_lower_local_receiver_named_standard_value_method_argu
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main(text: String) {
-    let parts = ["gold"];
-    let reward = "reward:gold";
-    return text.contains(needle = ":")
-        && reward.contains(needle = ":")
-        && parts.contains(value = "gold");
-}
-"#,
+            include_str!("../../../../../tests/fixtures/conformance/named_arguments/local_receiver_contains.vela"),
         )
         .expect("local receiver named stdlib value method arguments should compile");
 
@@ -857,11 +845,7 @@ fn engine_compiler_options_preserve_unknown_receiver_named_method_arguments() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main(value) {
-    return value.contains(needle = ":");
-}
-"#,
+            include_str!("../../../../../tests/fixtures/conformance/named_arguments/unknown_receiver_contains.vela"),
         )
         .expect("unknown receiver named method arguments should compile dynamically");
 

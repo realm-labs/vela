@@ -63,3 +63,31 @@ Most family names remain searchable prefixes; split families are explicitly name
 `classifies_both_integer_overflow_directions`, `validates_float_widths` and
 `rejects_float_overflow`. No active catalog/filter referenced the retired names.
 Historical archive references remain historical, not compatibility wrappers.
+
+## TO02 — MIR, Compiler And Shared Inputs
+
+Nine C03/C04 fixtures replace 18 exact source copies across compiler/VM/Engine:
+assignment operators, index reads, block tails, break/continue, script self writes,
+script named-argument order and three receiver-specific method-call forms.
+All 18 original raw literals matched the extracted bytes, including newlines.
+Consumer names and registry differences remain; lowering/operand facts and runtime
+results/trace `[2, 1]` are still independent observations.
+
+Six original family names remain selectable prefixes with named cases:
+`mir_verifier_accepts_full_builder_control_flow_and_loop_fixtures` (control flow,
+range loop), `borrowed_host_execution_is_rejected_before_mir` (four rejections),
+`compiler_rejects_f32_and_f64_literal_overflow` (two widths),
+`loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries`
+(four placements), `set_from_array_accepts_one_positional_or_named_source_operand`
+(two calling forms), and `negated_float_const_and_schema_default_keep_literal_origins`
+(two owners). Tuple verification moves intact to
+`mir_verifier_accepts_trapping_tuple_destructuring_with_arity_guards`.
+Raw malformed MIR/artifacts, linker/format rejection, roots/budgets and physical
+selection retain their explicit tests. Similar but nonidentical sources stay separate.
+
+Baseline: 208 MIR / 424 bytecode unit passes, plus integration/docs; 35 VM
+execution-core and 24 Engine compiler-option passes. After: 213 MIR / 430 bytecode
+all-feature unit passes (418 bytecode default), 2 integration and 4 doc passes;
+75 paired VM and 24 Engine tests pass in each mode. Four-owner all-feature Clippy,
+case discovery, two exact selections, changed-file format and whitespace checks
+pass. Owner snapshots isolate lock updates; final root gates are in TO09.

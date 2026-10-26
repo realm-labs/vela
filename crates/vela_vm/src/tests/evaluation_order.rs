@@ -24,12 +24,9 @@ fn run_marked(source: &str) -> (VmResult<OwnedValue>, Vec<i64>) {
 
 #[test]
 fn named_script_arguments_evaluate_in_source_order_before_slot_projection() {
-    let (result, trace) = run_marked(
-        r#"
-fn combine(first, second) { return first * 10 + second; }
-fn main() { return combine(second = mark(2), first = mark(1)); }
-"#,
-    );
+    let (result, trace) = run_marked(include_str!(
+        "../../../../tests/fixtures/conformance/named_arguments/script_evaluation_order.vela"
+    ));
 
     assert_eq!(
         result,

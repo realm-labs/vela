@@ -392,10 +392,9 @@ fn compiler_evaluates_named_script_args_in_source_order_then_projects_parameters
         .expect("mark native fixture");
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn combine(first, second) { return first * 10 + second; }
-fn main() { return combine(second = mark(2), first = mark(1)); }
-"#,
+        include_str!(
+            "../../../../../tests/fixtures/conformance/named_arguments/script_evaluation_order.vela"
+        ),
         registry.compile_view(),
     )
     .expect("named script argument order fixture should compile");
@@ -917,11 +916,7 @@ fn compiler_lowers_named_value_method_args_by_receiver_type_from_registry() {
     ]);
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main() {
-    return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
-}
-"#,
+        include_str!("../../../../../tests/fixtures/conformance/named_arguments/receiver_specific_contains.vela"),
         registry.compile_view(),
     )
     .expect("receiver-specific named value method args should compile");
@@ -998,15 +993,9 @@ fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
     ]);
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main(text: String) {
-    let parts = ["gold"];
-    let reward = "reward:gold";
-    return text.contains(needle = ":")
-        && reward.contains(needle = ":")
-        && parts.contains(value = "gold");
-}
-"#,
+        include_str!(
+            "../../../../../tests/fixtures/conformance/named_arguments/local_receiver_contains.vela"
+        ),
         registry.compile_view(),
     )
     .expect("local value method receiver facts should compile");

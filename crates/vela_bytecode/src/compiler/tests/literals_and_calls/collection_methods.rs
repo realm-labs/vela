@@ -457,11 +457,7 @@ fn compiler_preserves_named_dynamic_method_args_without_receiver_type() {
     ]);
     let program = compile_test_program_with_registry(
         SourceId::new(1),
-        r#"
-fn main(value) {
-    return value.contains(needle = ":");
-}
-"#,
+        include_str!("../../../../../../tests/fixtures/conformance/named_arguments/unknown_receiver_contains.vela"),
         registry.compile_view(),
     )
     .expect("unknown receiver named method args should compile dynamically");

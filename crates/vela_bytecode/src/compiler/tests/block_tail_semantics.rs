@@ -24,19 +24,7 @@ fn returned_constant(code: &UnlinkedCodeObject) -> Option<&Constant> {
 fn production_compile_respects_terminated_block_tail_semantics() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-fn terminated() {
-    return { 9; };
-}
-
-fn nonterminated() {
-    return { 9 };
-}
-
-fn defaulted(value = { 9; }) {
-    return value;
-}
-"#,
+        include_str!("../../../../../tests/fixtures/conformance/control_flow/block_tail.vela"),
     )
     .expect("block-tail fixture should compile");
 

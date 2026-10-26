@@ -60,19 +60,9 @@ fn main() {
 fn runs_script_method_self_record_compound_assignment() {
     let program = compile_test_program(
         SourceId::new(1),
-        r#"
-struct Counter { counter: i64 }
-impl Counter {
-    fn inc(self) {
-        self.counter += 1;
-    }
-}
-fn main() {
-    let counter = Counter { counter: 1 };
-    counter.inc();
-    return counter.counter;
-}
-"#,
+        include_str!(
+            "../../../../tests/fixtures/conformance/script_methods/self_compound_assignment.vela"
+        ),
     )
     .expect("compile self record compound assignment");
 

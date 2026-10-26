@@ -67,55 +67,51 @@ fn assert_diagnostic_contract(
     assert!(diagnostic.repairs.is_empty());
 }
 
-#[test]
-fn loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries() {
-    let cases = [
-        (
-            "fn main() { break; }",
-            "analysis::break_outside_loop",
-            "break outside loop",
-            "break;",
-            "root break",
-        ),
-        (
-            "fn main() { continue; }",
-            "analysis::continue_outside_loop",
-            "continue outside loop",
-            "continue;",
-            "root continue",
-        ),
-        (
-            "fn main() { for value in [1] { let stop = || { break; }; stop(); } }",
-            "analysis::break_outside_loop",
-            "break outside loop",
-            "break;",
-            "lambda break",
-        ),
-        (
-            "fn main() { for value in [1] { let skip = || { continue; }; skip(); } }",
-            "analysis::continue_outside_loop",
-            "continue outside loop",
-            "continue;",
-            "lambda continue",
-        ),
-    ];
-
-    for (source, code, message, statement, context) in cases {
-        let error = match compile_test_program(SourceId::new(720), source) {
-            Ok(_) => panic!("{context} should fail compilation"),
-            Err(error) => error,
-        };
-        let diagnostic = only_semantic_diagnostic(error);
-        assert_diagnostic_contract(
-            &diagnostic,
-            SourceId::new(720),
-            source,
-            code,
-            message,
-            statement,
-            &[],
-        );
-    }
+#[rstest::rstest]
+#[case::root_break(
+    "fn main() { break; }",
+    "analysis::break_outside_loop",
+    "break outside loop",
+    "break;"
+)]
+#[case::root_continue(
+    "fn main() { continue; }",
+    "analysis::continue_outside_loop",
+    "continue outside loop",
+    "continue;"
+)]
+#[case::lambda_break(
+    "fn main() { for value in [1] { let stop = || { break; }; stop(); } }",
+    "analysis::break_outside_loop",
+    "break outside loop",
+    "break;"
+)]
+#[case::lambda_continue(
+    "fn main() { for value in [1] { let skip = || { continue; }; skip(); } }",
+    "analysis::continue_outside_loop",
+    "continue outside loop",
+    "continue;"
+)]
+fn loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries(
+    #[case] source: &str,
+    #[case] code: &str,
+    #[case] message: &str,
+    #[case] statement: &str,
+) {
+    let error = match compile_test_program(SourceId::new(720), source) {
+        Ok(_) => panic!("{source} should fail compilation"),
+        Err(error) => error,
+    };
+    let diagnostic = only_semantic_diagnostic(error);
+    assert_diagnostic_contract(
+        &diagnostic,
+        SourceId::new(720),
+        source,
+        code,
+        message,
+        statement,
+        &[],
+    );
 }
 
 #[test]
@@ -150,20 +146,17 @@ fn main() { return Reward {}; }
     );
 }
 
-#[test]
-fn set_from_array_accepts_one_positional_or_named_source_operand() {
-    for source in [
-        "fn main() { return set::from_array([1, 2]); }",
-        "fn main() { return set::from_array(values = [1, 2]); }",
-    ] {
-        let program = compile_test_program(SourceId::new(726), source)
-            .expect("one set source operand should compile");
-        let main = program.function("main").expect("main function");
-        assert!(main.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::MakeSetFromArray { .. }
-        )));
-    }
+#[rstest::rstest]
+#[case::positional("fn main() { return set::from_array([1, 2]); }")]
+#[case::named("fn main() { return set::from_array(values = [1, 2]); }")]
+fn set_from_array_accepts_one_positional_or_named_source_operand(#[case] source: &str) {
+    let program = compile_test_program(SourceId::new(726), source)
+        .expect("one set source operand should compile");
+    let main = program.function("main").expect("main function");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::MakeSetFromArray { .. }
+    )));
 }
 
 #[test]
@@ -249,35 +242,34 @@ fn known_receiver_missing_method_is_static_but_unknown_receiver_stays_dynamic() 
     );
 }
 
-#[test]
-fn negated_float_const_and_schema_default_keep_literal_origins() {
+#[rstest::rstest]
+#[case::constant("const BAD = -3.5e38f32; fn main() { return BAD; }")]
+#[case::schema_default(
+    "struct Reward { amount: f32 = -3.5e38f32 } fn main() { return Reward {}; }"
+)]
+fn negated_float_const_and_schema_default_keep_literal_origins(#[case] source: &str) {
     const SOURCE_ID: SourceId = SourceId::new(724);
-    for source in [
-        "const BAD = -3.5e38f32; fn main() { return BAD; }",
-        "struct Reward { amount: f32 = -3.5e38f32 } fn main() { return Reward {}; }",
-    ] {
-        let error = compile_test_program(SOURCE_ID, source)
-            .expect_err("out-of-range negated f32 should fail compilation");
-        assert_eq!(
-            error.kind,
-            CompileErrorKind::InvalidFloatLiteral {
-                literal: "3.5e38f32".to_owned(),
-                error: "float literal out of range".to_owned(),
-            }
-        );
-        let diagnostic = error
-            .to_diagnostic()
-            .expect("invalid float literals should project to a diagnostic");
-        assert_diagnostic_contract(
-            &diagnostic,
-            SOURCE_ID,
-            source,
-            "compiler::invalid_float_literal",
-            "invalid float literal `3.5e38f32`: float literal out of range",
-            "3.5e38f32",
-            &[],
-        );
-    }
+    let error = compile_test_program(SOURCE_ID, source)
+        .expect_err("out-of-range negated f32 should fail compilation");
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::InvalidFloatLiteral {
+            literal: "3.5e38f32".to_owned(),
+            error: "float literal out of range".to_owned(),
+        }
+    );
+    let diagnostic = error
+        .to_diagnostic()
+        .expect("invalid float literals should project to a diagnostic");
+    assert_diagnostic_contract(
+        &diagnostic,
+        SOURCE_ID,
+        source,
+        "compiler::invalid_float_literal",
+        "invalid float literal `3.5e38f32`: float literal out of range",
+        "3.5e38f32",
+        &[],
+    );
 }
 
 fn assert_unqualified_record_pattern_diagnostic(error: TestCompileError) {

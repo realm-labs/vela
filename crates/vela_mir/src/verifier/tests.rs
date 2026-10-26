@@ -161,20 +161,25 @@ fn build(source: &str, parameters: &[&str]) -> crate::MirProgram {
     crate::build_mir(input).expect("full builder fixture")
 }
 
+#[rstest::rstest]
+#[case::control_flow(
+    "fn main(condition) { let value = if condition { 1 } else { 2 }; return value; }",
+    &["condition"]
+)]
+#[case::range_loop(
+    "fn main() { for value in 1..=3 { if value { continue; } } return 9; }",
+    &[]
+)]
+fn mir_verifier_accepts_full_builder_control_flow_and_loop_fixtures(
+    #[case] source: &str,
+    #[case] parameters: &[&str],
+) {
+    let program = build(source, parameters);
+    verify_mir(&program).expect("control-flow/loop builder MIR verifies");
+}
+
 #[test]
-fn mir_verifier_accepts_full_builder_control_flow_and_loop_fixtures() {
-    let control = build(
-        "fn main(condition) { let value = if condition { 1 } else { 2 }; return value; }",
-        &["condition"],
-    );
-    verify_mir(&control).expect("control-flow builder MIR verifies");
-
-    let range = build(
-        "fn main() { for value in 1..=3 { if value { continue; } } return 9; }",
-        &[],
-    );
-    verify_mir(&range).expect("loop builder MIR verifies");
-
+fn mir_verifier_accepts_trapping_tuple_destructuring_with_arity_guards() {
     let destructuring = build(
         "fn main(pair) { let (left, (middle, right)) = pair; return right; }",
         &["pair"],

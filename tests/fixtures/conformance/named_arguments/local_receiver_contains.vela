@@ -1,0 +1,8 @@
+
+fn main(text: String) {
+    let parts = ["gold"];
+    let reward = "reward:gold";
+    return text.contains(needle = ":")
+        && reward.contains(needle = ":")
+        && parts.contains(value = "gold");
+}

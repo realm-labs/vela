@@ -1,0 +1,4 @@
+
+fn main() {
+    return "reward:gold".contains(needle = ":") && ["gold"].contains(value = "gold");
+}

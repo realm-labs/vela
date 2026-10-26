@@ -6,18 +6,9 @@ use vela_common::SourceId;
 fn compiler_lowers_local_assignment_operators() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let value = 1;
-    value += 4;
-    value *= 3;
-    value -= 5;
-    value /= 2;
-    value %= 5;
-    let copy = (value = value + 10);
-    return value + copy;
-}
-"#,
+        include_str!(
+            "../../../../../../tests/fixtures/conformance/assignments/local_operators.vela"
+        ),
         "main",
     )
     .expect("local assignments should compile");
@@ -51,13 +42,7 @@ fn main() {
 fn compiler_lowers_index_reads() {
     let code = compile_test_function(
         SourceId::new(1),
-        r#"
-fn main() {
-    let values = [2, 4, 8];
-    let rewards = { "xp": 6 };
-    return values[1] + rewards["xp"];
-}
-"#,
+        include_str!("../../../../../../tests/fixtures/conformance/assignments/index_reads.vela"),
         "main",
     )
     .expect("index reads should compile");

@@ -58,6 +58,10 @@ in both feature modes; package lifecycle/audits intentionally remain unchanged.
 and validation. Later stages preserve stateful/safety scenarios, specialized
 runners and LSP evidence obligations; final acceptance remains pending.
 
+TO02 shares nine more exact source inputs across 18 compiler/VM/Engine consumers
+and exposes homogeneous MIR/compiler cases. Raw verifier/artifact boundaries and
+separate lowering/runtime assertions remain intact; focused owner gates pass.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits
