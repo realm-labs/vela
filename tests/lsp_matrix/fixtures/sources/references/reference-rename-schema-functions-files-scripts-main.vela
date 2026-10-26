@@ -1,0 +1,13 @@
+pub fn [[source-decl:start]]grant[[source-decl:end]]() {}
+/* 中😀 */ fn main([[caller-decl:start]]amount[[caller-decl:end]]: i64) {
+ host::[[call:start]]grant[[call:end]]([[call-label:start]]amount[[call-label:end]] = [[caller-use:start]]amount[[caller-use:end]]);
+ let f = host::[[value:start]]grant[[value:end]];
+ let c = || host::[[closure:start]]grant[[closure:end]]([[closure-label:start]]amount[[closure-label:end]] = 2);
+ [[source-call:start]]grant[[source-call:end]]();
+ meta::[[meta-call:start]]ping[[meta-call:end]]([[metadata-label:start]]amount[[metadata-label:end]] = 3);
+ let m = meta::[[meta-value:start]]ping[[meta-value:end]];
+ host::[[unknown-call:start]]grant[[unknown-call:end]]([[unknown-label:start]]bogus[[unknown-label:end]] = 4);
+ let text = "[[literal:start]]grant[[literal:end]]";
+ unknown::[[unknown:start]]grant[[unknown:end]]();
+}
+fn shadow([[local-decl:start]]grant[[local-decl:end]]) { [[local-call:start]]grant[[local-call:end]](); }

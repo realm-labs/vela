@@ -1,0 +1,5 @@
+// 中😀 replaced dependency
+
+[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]changed[[api-field-name:end]]: String[[api-field-range:end]] }[[widget-range:end]]
+[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { changed: 1 }; }[[make-range:end]]
+[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]preview[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]

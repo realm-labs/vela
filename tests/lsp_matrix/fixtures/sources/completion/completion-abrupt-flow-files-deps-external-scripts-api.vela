@@ -1,0 +1,10 @@
+/* 中😀 */
+pub struct Returned { [[payload:start]]payload[[payload:end]]: bool }
+impl Returned { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } }
+pub struct Token {}
+impl Token { fn next(self) -> Returned { Returned { payload: true } } }
+pub trait Reader { fn fetch(self) -> Returned; fn fallback(self) -> Returned { Returned { payload: true } } fn obtain(self) -> Returned; }
+impl Reader for Token { fn fetch(self) -> Returned { Returned { payload: true } } fn obtain(self) -> Returned { Returned { payload: true } } }
+pub fn produce() -> Returned { Returned { payload: true } }
+pub fn future() -> Returned { Returned { payload: true } }
+pub fn erase() -> Any { () }

@@ -1,0 +1,42 @@
+use types::consume;
+use types::Remote as Imported;
+pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }
+pub const [[base:start]]BASE[[base:end]] = 4;
+state [[counter:start]]counter[[counter:end]] = 0;
+state [[external:start]]external[[external:end]]: i64 = 1;
+pub fn [[factory:start]]factory[[factory:end]]([[parameter:start]]amount[[parameter:end]]: i64 = 1) -> Cell {
+    return Cell { value: [[parameter-use]]amount };
+}
+fn main([[typed-parameter:start]]cell[[typed-parameter:end]]: [[type-hint]]Cell) {
+    let [[outer:start]]local[[outer:end]] = 7;
+    { let [[inner:start]]local[[inner:end]] = 9; [[inner-use]]local; }
+    let [[callback:start]]callback[[callback:end]] = || [[capture]]local;
+    let [[typed-local:start]]item[[typed-local:end]]: Cell = [[factory-use]]factory([[named-argument]]amount = 2);
+    let text = "中😀"; [[outer-use]]local;
+    [[base-use]]BASE + [[state-use]]counter + [[extern-use]]external;
+    [[typed-parameter-use]]cell;
+    [[typed-local-use]]item;
+    [[callback-use]]callback();
+    [[unknown]]missing_name;
+    [[keyword]]return;
+}
+fn types(local: [[builtin-hint]]i64, missing: [[missing-hint]]Missing, remote: [[alias-hint]]Imported, nested: Option<[[nested-hint]]Cell>) -> [[return-hint]]Cell { return Cell { value: 1 }; }
+fn accept([[record-parameter:start]]record[[record-parameter:end]]: Cell) {}
+fn labels(dynamic) {
+    let amount = 0;
+    let record = 0;
+    factory([[shadow-label]]amount = 3);
+    accept([[record-label]]record = Cell { value: 1 });
+    factory([[invalid-label]]unknown = 2);
+    dynamic([[dynamic-label]]amount = 2);
+    missing([[missing-label]]record = 3);
+    { let factory = dynamic; factory([[shadow-callee-label]]amount = 2); }
+}
+fn qualified(a: types::[[qualified-hint]]Remote, b: types::[[private-hint]]Hidden, c: [[module-hint]]types::Remote) {}
+fn Missing() -> Cell { return Cell { value: 1 }; }
+fn shadow_type() { let Cell = 1; let item: [[shadow-type-hint]]Cell = 2; }
+fn imported_label() { consume([[imported-label]]remote = Imported { value: 1 }); }
+enum [[choice:start]]Choice[[choice:end]] { One }
+trait [[reader:start]]Reader[[reader:end]] { fn read(self) -> i64; }
+struct Holder { item: [[field-hint]]Cell }
+fn kinds(a: [[enum-hint]]Choice, b: [[trait-hint]]Reader) {}

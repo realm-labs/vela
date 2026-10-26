@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert=require("node:assert/strict"),oracle=require("./selection-editor-oracle");
 const spec=require("../../tests/lsp_matrix/fixtures/input-selection.json");
 const corpus=require("../../tests/lsp_matrix/fixtures/selection-editor.json");
@@ -28,7 +29,7 @@ function selectionInputModel(){
   const families=[...new Set(corpus.oracle.cases.map(c=>c.fixture))],cases=[];
   for(const form of spec.forms)for(const fixture of families){
     const crlf=form.startsWith("crlf"),shifted=form.endsWith("shifted"),refs=corpus.oracle.cases.filter(c=>c.fixture===fixture).toSorted((a,b)=>Number(oracle.document(oracle.resolve(b).item.source).text==="")-Number(oracle.document(oracle.resolve(a).item.source).text==="")),files={},views=[];
-    const source=require(`../../tests/lsp_matrix/fixtures/${fixture}.json`);
+    const source=loadFixture(require.resolve(`../../tests/lsp_matrix/fixtures/${fixture}.json`));
     files["scripts/helper.vela"]=oracle.document(source.files["scripts/helper.vela"],crlf,shifted).text;
     for(const [i,ref]of refs.entries()){
       const {item}=oracle.resolve(ref),doc=oracle.document(item.source,crlf,shifted),file=`scripts/case-${i}.vela`;

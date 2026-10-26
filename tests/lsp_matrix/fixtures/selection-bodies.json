@@ -2,7 +2,7 @@
   "version": 1,
   "id": "selection-bodies",
   "files": {
-    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/main.vela": {"sourceFile": "sources/selection/selection-bodies-files-scripts-main.vela"},
     "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper() [[body:start]]{ [[return:start]]return [[value:start]]se[[value-cursor]]ed[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
   },
   "actions": [],
@@ -23,7 +23,7 @@
     "cases": [
       {
         "id": "typed-local-assignment-return",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "source": {"sourceFile": "sources/selection/selection-bodies-files-scripts-main.vela"},
         "queries": [
           {
             "position": "value-cursor",
@@ -2351,7 +2351,7 @@
       },
       {
         "id": "empty-request-vector",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "source": {"sourceFile": "sources/selection/selection-bodies-files-scripts-main.vela"},
         "queries": []
       },
       {

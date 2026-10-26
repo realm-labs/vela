@@ -1,0 +1,9 @@
+const [[constant-decl:start]]value[[constant-decl:end]]: i64 = 10;
+/* 中😀 */ pub enum Event { Item([[field-decl:start]]value[[field-decl:end]]: i64, spare: i64 = { let [[tuple-local-decl:start]]temp[[tuple-local-decl:end]] = 1; [[tuple-local-write:start]]temp[[tuple-local-write:end]] += 1; [[first-default:start]]value[[first-default:end]] + [[tuple-local-use:start]]temp[[tuple-local-use:end]] }, extra: i64 = (|| [[second-default:start]]value[[second-default:end]])()), Other([[other-decl:start]]value[[other-decl:end]]: i64) }
+pub trait Measure { fn measure(self, amount: i64, spare: i64 = { let [[trait-local-decl:start]]temp[[trait-local-decl:end]] = 2; [[trait-local-write:start]]temp[[trait-local-write:end]] += 1; amount + [[trait-local-use:start]]temp[[trait-local-use:end]] }, extra: i64 = [[trait-default:start]]value[[trait-default:end]]) -> i64; }
+const mirror: i64 = [[const-initializer:start]]value[[const-initializer:end]];
+state stored: i64 = [[state-initializer:start]]value[[state-initializer:end]];
+pub struct Holder {}
+impl Holder { fn read(self) -> i64 { return [[method-use:start]]value[[method-use:end]]; } }
+pub trait Readable { fn read(self) -> i64 { return [[trait-body:start]]value[[trait-body:end]]; } }
+fn regular(arg: i64 = [[function-default:start]]value[[function-default:end]]) {}

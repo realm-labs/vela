@@ -1,0 +1,58 @@
+/* 中😀 */
+#[doc("Public limit 中😀")]
+pub const [[const:start]]LIMIT[[const:end]]: i64 = 4;
+#[doc("Private text")]
+const [[private-const:start]]PRIVATE_TEXT[[private-const:end]]: String = "text";
+#[doc("Runtime state")]
+pub state [[state:start]]amount[[state:end]]: i64 = 1;
+state [[private-state:start]]enabled[[private-state:end]]: bool = true;
+#[doc("Extern state")]
+pub state [[extern:start]]current[[extern:end]]: String = "";
+state [[private-extern:start]]hidden[[private-extern:end]]: bool = false;
+#[doc("Choose a value")]
+pub fn [[function:start]]choose[[function:end]]([[parameter:start]]source[[parameter:end]]: i64, [[default-parameter:start]]reason[[default-parameter:end]]: String = "default") -> bool {
+ return [[parameter-use:start]]source[[parameter-use:end]] > 0 && [[default-use:start]]reason[[default-use:end]].len() > 0;
+}
+#[doc("Private function")]
+fn [[private-function:start]]private_fn[[private-function:end]](value: i64) -> i64 { return value }
+#[doc("Worker documentation")]
+pub fn [[async-function:start]]worker[[async-function:end]](value: i64) -> i64 { return value }
+fn [[zero-function:start]]zero[[zero-function:end]]() {}
+fn [[untyped-function:start]]untyped[[untyped-function:end]]([[untyped-parameter:start]]value[[untyped-parameter:end]]) { return [[untyped-use:start]]value[[untyped-use:end]] }
+#[doc("Widget documentation")]
+pub struct [[struct:start]]Widget[[struct:end]] {
+ #[doc("Value field")]
+ [[field:start]]value[[field:end]]: i64,
+ #[doc("Dynamic field")]
+ [[any-field:start]]misc[[any-field:end]]: Any,
+}
+#[doc("Choice documentation")]
+pub enum [[enum:start]]Choice[[enum:end]] {
+ #[doc("Unit variant")]
+ [[unit:start]]Empty[[unit:end]],
+ #[doc("Tuple variant")]
+ [[tuple:start]]Pair[[tuple:end]]([[tuple-field:start]]count[[tuple-field:end]]: i64, reason: String),
+ #[doc("Record variant")]
+ [[record:start]]Named[[record:end]] {
+  #[doc("Variant key")]
+  [[record-field:start]]key[[record-field:end]]: String,
+ },
+}
+#[doc("Readable documentation")]
+pub trait [[trait:start]]Readable[[trait:end]] {
+ #[doc("Required method")]
+ fn [[interface:start]]read[[interface:end]]([[interface-self:start]]self[[interface-self:end]], [[interface-param:start]]amount[[interface-param:end]]: i64) -> i64;
+ #[doc("Default method")]
+ fn [[default-method:start]]preview[[default-method:end]]([[default-self:start]]self[[default-self:end]], [[trait-default-param:start]]amount[[trait-default-param:end]]: i64 = 1) -> bool { return amount > 0 }
+}
+impl [[impl-target:start]]Widget[[impl-target:end]] {
+ #[doc("Inherent method")]
+ pub fn [[inherent:start]]accept[[inherent:end]]([[method-self:start]]self[[method-self:end]], [[method-parameter:start]]amount[[method-parameter:end]]: i64 = 2) -> bool { return [[method-use:start]]amount[[method-use:end]] > 0 }
+ #[doc("Async inherent method")]
+ pub fn [[async-method:start]]process[[async-method:end]](self, value: i64) -> String { return "done" }
+}
+impl [[impl-trait:start]]Readable[[impl-trait:end]] for [[impl-record:start]]Widget[[impl-record:end]] {
+ #[doc("Override method")]
+ fn [[override:start]]read[[override:end]](self, [[override-parameter:start]]amount[[override-parameter:end]]: i64) -> i64 { return [[override-use:start]]amount[[override-use:end]] }
+}
+fn private_uses() { return [[private-function-use:start]]private_fn[[private-function-use:end]](1) + [[private-const-use:start]]PRIVATE_TEXT[[private-const-use:end]].len() }

@@ -1,0 +1,19 @@
+/* 中😀 */
+[[pub-keyword:start]]pub[[pub-keyword:end]] [[const-keyword:start]]const[[const-keyword:end]] LIMIT: i64 = [[literal:start]]1[[literal:end]];
+[[state-keyword:start]]state[[state-keyword:end]] value: bool = true;
+[[extern-keyword:start]]extern[[extern-keyword:end]] state host_value: i64;
+[[struct-keyword:start]]struct[[struct-keyword:end]] Thing { field: i64 }
+[[enum-keyword:start]]enum[[enum-keyword:end]] Kind { Unit }
+[[trait-keyword:start]]trait[[trait-keyword:end]] Interface { fn read(self); }
+[[impl-keyword:start]]impl[[impl-keyword:end]] Thing { fn read(self) {} }
+[[use-keyword:start]]use[[use-keyword:end]] api::choose;
+use api::[[private-import:start]]private_fn[[private-import:end]] as [[private-alias:start]]forbidden[[private-alias:end]];
+use api::[[private-direct-import:start]]private_fn[[private-direct-import:end]];
+[[fn-keyword:start]]fn[[fn-keyword:end]] bad(a: Any) {
+ a.[[dynamic:start]]value[[dynamic:end]];
+ [[unresolved:start]]not_present[[unresolved:end]];
+ api::[[private-use:start]]private_fn[[private-use:end]](1);
+ api::[[missing-use:start]]missing[[missing-use:end]];
+ [[private-alias-use:start]]forbidden[[private-alias-use:end]]();
+ [[private-direct-use:start]]private_fn[[private-direct-use:end]](1);
+}

@@ -1,0 +1,12 @@
+/* recreated dependency 中😀 */
+
+
+
+pub struct Token { [[tag:start]]tag[[tag:end]]: i64 }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_restored: i64) -> i64 { zz_restored } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 7 } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_restored: i64) -> i64 { zz_restored } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 7 } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: 7 } }
+/// zz_restored documentation 中😀.
+pub fn [[function:start]]choose[[function:end]](zz_restored: i64) -> i64 { zz_restored }

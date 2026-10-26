@@ -1,0 +1,44 @@
+use beta::Box as Foreign;
+use beta::Choice as ForeignChoice;
+struct [[cell:start]]Cell[[cell:end]] { [[value:start]]value[[value:end]]: i64 }
+struct [[holder:start]]Holder[[holder:end]] { [[item:start]]item[[item:end]]: Cell }
+impl Holder {
+    fn [[get:start]]get[[get:end]](self) -> Cell { return self.item; }
+}
+trait [[readable:start]]Readable[[readable:end]] {
+    fn [[read:start]]read[[read:end]](self) -> Cell;
+    fn [[default:start]]default_cell[[default:end]](self) -> Cell { return Cell { value: 0 }; }
+}
+impl Readable for Holder {
+    fn [[override:start]]read[[override:end]](self) -> Cell { return self.item; }
+}
+enum [[choice:start]]Choice[[choice:end]] {
+    [[unit:start]]Empty[[unit:end]],
+    [[tuple:start]]Number[[tuple:end]](value: i64),
+    [[record:start]]Record[[record:end]] { cell: Cell },
+}
+fn main(holder: Holder, reader: Readable, unknown) {
+    let text = "中😀"; holder.[[field-use]]item;
+    holder.[[field-write]]item = Cell { value: 1 };
+    holder.item.[[primitive-field]]value;
+    holder.[[method-use]]get();
+    holder.get().[[returned-field]]value;
+    reader.[[trait-use]]read();
+    holder.[[default-use]]default_cell();
+    holder.[[override-use]]read();
+    let a = Choice::[[unit-use]]Empty;
+    let b = Choice::[[tuple-use]]Number(1);
+    let c = Choice::[[record-use]]Record { cell: Cell { value: 2 } };
+    match b { Choice::[[pattern-use]]Number(value) => value, _ => 0 };
+    holder.[[unknown-field]]missing;
+    unknown.[[dynamic-field]]item;
+    unknown.[[dynamic-method]]get();
+    let primitive = 2; primitive.[[primitive-member]]item;
+}
+fn foreign(boxed: Foreign) {
+    boxed.[[foreign-field]]item;
+    boxed.[[foreign-method]]get();
+    ForeignChoice::[[foreign-variant]]Empty;
+    ForeignChoice::[[missing-variant]]Missing;
+}
+fn foreign_default(boxed: Foreign) { boxed.[[foreign-default]]fallback(); }

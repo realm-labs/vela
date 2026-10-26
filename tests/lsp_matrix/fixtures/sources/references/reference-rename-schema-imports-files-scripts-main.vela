@@ -1,0 +1,25 @@
+use host::[[alias-terminal:start]]grant[[alias-terminal:end]] as [[alias-decl:start]]deliver[[alias-decl:end]]
+use host as bridge
+use meta::ping as [[meta-alias-decl:start]]probe[[meta-alias-decl:end]]
+use unknown::grant as missing
+pub fn [[source-decl:start]]grant[[source-decl:end]]() {}
+/* 中😀 */ fn main() {
+ host::[[call:start]]grant[[call:end]]();
+ let f = host::[[value:start]]grant[[value:end]];
+ let c = || host::[[closure:start]]grant[[closure:end]]();
+ [[source-call:start]]grant[[source-call:end]]();
+ meta::[[meta-call:start]]ping[[meta-call:end]]();
+ let m = meta::[[meta-value:start]]ping[[meta-value:end]];
+ let text = "[[literal:start]]grant[[literal:end]]";
+ unknown::[[unknown:start]]grant[[unknown:end]]();
+}
+fn shadow([[local-decl:start]]grant[[local-decl:end]]) { [[local-call:start]]grant[[local-call:end]](); }
+fn aliases() {
+ [[alias-call:start]]deliver[[alias-call:end]]();
+ let f = [[alias-value:start]]deliver[[alias-value:end]];
+ let c = || [[alias-closure:start]]deliver[[alias-closure:end]]();
+ bridge::[[module-call:start]]grant[[module-call:end]]();
+ [[meta-alias-call:start]]probe[[meta-alias-call:end]]();
+ [[unknown-alias:start]]missing[[unknown-alias:end]]();
+}
+fn local_alias([[alias-local-decl:start]]deliver[[alias-local-decl:end]]) { [[alias-local-call:start]]deliver[[alias-local-call:end]](); }

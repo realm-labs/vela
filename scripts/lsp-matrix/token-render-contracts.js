@@ -1,6 +1,7 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const { parseMarkers } = require("./fixtures");
-const spec = require("../../tests/lsp_matrix/fixtures/input-semantic-tokens.json");
+const spec = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/input-semantic-tokens.json"));
 
 function tokenRenderModel() {
   const disk = parseMarkers(spec.files[spec.oracle.file]);

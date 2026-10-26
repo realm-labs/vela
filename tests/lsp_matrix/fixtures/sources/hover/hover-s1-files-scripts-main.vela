@@ -1,0 +1,23 @@
+/* 中😀 */
+use [[import-module:start]]api[[import-module:end]]::[[import-function:start]]choose[[import-function:end]] as [[import-alias:start]]select[[import-alias:end]];
+use api::[[import-type:start]]Widget[[import-type:end]] as [[type-alias:start]]Row[[type-alias:end]];
+use api::[[import-const:start]]LIMIT[[import-const:end]];
+use api::[[import-state:start]]amount[[import-state:end]];
+use api::[[import-extern:start]]current[[import-extern:end]];
+use [[namespace-target:start]]api[[namespace-target:end]] as [[namespace-alias:start]]ns[[namespace-alias:end]];
+pub fn main(row: Row, reader: api::Readable) {
+ let result = [[alias-use:start]]select[[alias-use:end]](1);
+ let limit = [[const-use:start]]LIMIT[[const-use:end]];
+ [[state-use:start]]amount[[state-use:end]] += 1;
+ let live = [[extern-use:start]]current[[extern-use:end]];
+ row.[[field-use:start]]value[[field-use:end]] = 2;
+ row.[[inherent-use:start]]accept[[inherent-use:end]](1);
+ row.[[default-method-use:start]]preview[[default-method-use:end]](1);
+ reader.[[interface-use:start]]read[[interface-use:end]](1);
+ api::Choice::[[unit-use:start]]Empty[[unit-use:end]];
+ api::Choice::[[tuple-use:start]]Pair[[tuple-use:end]](1, "text");
+ api::Choice::[[record-use:start]]Named[[record-use:end]] { key: "text" };
+ ns::[[namespace-use:start]]choose[[namespace-use:end]](1);
+ [[qualified-module:start]]api[[qualified-module:end]]::[[qualified-function:start]]choose[[qualified-function:end]](1);
+ return result;
+}

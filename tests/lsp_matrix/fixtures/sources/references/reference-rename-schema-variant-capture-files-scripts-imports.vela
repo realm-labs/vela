@@ -1,0 +1,19 @@
+use host as bridge;
+use host::State as Status;
+use host::State::[[direct-import:start]]Active[[direct-import:end]];
+use host::State::[[alias-path:start]]Active[[alias-path:end]] as [[alias-decl:start]]Selected[[alias-decl:end]];
+use meta::State as Metadata;
+fn imported() {
+ let a = bridge::State::[[module-value:start]]Active[[module-value:end]];
+ match Status::[[enum-value:start]]Active[[enum-value:end]] { Status::[[enum-pattern:start]]Active[[enum-pattern:end]] => {} }
+ let b = [[direct-value:start]]Active[[direct-value:end]];
+ let c = [[alias-value:start]]Selected[[alias-value:end]];
+ let d = Metadata::[[meta-alias:start]]Active[[meta-alias:end]];
+}
+fn source_owner() { let x = shadow::State::[[source-qualified:start]]Active[[source-qualified:end]]; }
+fn local_alias([[local-decl:start]]Selected[[local-decl:end]]) { let x = [[local-value:start]]Selected[[local-value:end]]; }
+fn captured(taken) { let x = [[captured:start]]Active[[captured:end]]; }
+fn defaults(value = [[default-use:start]]Active[[default-use:end]], late = 1) {}
+fn closure() { let f = |closure_taken| [[closure-use:start]]Active[[closure-use:end]]; }
+const module_taken = 1;
+use shadow::State as import_taken;

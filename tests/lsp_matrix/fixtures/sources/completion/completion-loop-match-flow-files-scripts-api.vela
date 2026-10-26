@@ -1,0 +1,9 @@
+/* 中😀 */
+pub struct Token {}
+impl Token { fn [[pick:start]]zz_pick[[pick:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]zz_next[[next:end]](self) -> Token { Token {} } }
+pub trait Reader { fn [[default:start]]zz_default[[default:end]](self, zz_root: i64) -> i64 { 1 } }
+impl Reader for Token {}
+pub fn produce() -> Token { Token {} }
+pub fn erase() -> Any { () }
+pub struct Holder { item: Token }
+pub fn wrap() -> Holder { Holder { item: Token {} } }

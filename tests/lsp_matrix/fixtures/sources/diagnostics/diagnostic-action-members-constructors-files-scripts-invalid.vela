@@ -1,0 +1,16 @@
+struct Cell { value: i64 }
+struct Box { item: Cell, extra: Any }
+impl Box { fn get(self) -> Cell { return self.item; } }
+trait Reader { fn read(self) -> Cell; }
+impl Reader for Box { fn read(self) -> Cell { return self.item; } }
+enum Choice { Empty, Tuple(item: Cell), Record { item: Cell } }
+fn broken(boxed: Box, cell: Cell, reader: Reader, dynamic: Any) {
+ /* 中😀 */ boxed.[[field:start]]itme[[field:end]];
+ boxed.item.[[write:start]]vlaue[[write:end]] = 1;
+ boxed.[[method:start]]gte[[method:end]]();
+ reader.[[trait:start]]raed[[trait:end]]();
+ /* 中😀 */ [[missing:start]]Box { item: cell[[missing-insert]]}[[missing:end]];
+ Choice::[[variant:start]]Missing[[variant:end]];
+ Box { [[unknown-field:start]]wrong[[unknown-field:end]]: cell, item: cell, extra: 1 };
+ dynamic.[[dynamic:start]]itme[[dynamic:end]];
+}

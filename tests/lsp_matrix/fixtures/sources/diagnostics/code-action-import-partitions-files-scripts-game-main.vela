@@ -1,0 +1,10 @@
+use game::reward::[[unused-import:start]]award[[unused-import:end]] as spare
+use game::reward::[[valid-import:start]]grant[[valid-import:end]] as gift
+use game::reward::[[typo-import:start]]grnat[[typo-import:end]] as typo
+use game::reward::[[private-import:start]]secret[[private-import:end]] as hidden
+use game::absent::[[missing-module:start]]ghost[[missing-module:end]] as missing
+use host::[[schema-import:start]]stamp[[schema-import:end]] as stamped
+use math::[[stdlib-import:start]]max[[stdlib-import:end]] as maximum
+/* 中😀 */ fn main() { let a = [[alias-use:start]]gift[[alias-use:end]]; let b = [[missing-name:start]]award[[missing-name:end]]; let c = [[ambiguous-name:start]]clash[[ambiguous-name:end]]; let d = [[schema-use:start]]stamped[[schema-use:end]]; let e = [[stdlib-use:start]]maximum[[stdlib-use:end]]; let p = [[private-name:start]]secret[[private-name:end]]; return a; }
+fn others() { let f = [[missing-const:start]]FLAG[[missing-const:end]]; let s = [[missing-state:start]]score[[missing-state:end]]; let r = [[missing-struct:start]]Row[[missing-struct:end]]; let m = [[missing-enum:start]]Mode[[missing-enum:end]]; let t = [[missing-trait:start]]Reader[[missing-trait:end]]; }
+fn ownership([[parameter-declaration:start]]award[[parameter-declaration:end]]: i64) { let [[local-declaration:start]]spare[[local-declaration:end]] = [[parameter-use:start]]award[[parameter-use:end]]; let [[shadow-declaration:start]]FLAG[[shadow-declaration:end]] = [[local-use:start]]spare[[local-use:end]]; return [[shadow-use:start]]FLAG[[shadow-use:end]]; }

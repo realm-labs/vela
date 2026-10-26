@@ -1,0 +1,7 @@
+/* dirty 中😀 */
+#[doc("Dirty grant")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:String)->String {return value;}
+#[doc("Dirty row")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc("Dirty count")] [[api-count:start]]count[[api-count:end]]:String }
+impl Row {#[doc("Dirty rank")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:String)->String {return value;}}
+#[doc("Dirty factory")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}
+#[doc("Dirty choice")] pub enum Choice { #[doc("Dirty unit")] Unit }
+#[doc("Dirty opaque")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}

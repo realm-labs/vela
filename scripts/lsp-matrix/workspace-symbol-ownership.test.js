@@ -1,7 +1,8 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const spec = require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json");
+const spec = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"));
 const { parseMarkers } = require("./fixtures");
 const { symbols, queries, schema } = spec.oracle;
 const ids = query => queries.find(row => row.id === query).symbols;

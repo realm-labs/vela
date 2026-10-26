@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const path = require("node:path"), assert = require("node:assert/strict");
 const oracle = require("./workspace-symbol-oracle");
 const { orderedWorkspaceTies } = require("./workspace-picker-wire");
@@ -8,7 +9,7 @@ function workspacePickerModel(platform = "darwin") {
   assert(["win32","darwin"].includes(platform));
   const cases = [];
   for (const form of spec.forms) for (const source of spec.sources) {
-    const fixture = require(path.join(__dirname,"../../tests/lsp_matrix/fixtures",source.fixture));
+    const fixture = loadFixture(path.join(__dirname,"../../tests/lsp_matrix/fixtures",source.fixture));
     const docs = Object.fromEntries(Object.entries(fixture.files).filter(([f])=>f.endsWith(".vela"))
       .map(([f,t])=>[f,oracle.document(t,form === "crlf")]));
     const files = Object.fromEntries(Object.entries(docs).map(([f,d])=>[f,d.text]));

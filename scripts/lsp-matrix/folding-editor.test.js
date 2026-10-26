@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict"), test = require("node:test");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const spec = require("../../tests/lsp_matrix/fixtures/folding-editor.json");
@@ -23,7 +24,7 @@ test("folding editor pins independently marked partitions and literal complete p
   for (const kind of [undefined, 1, "imports", { value: "imports" }])
     assert.throws(() => oracle.publicRanges([{ start: 0, end: 1, kind }], kinds), /unexpected public folding kind/);
   for (const [index, c] of spec.oracle.cases.entries()) {
-    const reviewed = require(`../../tests/lsp_matrix/fixtures/${c.partition}.json`).oracle.cases.find(row => row.id === c.id);
+    const reviewed = loadFixture(require.resolve(`../../tests/lsp_matrix/fixtures/${c.partition}.json`)).oracle.cases.find(row => row.id === c.id);
     assert.equal(c.source, reviewed.source); assert.deepEqual(c.ranges, reviewed.ranges);
     const doc = oracle.document(c.source);
     assert.deepEqual(oracle.editor(doc, c.ranges).map(r => [r.start, r.end, r.kind]), goldens[index]);

@@ -1,0 +1,12 @@
+# SF10 authored sources are LF, including documents without a final newline.
+# Do not change SF09's separately owned local sources.
+completion/*.vela text eol=lf
+diagnostics/*.vela text eol=lf
+hover/*.vela text eol=lf
+input/*.vela text eol=lf
+navigation/*.vela text eol=lf
+references/*.vela text eol=lf
+selection/*.vela text eol=lf
+signature/*.vela text eol=lf
+symbols/*.vela text eol=lf
+tokens/*.vela text eol=lf

@@ -1,7 +1,8 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test = require("node:test"), assert = require("node:assert/strict");
 const worker = require("../../tests/lsp_matrix/fixtures/workspace-symbol-worker.json");
-const lifecycle = require("../../tests/lsp_matrix/fixtures/workspace-symbol-lifecycle.json");
+const lifecycle = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-lifecycle.json"));
 
 test("workspace worker contracts pin typed IDs ignored versions malformed cancels and bounded retry errors", () => {
   assert.equal(worker.version, 1); assert.equal(worker.id, "workspace-symbol-worker");

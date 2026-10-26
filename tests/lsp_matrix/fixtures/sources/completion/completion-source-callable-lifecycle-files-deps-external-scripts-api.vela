@@ -1,0 +1,9 @@
+/* dependency 中😀 */
+pub struct Token { [[tag:start]]tag[[tag:end]]: bool }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: bool }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: true } }
+/// zz_dep documentation 中😀.
+pub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }

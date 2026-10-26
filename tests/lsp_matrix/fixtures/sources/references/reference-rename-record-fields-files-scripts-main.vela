@@ -1,0 +1,13 @@
+use helpers::Record as Alias
+/* 中😀 */ fn main([[main-param:start]]value[[main-param:end]]: i64) {
+ let x = Alias { [[alias-label:start]]value[[alias-label:end]]: value, spare: 0 };
+ let y = helpers::Record { [[qualified-shorthand:start]]value[[qualified-shorthand:end]], spare: 1 };
+ x.[[dot-read:start]]value[[dot-read:end]];
+ x.[[dot-write:start]]value[[dot-write:end]] = 2;
+ x.[[dot-compound:start]]value[[dot-compound:end]] += 1;
+ match x { Alias { [[pattern-label:start]]value[[pattern-label:end]]: extracted, spare: _ } => extracted };
+ match y { helpers::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]], spare: _ } => [[pattern-body:start]]value[[pattern-body:end]] };
+ let other = consumer::Record { [[other-label:start]]value[[other-label:end]]: 9 };
+ let note = "[[literal:start]]value[[literal:end]]";
+}
+fn invalid() { helpers::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 }; Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 7 }; }

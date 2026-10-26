@@ -5,7 +5,7 @@
     "vela.toml": "[package]\nid = \"dev.vela.schema_functions\"\nname = \"schema_functions\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
     "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]grant[[decl:end]]([[param-decl:start]]amount[[param-decl:end]]: i64) {}\n",
     "scripts/consumer.vela": "fn closed() { [[bare:start]]grant[[bare:end]]([[bare-label:start]]amount[[bare-label:end]] = 1); let f = host::[[closed-value:start]]grant[[closed-value:end]]; }\n",
-    "scripts/main.vela": "pub fn [[source-decl:start]]grant[[source-decl:end]]() {}\n/* 中😀 */ fn main([[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n host::[[call:start]]grant[[call:end]]([[call-label:start]]amount[[call-label:end]] = [[caller-use:start]]amount[[caller-use:end]]);\n let f = host::[[value:start]]grant[[value:end]];\n let c = || host::[[closure:start]]grant[[closure:end]]([[closure-label:start]]amount[[closure-label:end]] = 2);\n [[source-call:start]]grant[[source-call:end]]();\n meta::[[meta-call:start]]ping[[meta-call:end]]([[metadata-label:start]]amount[[metadata-label:end]] = 3);\n let m = meta::[[meta-value:start]]ping[[meta-value:end]];\n host::[[unknown-call:start]]grant[[unknown-call:end]]([[unknown-label:start]]bogus[[unknown-label:end]] = 4);\n let text = \"[[literal:start]]grant[[literal:end]]\";\n unknown::[[unknown:start]]grant[[unknown:end]]();\n}\nfn shadow([[local-decl:start]]grant[[local-decl:end]]) { [[local-call:start]]grant[[local-call:end]](); }\n"
+    "scripts/main.vela": {"sourceFile": "sources/references/reference-rename-schema-functions-files-scripts-main.vela"}
   },
   "actions": [],
   "oracle": {

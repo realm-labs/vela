@@ -1,0 +1,6 @@
+[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;
+// 中😀 new disk
+/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]disk_run[[main-fn-name:end]](host: Host, value: Any) { host.replaced; missing(); }[[main-fn-range:end]]
+[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-new-range:start]][[local-new-name:start]]new_value[[local-new-name:end]]: bool[[local-new-range:end]] }[[local-range:end]]
+[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]
+[[file:end]]

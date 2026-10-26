@@ -1,0 +1,70 @@
+/* 中😀 */
+use api::Choice;
+fn main([[seed-decl:start]]seed[[seed-decl:end]]: i64, [[pairs-decl:start]]pairs[[pairs-decl:end]]: Array<(String, i64)>, [[choice-decl:start]]choice[[choice-decl:end]]: Choice, dynamic: Any) {
+ [[before-decl:start]]later[[before-decl:end]];
+ [[let-keyword:start]]let[[let-keyword:end]] [[total-decl:start]]total[[total-decl:end]]: i64 = [[seed-init:start]]seed[[seed-init:end]];
+ [[total-set:start]]total[[total-set:end]] = [[total-set-read:start]]total[[total-set-read:end]] [[plus-operator:start]]+[[plus-operator:end]] 1;
+ [[total-add:start]]total[[total-add:end]] [[compound-operator:start]]+=[[compound-operator:end]] 1;
+ [[total-sub:start]]total[[total-sub:end]] -= 1;
+ [[total-mul:start]]total[[total-mul:end]] *= 2;
+ [[total-div:start]]total[[total-div:end]] /= 2;
+ [[total-mod:start]]total[[total-mod:end]] %= 3;
+ let [[later-decl:start]]later[[later-decl:end]] = 1;
+ [[later-use:start]]later[[later-use:end]];
+ let [[flag-decl:start]]flag[[flag-decl:end]] = true; [[flag-use:start]]flag[[flag-use:end]];
+ let [[text-decl:start]]text[[text-decl:end]]: String = "text"; [[text-use:start]]text[[text-use:end]];
+ let [[alias-decl:start]]alias[[alias-decl:end]] = [[alias-source:start]]total[[alias-source:end]]; [[alias-use:start]]alias[[alias-use:end]];
+ let ([[tuple-name-decl:start]]name[[tuple-name-decl:end]], [[tuple-score-decl:start]]points[[tuple-score-decl:end]]) = ("Ada", 1);
+ [[tuple-name-use:start]]name[[tuple-name-use:end]]; [[tuple-score-use:start]]points[[tuple-score-use:end]];
+ let [[packed-decl:start]]packed[[packed-decl:end]] = (1, "Ada"); [[packed-use:start]]packed[[packed-use:end]];
+ let [[numbers-decl:start]]numbers[[numbers-decl:end]] = [1, 2]; [[numbers-use:start]]numbers[[numbers-use:end]];
+ let [[chosen-decl:start]]chosen[[chosen-decl:end]] = [[if-keyword:start]]if[[if-keyword:end]] [[if-seed:start]]seed[[if-seed:end]] > 0 { [[if-total:start]]total[[if-total:end]] } [[else-keyword:start]]else[[else-keyword:end]] { [[else-seed:start]]seed[[else-seed:end]] };
+ [[chosen-use:start]]chosen[[chosen-use:end]];
+ let [[match-result-decl:start]]selected[[match-result-decl:end]] = match [[match-seed:start]]seed[[match-seed:end]] { 0 => 1, _ => [[match-total:start]]total[[match-total:end]] };
+ [[match-result-use:start]]selected[[match-result-use:end]];
+ {
+  let [[shadow-total-decl:start]]total[[shadow-total-decl:end]] = "shadow"; [[shadow-total-use:start]]total[[shadow-total-use:end]];
+  let [[shadow-seed-decl:start]]seed[[shadow-seed-decl:end]] = [[shadow-seed-init:start]]seed[[shadow-seed-init:end]]; [[shadow-seed-use:start]]seed[[shadow-seed-use:end]];
+  let [[scoped-decl:start]]scoped[[scoped-decl:end]] = 1; [[scoped-use:start]]scoped[[scoped-use:end]];
+ }
+ [[restored-total:start]]total[[restored-total:end]]; [[outside-block:start]]scoped[[outside-block:end]];
+ let [[closure-decl:start]]capture[[closure-decl:end]] = || {
+  [[capture-write:start]]total[[capture-write:end]] += 1;
+  let [[capture-local-decl:start]]copy[[capture-local-decl:end]] = [[capture-source:start]]total[[capture-source:end]]; [[capture-local-use:start]]copy[[capture-local-use:end]];
+  { let [[capture-shadow-decl:start]]total[[capture-shadow-decl:end]] = 2; [[capture-shadow-use:start]]total[[capture-shadow-use:end]]; }
+  return [[capture-restored:start]]total[[capture-restored:end]];
+ };
+ [[closure-call:start]]capture[[closure-call:end]]();
+ let [[lambda-decl:start]]transform[[lambda-decl:end]] = [[lambda-pipe:start]]|[[lambda-pipe:end]][[lambda-param-decl:start]]input[[lambda-param-decl:end]]: i64| {
+  let [[lambda-local-decl:start]]adjusted[[lambda-local-decl:end]] = [[lambda-param-use:start]]input[[lambda-param-use:end]] + [[lambda-capture:start]]total[[lambda-capture:end]];
+  let nested = |[[nested-param-decl:start]]input[[nested-param-decl:end]]: String| { [[nested-param-use:start]]input[[nested-param-use:end]]; return [[nested-capture:start]]total[[nested-capture:end]]; };
+  return [[lambda-return:start]]adjusted[[lambda-return:end]];
+ };
+ [[lambda-call:start]]transform[[lambda-call:end]](1);
+ let [[untyped-lambda-decl:start]]untyped[[untyped-lambda-decl:end]] = |[[untyped-param-decl:start]]unknown[[untyped-param-decl:end]]| { [[untyped-param-use:start]]unknown[[untyped-param-use:end]].[[untyped-member:start]]value[[untyped-member:end]]; return [[untyped-return:start]]unknown[[untyped-return:end]]; };
+ [[outside-lambda:start]]input[[outside-lambda:end]]; [[outside-closure:start]]copy[[outside-closure:end]];
+ [[for-keyword:start]]for[[for-keyword:end]] [[for-item-decl:start]]item[[for-item-decl:end]] [[in-keyword:start]]in[[in-keyword:end]] [[for-array:start]]numbers[[for-array:end]] {
+  [[for-item-use:start]]item[[for-item-use:end]]; [[for-write:start]]total[[for-write:end]] += [[for-item-value:start]]item[[for-item-value:end]];
+  if item > 0 { [[continue-keyword:start]]continue[[continue-keyword:end]]; } if item == 0 { [[break-keyword:start]]break[[break-keyword:end]]; }
+ }
+ [[outside-for:start]]item[[outside-for:end]];
+ for ([[for-name-decl:start]]label[[for-name-decl:end]], [[for-score-decl:start]]score[[for-score-decl:end]]) in [[for-pairs:start]]pairs[[for-pairs:end]] { [[for-name-use:start]]label[[for-name-use:end]]; [[for-score-use:start]]score[[for-score-use:end]]; }
+ [[match-keyword:start]]match[[match-keyword:end]] ("Ada", [[match-tuple-seed:start]]seed[[match-tuple-seed:end]]) {
+  ([[pattern-name-decl:start]]pattern_name[[pattern-name-decl:end]], [[pattern-score-decl:start]]pattern_score[[pattern-score-decl:end]]) if [[pattern-guard:start]]pattern_score[[pattern-guard:end]] > 0 => { [[pattern-name-use:start]]pattern_name[[pattern-name-use:end]]; [[pattern-score-use:start]]pattern_score[[pattern-score-use:end]]; },
+  [[wildcard:start]]_[[wildcard:end]] => {},
+ }
+ [[outside-match:start]]pattern_score[[outside-match:end]];
+ match [[match-choice:start]]choice[[match-choice:end]] {
+  Choice::Pair([[variant-count-decl:start]]count[[variant-count-decl:end]], [[variant-reason-decl:start]]reason[[variant-reason-decl:end]]) => { [[variant-count-use:start]]count[[variant-count-use:end]]; [[variant-reason-use:start]]reason[[variant-reason-use:end]]; },
+  Choice::Named { value: [[variant-record-decl:start]]record_value[[variant-record-decl:end]] } => { [[variant-record-use:start]]record_value[[variant-record-use:end]]; },
+  Choice::Empty => {},
+ }
+ [[outside-variant:start]]record_value[[outside-variant:end]];
+ let [[predicate-decl:start]]predicate[[predicate-decl:end]] = api::accept; [[predicate-use:start]]predicate[[predicate-use:end]](1);
+ let [[mapped-decl:start]]mapped[[mapped-decl:end]] = numbers.map(|[[map-param-decl:start]]element[[map-param-decl:end]]| { let [[map-local-decl:start]]mapped_value[[map-local-decl:end]] = [[map-param-use:start]]element[[map-param-use:end]] + [[map-capture:start]]total[[map-capture:end]]; return [[map-return:start]]mapped_value[[map-return:end]]; });
+ [[mapped-use:start]]mapped[[mapped-use:end]];
+ numbers.filter(|[[filter-param-decl:start]]element[[filter-param-decl:end]]| [[filter-param-use:start]]element[[filter-param-use:end]] > 0);
+ api::apply(|[[erased-param-decl:start]]erased[[erased-param-decl:end]]| { [[erased-param-use:start]]erased[[erased-param-use:end]].[[erased-member:start]]value[[erased-member:end]]; return [[erased-capture:start]]total[[erased-capture:end]]; });
+ dynamic.map(|[[dynamic-param-decl:start]]dynamic_item[[dynamic-param-decl:end]]| { [[dynamic-param-use:start]]dynamic_item[[dynamic-param-use:end]].[[dynamic-member:start]]value[[dynamic-member:end]]; return [[dynamic-return:start]]dynamic_item[[dynamic-return:end]]; });
+ [[missing-name:start]]absent[[missing-name:end]]; [[return-keyword:start]]return[[return-keyword:end]] [[return-total:start]]total[[return-total:end]];
+}

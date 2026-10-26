@@ -1,0 +1,11 @@
+/* 中😀 */ use helpers::[[import:start]]grant[[import:end]];
+fn main([[param-decl:start]]amount[[param-decl:end]]: i64) -> i64 {
+    /* 中😀 */ let [[local-decl:start]]value[[local-decl:end]] = [[param-read:start]]amount[[param-read:end]];
+    /* 中😀 */ [[local-write:start]]value[[local-write:end]] += [[param-rhs:start]]amount[[param-rhs:end]];
+    { let [[shadow-decl:start]]value[[shadow-decl:end]] = 7; [[shadow-read:start]]value[[shadow-read:end]]; }
+    /* 中😀 */ [[call-one:start]]grant[[call-one:end]]([[local-read:start]]value[[local-read:end]]);
+    /* 中😀 */ return helpers::[[call-two:start]]grant[[call-two:end]]([[param-call:start]]amount[[param-call:end]]);
+}
+fn negative() { /* 中😀 */ [[unknown:start]]missing[[unknown:end]]; let note = "[[literal:start]]grant[[literal:end]]"; }
+// [[comment:start]]grant[[comment:end]]
+[[keyword:start]]fn[[keyword:end]] other() {}

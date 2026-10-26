@@ -1,0 +1,7 @@
+/* 中😀 */
+pub struct Token {}
+impl Token { fn [[pick:start]]zz_pick[[pick:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[next:start]]zz_next[[next:end]](self) -> Token { Token {} } }
+pub trait Reader { fn [[default:start]]zz_default[[default:end]](self, zz_hidden: String) -> String { "hidden" } }
+impl Reader for Token {}
+pub fn produce() -> Token { Token {} }
+pub fn erase() -> Any { () }

@@ -1,0 +1,6 @@
+use api::Widget as Row; use api::make as build; use host::Box as Host;
+// 中😀 dirty prefix
+
+/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]dirty[[main-fn-name:end]](host: Host, value: Any) { let value = "text"; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]
+[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: String[[local-value-range:end]], [[local-extra-range:start]][[local-extra-name:start]]extra[[local-extra-name:end]]: bool[[local-extra-range:end]] }[[local-range:end]]
+[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]

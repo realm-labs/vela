@@ -1,0 +1,10 @@
+/* changed root 中😀 */
+
+pub struct Token { [[tag:start]]tag[[tag:end]]: bool }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: bool }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root_changed: bool) -> bool { zz_root_changed } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: false } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root_changed: bool) -> bool { zz_root_changed } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: false } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: false } }
+/// zz_root_changed documentation 中😀.
+pub fn [[function:start]]choose[[function:end]](zz_root_changed: bool) -> bool { zz_root_changed }

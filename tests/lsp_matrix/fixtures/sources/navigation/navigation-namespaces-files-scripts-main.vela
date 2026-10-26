@@ -1,0 +1,25 @@
+fn run(a: alpha::[[alpha-hint]]Cell, b: beta::[[beta-hint]]Cell, c: missing::[[missing-hint]]Cell) {
+    let text = "中😀"; [[alpha-module]]alpha;
+    [[metadata-module]]beta;
+    alpha::[[nested-module]]api;
+    [[module-prefix]]alpha::[[alpha-call]]build();
+    beta::[[beta-call]]build();
+    alpha::api::[[nested-call]]build();
+    missing::[[missing-call]]build();
+    alpha::[[missing-export]]absent();
+    [[source-call]]build();
+    local::[[local-call]]build();
+    [[source-module]]local::build();
+    [[unknown-module]]missing;
+}
+fn shadowed([[shadow:start]]alpha[[shadow:end]]: Any) { [[shadow-use]]alpha; alpha.[[dynamic-method]]build(); }
+struct [[source-cell:start]]SourceCell[[source-cell:end]] {}
+fn [[source-build:start]]build[[source-build:end]]() -> SourceCell { return SourceCell {}; }
+fn source_type(value: local::[[local-type]]Cell) {}
+fn missing_types(value: gamma::[[metadata-hint]]Cell) {
+    alpha::[[missing-return]]unknown();
+    alpha::[[metadata-return]]opaque();
+    alpha::[[missing-trait-return]]unknown_trait();
+    [[stdlib-module]]math::abs(-1);
+}
+trait Reader { fn read(self); }

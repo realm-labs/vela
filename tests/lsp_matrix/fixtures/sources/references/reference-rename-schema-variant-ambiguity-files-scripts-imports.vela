@@ -1,0 +1,16 @@
+use host as bridge;
+use host::State as Status;
+use host::State::[[direct-import:start]]Active[[direct-import:end]];
+use host::State::[[alias-path:start]]Active[[alias-path:end]] as [[alias-decl:start]]Selected[[alias-decl:end]];
+use meta::State as Metadata;
+fn imported() {
+ let a = bridge::State::[[module-value:start]]Active[[module-value:end]];
+ match Status::[[enum-value:start]]Active[[enum-value:end]] { Status::[[enum-pattern:start]]Active[[enum-pattern:end]] => {} }
+ let b = [[direct-value:start]]Active[[direct-value:end]];
+ let c = [[alias-value:start]]Selected[[alias-value:end]];
+ let d = Metadata::[[meta-alias:start]]Active[[meta-alias:end]];
+}
+fn source_owner() { let x = shadow::State::[[source-qualified:start]]Active[[source-qualified:end]]; }
+fn local_alias([[local-decl:start]]Selected[[local-decl:end]]) { let x = [[local-value:start]]Selected[[local-value:end]]; }
+fn unresolved() { let x = [[unknown-bare:start]]MissingBare[[unknown-bare:end]]; }
+fn already_local([[untouched-decl:start]]Running[[untouched-decl:end]]) { let x = [[untouched-use:start]]Running[[untouched-use:end]]; }

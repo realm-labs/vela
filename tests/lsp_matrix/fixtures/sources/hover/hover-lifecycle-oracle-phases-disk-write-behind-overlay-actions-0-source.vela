@@ -1,0 +1,6 @@
+#[doc("Disk grant")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:bool)->bool {return value;}
+#[doc("Disk row")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc("Disk count")] [[api-count:start]]count[[api-count:end]]:bool }
+impl Row {#[doc("Disk rank")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:bool)->bool {return value;}}
+#[doc("Disk factory")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}
+#[doc("Disk choice")] pub enum Choice { #[doc("Disk unit")] Unit }
+#[doc("Disk opaque")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}

@@ -1,0 +1,11 @@
+/* 中😀 */
+/// dependency function documentation.
+pub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_dep: bool, reason: String = "dependency") -> bool { return zz_dep; }
+pub struct Token { tag: bool }
+impl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_dep: bool, reason: String = "dependency") -> bool { return zz_dep; } }
+pub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_dep: bool, reason: String = "dependency") -> bool { return zz_dep; } }
+impl Reader for Token {}
+pub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: true }; }
+pub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: bool), Empty }
+pub const [[budget:start]]budget[[budget:end]]: bool = true;
+fn private(value: bool) -> bool { return value; }

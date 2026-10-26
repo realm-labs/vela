@@ -1,0 +1,7 @@
+/* 中😀 */
+pub struct Token { [[tag:start]]tag[[tag:end]]: String }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: String }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: "hidden" } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: "hidden" } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: "hidden" } }

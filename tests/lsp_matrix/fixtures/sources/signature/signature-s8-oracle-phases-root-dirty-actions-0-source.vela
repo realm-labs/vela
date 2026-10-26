@@ -1,0 +1,11 @@
+/* 中😀 */
+/// root function documentation.
+pub fn [[fn-choose:start]]choose[[fn-choose:end]](dirty_root: u32, reason: String = "root") -> u32 { return dirty_root; }
+pub struct Token { tag: i64 }
+impl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, dirty_root: u32, reason: String = "root") -> u32 { return dirty_root; } }
+pub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, dirty_root: u32, reason: String = "root") -> u32 { return dirty_root; } }
+impl Reader for Token {}
+pub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: 1 }; }
+pub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: i64), Empty }
+pub const [[budget:start]]budget[[budget:end]]: i64 = 1;
+fn private(value: i64) -> u32 { return value; }

@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,7 +9,7 @@ const { SymbolSession } = require("./document-symbol-session");
 
 
 const specs = Object.fromEntries(["declarations", "ownership", "recovery", "lifecycle"].map(name =>
-  [name, require(`../../../tests/lsp_matrix/fixtures/document-symbol-${name}.json`)]));
+  [name, loadFixture(require.resolve(`../../../tests/lsp_matrix/fixtures/document-symbol-${name}.json`))]));
 const rootFor = (resultRoot, name, crlf) => path.join(resultRoot, "中文 % symbol roots", `${name}-${crlf ? "crlf" : "lf"}`);
 const source = (text, crlf) => oracle.document(text, crlf);
 

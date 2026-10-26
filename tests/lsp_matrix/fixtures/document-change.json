@@ -5,7 +5,7 @@
     "vela.toml": "[package]\nid = \"dev.vela.diagnostic_declarations\"\nname = \"diagnostic_declarations\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
     "scripts/defs.vela": "pub fn helper() -> i64 { return 1; }\n",
     "scripts/valid.vela": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub state host_count: i64 = 1\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
-    "scripts/invalid.vela": "/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}\nstruct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }\nenum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }\ntrait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }\nimpl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }\n",
+    "scripts/invalid.vela": {"sourceFile": "sources/diagnostics/diagnostic-top-level-declarations-files-scripts-invalid.vela"},
     "scripts/invalid_state.vela": "/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\n[[removed-extern:start]]extern[[removed-extern:end]] state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
     "scripts/legacy.vela": "/* 中😀 */ [[legacy:start]]global[[legacy:end]] cache: i64;\n",
     "scripts/empty.vela": "",
@@ -18,7 +18,7 @@
     "scripts/recovery_declaration.vela": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\nfn broken[[bad:start]]([[bad:end]]\n",
     "scripts/open_api.vela": "#[doc(\"Disk API. 中😀\")]\npub fn [[decl:start]]total[[decl:end]](value: i64) -> i64 { return value; }\n",
     "scripts/open_caller.vela": "use open_api::total;\npub fn caller() { /* 中😀 */ [[call:start]]total[[call:end]](1); }\n",
-    "scripts/body.vela": "/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n",
+    "scripts/body.vela": {"sourceFile": "sources/references/reference-rename-body-scopes-files-scripts-main.vela"},
     "scripts/body_invalid.vela": "fn main() { /* 中😀 */ return [[missing:start]]missing[[missing:end]]; }\n"
   },
   "actions": [],
@@ -213,7 +213,7 @@
           {
             "id": "shifted",
             "version": -6,
-            "text": "// opened 中😀 %\n/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}\nstruct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }\nenum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }\ntrait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }\nimpl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }\n",
+            "text": {"sourceFile": "sources/diagnostics/document-change-oracle-cases-2-steps-0-text.vela"},
             "diagnostics": [
               {
                 "first": "field-first",
@@ -359,7 +359,7 @@
           {
             "id": "restored",
             "version": 2147483647,
-            "text": "/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}\nstruct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }\nenum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }\ntrait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }\nimpl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }\n",
+            "text": {"sourceFile": "sources/diagnostics/diagnostic-top-level-declarations-files-scripts-invalid.vela"},
             "diagnostics": [
               {
                 "first": "field-first",
@@ -1411,19 +1411,19 @@
           {
             "id": "shifted",
             "version": -6,
-            "text": "// opened 中😀 %\n/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n",
+            "text": {"sourceFile": "sources/diagnostics/document-change-oracle-cases-15-steps-0-text.vela"},
             "diagnostics": []
           },
           {
             "id": "repaired",
             "version": 0,
-            "text": "// synchronized 中😀 %\n/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n",
+            "text": {"sourceFile": "sources/diagnostics/document-change-oracle-cases-15-steps-1-text.vela"},
             "diagnostics": []
           },
           {
             "id": "restored",
             "version": 2147483647,
-            "text": "/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n",
+            "text": {"sourceFile": "sources/references/reference-rename-body-scopes-files-scripts-main.vela"},
             "diagnostics": []
           }
         ]

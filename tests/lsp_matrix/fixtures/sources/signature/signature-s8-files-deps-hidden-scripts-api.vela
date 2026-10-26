@@ -1,0 +1,11 @@
+/* 中😀 */
+/// hidden function documentation.
+pub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_hidden: u64, reason: String = "hidden") -> u64 { return zz_hidden; }
+pub struct Token { tag: u64 }
+impl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_hidden: u64, reason: String = "hidden") -> u64 { return zz_hidden; } }
+pub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_hidden: u64, reason: String = "hidden") -> u64 { return zz_hidden; } }
+impl Reader for Token {}
+pub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: 1u64 }; }
+pub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: u64), Empty }
+pub const [[budget:start]]budget[[budget:end]]: u64 = 1u64;
+fn private(value: u64) -> u64 { return value; }

@@ -1,0 +1,4 @@
+[[origin-box-range:start]]struct [[origin-box-name:start]]HostBox[[origin-box-name:end]] { [[origin-value-range:start]][[origin-value-name:start]]value[[origin-value-name:end]]: bool[[origin-value-range:end]] }[[origin-box-range:end]]
+[[origin-choice-range:start]]enum [[origin-choice-name:start]]HostChoice[[origin-choice-name:end]] { [[origin-empty-range:start]][[origin-empty-name:start]]Empty[[origin-empty-name:end]][[origin-empty-range:end]] }[[origin-choice-range:end]]
+[[origin-trait-range:start]]trait [[origin-trait-name:start]]HostReader[[origin-trait-name:end]] { [[origin-read-range:start]]fn [[origin-read-name:start]]read[[origin-read-name:end]](self) -> bool;[[origin-read-range:end]] }[[origin-trait-range:end]]
+[[origin-factory-range:start]]fn [[origin-factory-name:start]]factory[[origin-factory-name:end]]() -> bool { return true; }[[origin-factory-range:end]]

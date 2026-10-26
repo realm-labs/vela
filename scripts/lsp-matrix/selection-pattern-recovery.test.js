@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict"), test = require("node:test");
 const spec = require("../../tests/lsp_matrix/fixtures/selection-pattern-recovery.json");
 const oracle = require("./selection-oracle"), cases = spec.oracle.cases;
@@ -11,7 +12,7 @@ const flatten = row => {
 };
 
 test("recovered final tuple pattern owns a source declaration in the complete semantic-token fixture", () => {
-  const fixture = require("../../tests/lsp_matrix/fixtures/semantic-token-recovery.json");
+  const fixture = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/semantic-token-recovery.json"));
   const damaged = fixture.oracle.negative.cases;
   assert.equal(fixture.oracle.positive.length, 76);
   assert.equal(damaged.length, 25);

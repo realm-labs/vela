@@ -1,0 +1,17 @@
+fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {
+ /* 中😀 */ [[option:start]]match maybe {
+     Option::Some(value) => value,
+ [[option-insert]]}[[option:end]];
+ /* 中😀 */ [[result:start]]match outcome {
+     Result::Err(reason) => 0,
+ [[result-insert]]}[[result:end]];
+ /* 中😀 */ [[guarded:start]]match maybe {
+     Option::Some(value) if flag => value,
+     Option::None => 0,
+ [[guarded-insert]]}[[guarded:end]];
+ [[wildcard:start]]match maybe { _ => 0 }[[wildcard:end]];
+ [[dynamic:start]]match unknown { Option::Some(value) => value }[[dynamic:end]];
+ [[for:start]]for[[for:end]] value in values {
+  [[if:start]]if[[if:end]] value > 0 { [[continue:start]]continue[[continue:end]]; } else { [[break:start]]break[[break:end]]; }
+ }
+}

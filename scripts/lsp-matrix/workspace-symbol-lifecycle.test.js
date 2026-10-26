@@ -1,7 +1,8 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test = require("node:test"), assert = require("node:assert/strict");
-const spec = require("../../tests/lsp_matrix/fixtures/workspace-symbol-lifecycle.json");
-const previous = require("../../tests/lsp_matrix/fixtures/document-symbol-lifecycle.json");
+const spec = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-lifecycle.json"));
+const previous = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/document-symbol-lifecycle.json"));
 const { parseMarkers } = require("./fixtures");
 const phase = id => spec.oracle.phases.find(row => row.id === id);
 const ids = (phase, query) => phase.workspace.queries.find(row => row.id === query).symbols;

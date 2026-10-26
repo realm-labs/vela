@@ -1,0 +1,12 @@
+/* 中😀 */ fn main([[outer-decl:start]]value[[outer-decl:end]]: i64) {
+ [[for-keyword:start]]for[[for-keyword:end]] [[loop-decl:start]]value[[loop-decl:end]] [[in-keyword:start]]in[[in-keyword:end]] [ [[outer-iterable:start]]value[[outer-iterable:end]] ] {
+  [[loop-before:start]]value[[loop-before:end]];
+  [[match-keyword:start]]match[[match-keyword:end]] [[loop-subject:start]]value[[loop-subject:end]] {
+   [[arm-decl:start]]value[[arm-decl:end]] [[guard-keyword:start]]if[[guard-keyword:end]] [[arm-guard:start]]value[[arm-guard:end]] > 0 => [[arm-body:start]]value[[arm-body:end]],
+   [[wildcard:start]]_[[wildcard:end]] => [[loop-fallback:start]]value[[loop-fallback:end]]
+  };
+  [[if-keyword:start]]if[[if-keyword:end]] [[loop-condition:start]]value[[loop-condition:end]] > 0 { [[break-keyword:start]]break[[break-keyword:end]]; }
+  [[continue-keyword:start]]continue[[continue-keyword:end]];
+ }
+ [[outer-after:start]]value[[outer-after:end]];
+}

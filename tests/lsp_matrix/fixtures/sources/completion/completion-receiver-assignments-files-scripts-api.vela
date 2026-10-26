@@ -1,0 +1,6 @@
+/* 中😀 */
+pub struct Token { [[field:start]]own_root[[field:end]]: i64, [[shared:start]]own_shared[[shared:end]]: i64 }
+impl Token { fn [[call:start]]own_root_call[[call:end]](self, zz_root: i64) -> i64 { zz_root } }
+pub fn produce() -> Token { Token { own_root: 1, own_shared: 1 } }
+pub fn erase() -> Any { null }
+impl Token { fn next(self) -> Token { produce() } }

@@ -1,7 +1,8 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test = require("node:test"), assert = require("node:assert/strict");
 const changes = require("../../tests/lsp_matrix/fixtures/workspace-symbol-states.json");
-const base = require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json");
+const base = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"));
 const { parseMarkers } = require("./fixtures");
 
 test("workspace state sequences retain the complete authored inventory and distinct empty probes", () => {

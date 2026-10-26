@@ -1,7 +1,8 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict");
 const { parseMarkers } = require("./fixtures");
-const spec = require("../../tests/lsp_matrix/fixtures/semantic-token-editor.json");
+const spec = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/semantic-token-editor.json"));
 
 function tokenModel(crlf = false) {
   const states = spec.oracle.states.map((state) => {

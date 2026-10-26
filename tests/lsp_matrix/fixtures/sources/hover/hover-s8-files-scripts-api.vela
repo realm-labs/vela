@@ -1,0 +1,16 @@
+#[doc("Grant")] pub fn grant(value:i64)->i64 {return value;}
+#[doc("Worker")] pub fn worker(value:i64)->String {return "done";}
+#[doc("Limit")] pub const LIMIT:i64=3;
+#[doc("Amount")] pub state amount:i64=0;
+#[doc("Current")] pub state current:String = "";
+#[doc("Row")] pub struct Row {count:i64}
+#[doc("Choice")] pub enum Choice { #[doc("Unit")] Unit, #[doc("Pair")] Pair(value:i64) }
+#[doc("Readable")] pub trait Readable {fn read(self)->i64;}
+fn private_fn(value:i64)->i64{return value;}
+const PRIVATE:i64=1;
+state hidden:i64=0;
+state external:String = "";
+struct Secret {count:i64}
+enum PrivateChoice {Unit}
+trait Closed {fn read(self)->i64;}
+/* 中😀 */fn same_module(){[[same-module-private-fn:start]]private_fn[[same-module-private-fn:end]](1); [[same-module-private:start]]PRIVATE[[same-module-private:end]]; [[same-module-hidden:start]]hidden[[same-module-hidden:end]]; [[same-module-external:start]]external[[same-module-external:end]]; [[same-module-secret:start]]Secret[[same-module-secret:end]]; [[same-module-privatechoice:start]]PrivateChoice[[same-module-privatechoice:end]]; [[same-module-closed:start]]Closed[[same-module-closed:end]];}

@@ -1,0 +1,31 @@
+/* 中😀 */
+struct Player { level: i64 }
+impl Player { fn grant(self, amount: i64, bonus: i64 = 2) -> i64 { return amount + bonus; } }
+trait Rewardable { fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus; } }
+impl Rewardable for Player {}
+trait Adjustable { fn change(self, value: u32, reason: String) -> bool; }
+impl Adjustable for Player { fn change(self, value: u32, reason: String) -> bool { return true; } }
+fn current() -> Player { return Player { level: 1 }; }
+fn opaque() -> Any { return Player { level: 1 }; }
+fn fetch(code: i64, reason: String = "x") -> String { return reason; }
+fn main(player: Player, reward: Rewardable, row: host::Row, preview: host::Preview, any: Any, unknown) {
+ player.grant(1, bonus = [[inherent]]2);
+ current().grant(1, [[source-return]]2);
+ player.preview(1, [[trait-default]]2);
+ reward.preview(1, [[trait-interface]]2);
+ player.change(1, reason = [[trait-override]]"ok");
+ fetch(reason = "ok", code = [[source-async]]1);
+ row.update(reason = "ok", amount = [[schema-named]]1);
+ host::current().update(1, [[schema-return]]"ok");
+ row.legacy(1, [[schema-legacy]]"ok");
+ row.legacy(arg1 = [[schema-legacy-named]]"ok");
+ preview.check(1, [[schema-trait]]"ok");
+ opaque().grant(1, [[source-any]]2);
+ host::opaque().update(1, [[schema-any]]"ok");
+ any.grant(1, [[any]]2);
+ unknown.grant(1, [[unknown]]2);
+ row.grant(1, [[wrong-owner]]2);
+ missing([[unresolved]]1);
+ player.absent([[unknown-member]]1);
+ let local = 1; local([[non-callable]]1);
+}

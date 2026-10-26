@@ -1,0 +1,11 @@
+/* shifted dependency 中😀 */
+
+
+pub struct Token { [[tag:start]]tag[[tag:end]]: String }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: String }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep_changed: String) -> String { zz_dep_changed } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: "updated" } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep_changed: String) -> String { zz_dep_changed } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: "updated" } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: "updated" } }
+/// zz_dep_changed documentation 中😀.
+pub fn [[function:start]]choose[[function:end]](zz_dep_changed: String) -> String { zz_dep_changed }

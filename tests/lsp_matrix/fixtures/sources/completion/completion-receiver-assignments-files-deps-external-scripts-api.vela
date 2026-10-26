@@ -1,0 +1,6 @@
+/* 中😀 */
+pub struct Token { [[field:start]]own_dep[[field:end]]: bool, [[shared:start]]own_shared[[shared:end]]: bool }
+impl Token { fn [[call:start]]own_dep_call[[call:end]](self, zz_dep: bool) -> bool { zz_dep } }
+pub fn produce() -> Token { Token { own_dep: true, own_shared: true } }
+pub fn erase() -> Any { null }
+impl Token { fn next(self) -> Token { produce() } }

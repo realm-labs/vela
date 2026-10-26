@@ -1,6 +1,7 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict"), test = require("node:test");
-const spec = require("../../tests/lsp_matrix/fixtures/selection-literals.json");
+const spec = loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/selection-literals.json"));
 const oracle = require("./selection-literal-oracle"), cases = spec.oracle.cases;
 const flatten = row => {
   const result = [];

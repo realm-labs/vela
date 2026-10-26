@@ -1,8 +1,9 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const oracle = require("./workspace-symbol-oracle");
-const specs = ["declarations", "ownership"].map(name => require(`../../tests/lsp_matrix/fixtures/workspace-symbol-${name}.json`));
+const specs = ["declarations", "ownership"].map(name => loadFixture(require.resolve(`../../tests/lsp_matrix/fixtures/workspace-symbol-${name}.json`)));
 const uri = file => `file:///Chinese%20%25/${file}`;
 const docs = (spec, crlf, shift = false) => Object.fromEntries(Object.entries(spec.files)
   .filter(([file]) => file.endsWith(".vela")).map(([file, source]) =>

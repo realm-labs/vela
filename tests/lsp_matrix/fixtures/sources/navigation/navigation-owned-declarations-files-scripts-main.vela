@@ -1,0 +1,31 @@
+use [[kw-use]]api::Thing as Imported;
+use api::Behavior as ForeignBehavior;
+/* 中😀 */ [[kw-pub]]pub [[kw-struct]]struct [[cell:start]]Cell[[cell:end]] { [[primitive-field:start]]value[[primitive-field:end]]: i64 }
+pub struct [[box:start]]Box[[box:end]] { [[field:start]]item[[field:end]]: Cell }
+pub [[kw-enum]]enum [[choice:start]]Choice[[choice:end]] { [[unit:start]]Empty[[unit:end]], [[tuple:start]]Tuple[[tuple:end]]([[tuple-field:start]]item[[tuple-field:end]]: Cell), [[record:start]]Record[[record:end]] { [[record-field:start]]item[[record-field:end]]: Cell } }
+pub [[kw-const]]const [[constant:start]]BASE[[constant:end]]: Cell = Cell { value: 1 };
+pub [[kw-state]]state [[state:start]]shared[[state:end]]: Cell = Cell { value: 2 };
+pub [[kw-extern]]state [[external:start]]external[[external:end]]: Cell = Cell {};
+pub [[kw-fn]]fn [[function:start]]make[[function:end]]([[parameter:start]]item[[parameter:end]]: Cell, [[default-parameter:start]]fallback[[default-parameter:end]]: Cell = Cell { value: 3 }) -> Cell { let [[local:start]]value[[local:end]]: Cell = item; return value; }
+fn [[async-function:start]]fetch[[async-function:end]]([[async-parameter:start]]item[[async-parameter:end]]: Cell) -> Cell { return item; }
+pub [[kw-trait]]trait [[reader:start]]Reader[[reader:end]] {
+    fn [[interface:start]]read[[interface:end]](self, [[interface-parameter:start]]item[[interface-parameter:end]]: Cell) -> Cell;
+    fn [[default-method:start]]fallback[[default-method:end]]([[trait-self:start]]self[[trait-self:end]], [[trait-parameter:start]]item[[trait-parameter:end]]: Cell = Cell { value: 4 }) -> Cell { return [[trait-use]]item; }
+}
+[[kw-impl]]impl [[inherent-owner]]Box {
+    fn [[method:start]]get[[method:end]]([[method-self:start]]self[[method-self:end]], [[method-parameter:start]]item[[method-parameter:end]]: Cell) -> Cell { let [[method-local:start]]value[[method-local:end]] = item; return [[method-local-use]]value; }
+}
+impl [[trait-owner]]Reader for [[trait-target]]Box {
+    fn [[override:start]]read[[override:end]](self, [[override-parameter:start]]item[[override-parameter:end]]: Cell) -> Cell { return [[override-use]]item; }
+    fn extra(self, [[shadow-trait:start]]Reader[[shadow-trait:end]]: Any) { [[shadow-trait-use]]Reader; }
+}
+fn untyped([[unknown-param:start]]item[[unknown-param:end]]) { let [[unknown-local:start]]value[[unknown-local:end]] = item; }
+fn dynamic([[any-param:start]]item[[any-param:end]]: Any) { let [[any-local:start]]value[[any-local:end]]: Any = item; }
+// [[comment]]Reader is mentioned here.
+fn trivia() { let text = "[[string]]Reader"; [[keyword]]return; }
+impl [[missing-trait]]Absent for [[missing-owner]]Missing {}
+impl [[foreign-trait]]ForeignBehavior for [[foreign-target]]Imported {}
+impl [[qualified-trait-prefix]]api::[[qualified-trait]]Behavior for api::[[qualified-target]]Thing {}
+impl api::[[private-trait]]Secret for Imported {}
+impl api::[[private-target]]Hidden {}
+fn modules() { [[builtin-module]]math::abs(1); api::[[missing-member]]absent(); }

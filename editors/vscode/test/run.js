@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -25,7 +26,7 @@ async function main() {
   const navigation = require("../../../tests/lsp_matrix/fixtures/input-navigation.json");
   new FixtureWorkspace(navigation).appendTo(workspace);
   for (const fixture of ["input-references.json", "input-rename.json"]) {
-    const spec = require(`../../../tests/lsp_matrix/fixtures/${fixture}`);
+    const spec = loadFixture(require.resolve(`../../../tests/lsp_matrix/fixtures/${fixture}`));
     new FixtureWorkspace(spec).appendTo(workspace);
   }
   const diagnosticAction = require("../../../tests/lsp_matrix/fixtures/diagnostic-action-method-typo.json");

@@ -15,6 +15,7 @@ pub(crate) mod folding_literals;
 pub(crate) mod folding_members;
 pub(crate) mod folding_recovery;
 pub(crate) mod folding_trivia;
+mod fixture_sources;
 mod schema;
 pub(crate) mod selection;
 pub(crate) mod selection_bodies;
@@ -267,8 +268,9 @@ impl FixtureWorkspace {
 pub(crate) fn load(id: &str) -> Spec {
     assert!(valid_name(id), "fixture id must be a simple name");
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/lsp_matrix/fixtures");
-    serde_json::from_str(
-        &std::fs::read_to_string(root.join(format!("{id}.json"))).expect("fixture exists"),
+    serde_json::from_value(
+        fixture_sources::load_json(&root.join(format!("{id}.json")))
+            .expect("fixture sources must be valid"),
     )
     .expect("fixture spec must be valid")
 }

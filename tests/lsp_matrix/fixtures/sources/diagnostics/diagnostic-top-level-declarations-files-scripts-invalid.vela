@@ -1,0 +1,5 @@
+/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}
+struct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }
+enum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }
+trait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }
+impl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }

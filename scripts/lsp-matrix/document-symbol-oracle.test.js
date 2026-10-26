@@ -1,10 +1,11 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const oracle = require("./document-symbol-oracle");
 const { FixtureWorkspace } = require("./fixtures");
 const specs = Object.fromEntries(["declarations", "ownership", "recovery", "lifecycle"].map(name =>
-  [name, require(`../../tests/lsp_matrix/fixtures/document-symbol-${name}.json`)]));
+  [name, loadFixture(require.resolve(`../../tests/lsp_matrix/fixtures/document-symbol-${name}.json`))]));
 const flatten = rows => rows.flatMap(row => [row, ...flatten(row.children)]);
 
 test("installed symbol oracle pins the authored 19-root 33-node declaration tree and literal UTF-16 selection", () => {

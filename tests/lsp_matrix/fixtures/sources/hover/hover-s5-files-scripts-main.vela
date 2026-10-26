@@ -1,0 +1,59 @@
+/* 中😀 */
+use api::combine as merge; use api as ns; use host::combine as host_merge; use option::some as wrap; use api::secret as hidden;
+fn main([[caller-amount:start]]amount[[caller-amount:end]]: i64, [[caller-title:start]]title[[caller-title:end]]: String, [[caller-row:start]]row[[caller-row:end]]: api::Row, [[caller-peer:start]]other[[caller-peer:end]]: peer::Row, [[caller-reader:start]]reader[[caller-reader:end]]: api::Readable, [[caller-host:start]]host_row[[caller-host:end]]: host::Row, [[caller-any:start]]dynamic[[caller-any:end]]: Any, [[caller-unknown:start]]unknown[[caller-unknown:end]], [[caller-condition:start]]condition[[caller-condition:end]]: bool) {
+ api::[[source-positional:start]]combine[[source-positional:end]]([[source-value-amount:start]]amount[[source-value-amount:end]], [[source-value-title:start]]title[[source-value-title:end]]);
+ [[source-import:start]]merge[[source-import:end]]([[source-import-amount:start]]amount[[source-import-amount:end]] = [[source-import-value:start]]amount[[source-import-value:end]]);
+ ns::[[source-namespace:start]]combine[[source-namespace:end]]([[source-reordered-title:start]]title[[source-reordered-title:end]] = [[source-reordered-title-value:start]]title[[source-reordered-title-value:end]], [[source-reordered-amount:start]]amount[[source-reordered-amount:end]] = [[source-reordered-amount-value:start]]amount[[source-reordered-amount-value:end]]);
+ api::[[source-defaulted:start]]combine[[source-defaulted:end]]([[source-defaulted-value:start]]amount[[source-defaulted-value:end]]);
+ peer::[[peer-call:start]]combine[[peer-call:end]]([[peer-call-label:start]]amount[[peer-call-label:end]] = [[peer-call-value:start]]title[[peer-call-value:end]]);
+ api::combine([[source-unknown-label:start]]missing[[source-unknown-label:end]] = [[source-unknown-label-value:start]]amount[[source-unknown-label-value:end]]);
+ let [[source-result:start]]answer[[source-result:end]] = merge(amount = amount); [[source-result-read:start]]answer[[source-result-read:end]];
+ [[method-receiver:start]]row[[method-receiver:end]].[[source-method:start]]apply[[source-method:end]]([[method-label:start]]amount[[method-label:end]] = [[method-value:start]]amount[[method-value:end]]);
+ row.[[method-reordered:start]]apply[[method-reordered:end]]([[method-title-label:start]]title[[method-title-label:end]] = [[method-title-value:start]]title[[method-title-value:end]], [[method-amount-label:start]]amount[[method-amount-label:end]] = [[method-amount-value:start]]amount[[method-amount-value:end]]);
+ api::row().[[returned-method:start]]apply[[returned-method:end]]([[returned-method-label:start]]amount[[returned-method-label:end]] = amount);
+ row.[[chain-next:start]]next[[chain-next:end]]().[[chain-method:start]]apply[[chain-method:end]]([[chain-method-label:start]]amount[[chain-method-label:end]] = amount);
+ other.[[peer-method:start]]apply[[peer-method:end]]([[peer-method-label:start]]amount[[peer-method-label:end]] = [[peer-method-value:start]]title[[peer-method-value:end]]);
+ reader.[[required-method:start]]read[[required-method:end]]([[required-amount-label:start]]amount[[required-amount-label:end]] = amount, [[required-title-label:start]]title[[required-title-label:end]] = title);
+ row.[[override-method:start]]read[[override-method:end]]([[override-amount-label:start]]amount[[override-amount-label:end]] = amount);
+ row.[[default-method:start]]preview[[default-method:end]]([[default-method-label:start]]amount[[default-method-label:end]] = amount);
+ row.apply([[unknown-method-label:start]]missing[[unknown-method-label:end]] = [[unknown-method-value:start]]amount[[unknown-method-value:end]]);
+ let [[async-result:start]]ready[[async-result:end]] = api::[[source-async-call:start]]fetch[[source-async-call:end]]([[source-async-label:start]]amount[[source-async-label:end]] = [[source-async-value:start]]amount[[source-async-value:end]]); [[async-result-read:start]]ready[[async-result-read:end]];
+ row.[[source-async-method:start]]fetch[[source-async-method:end]]([[source-async-method-label:start]]amount[[source-async-method-label:end]] = [[source-async-method-value:start]]amount[[source-async-method-value:end]]);
+ host::[[schema-call:start]]combine[[schema-call:end]]([[schema-amount-label:start]]amount[[schema-amount-label:end]] = [[schema-value:start]]amount[[schema-value:end]], [[schema-title-label:start]]title[[schema-title-label:end]] = title);
+ [[schema-alias:start]]host_merge[[schema-alias:end]](amount = amount);
+ host::combine([[schema-unknown-label:start]]missing[[schema-unknown-label:end]] = [[schema-unknown-value:start]]amount[[schema-unknown-value:end]]);
+ host_row.[[schema-method:start]]apply[[schema-method:end]]([[schema-method-amount-label:start]]amount[[schema-method-amount-label:end]] = [[schema-method-value:start]]amount[[schema-method-value:end]], [[schema-method-title-label:start]]title[[schema-method-title-label:end]] = title);
+ host::[[schema-async:start]]fetch[[schema-async:end]]([[schema-async-label:start]]amount[[schema-async-label:end]] = amount);
+ host_row.[[schema-async-method:start]]fetch[[schema-async-method:end]]([[schema-async-method-label:start]]amount[[schema-async-method-label:end]] = amount);
+ host::[[schema-opaque:start]]opaque[[schema-opaque:end]]([[schema-unnamed-label:start]]value[[schema-unnamed-label:end]] = [[schema-opaque-value:start]]amount[[schema-opaque-value:end]]);
+ host_row.[[schema-opaque-method:start]]opaque[[schema-opaque-method:end]]([[schema-unnamed-method-label:start]]value[[schema-unnamed-method-label:end]] = amount);
+ option::[[builtin-some:start]]some[[builtin-some:end]]([[builtin-label:start]]value[[builtin-label:end]] = [[builtin-value:start]]amount[[builtin-value:end]]);
+ [[builtin-alias:start]]wrap[[builtin-alias:end]](amount);
+ time::[[builtin-no-args:start]]tick[[builtin-no-args:end]]();
+ let [[array-local:start]]values[[array-local:end]] = [1,2];
+ values.[[builtin-get:start]]get[[builtin-get:end]]([[builtin-get-label:start]]index[[builtin-get-label:end]] = [[builtin-get-value:start]]amount[[builtin-get-value:end]]);
+ values.[[builtin-push:start]]push[[builtin-push:end]]([[builtin-push-label:start]]value[[builtin-push-label:end]] = [[builtin-push-value:start]]amount[[builtin-push-value:end]]);
+ values.[[builtin-map:start]]map[[builtin-map:end]]([[builtin-map-label:start]]callback[[builtin-map-label:end]] = |[[callback-param:start]]element[[callback-param:end]]| [[callback-read:start]]element[[callback-read:end]] + amount);
+ values.get([[builtin-unknown-label:start]]missing[[builtin-unknown-label:end]] = amount);
+ let [[lambda-local:start]]transform[[lambda-local:end]] = |value: i64| value + 1; [[lambda-call:start]]transform[[lambda-call:end]]([[lambda-call-value:start]]amount[[lambda-call-value:end]]);
+ let [[function-copy:start]]copied[[function-copy:end]] = api::combine; [[function-copy-call:start]]copied[[function-copy-call:end]]([[function-copy-value:start]]amount[[function-copy-value:end]], title);
+ copied([[erased-source-label:start]]amount[[erased-source-label:end]] = amount);
+ let [[erased-local:start]]erased[[erased-local:end]]: Any = api::combine; [[erased-call:start]]erased[[erased-call:end]]([[erased-label:start]]amount[[erased-label:end]] = amount);
+ [[dynamic-call:start]]dynamic[[dynamic-call:end]]([[dynamic-label:start]]amount[[dynamic-label:end]] = [[dynamic-value:start]]amount[[dynamic-value:end]]);
+ [[unknown-call:start]]unknown[[unknown-call:end]]([[unknown-label:start]]amount[[unknown-label:end]] = [[unknown-value:start]]amount[[unknown-value:end]]);
+ dynamic.[[dynamic-method:start]]apply[[dynamic-method:end]]([[dynamic-method-label:start]]amount[[dynamic-method-label:end]] = [[dynamic-method-value:start]]amount[[dynamic-method-value:end]]);
+ api::erase(amount).[[any-return-method:start]]apply[[any-return-method:end]]([[any-return-label:start]]amount[[any-return-label:end]] = amount);
+ host::opaque(amount).[[schema-any-return-method:start]]apply[[schema-any-return-method:end]]([[schema-any-return-label:start]]amount[[schema-any-return-label:end]] = amount);
+ other.[[missing-source-method:start]]missing[[missing-source-method:end]]([[missing-source-method-label:start]]amount[[missing-source-method-label:end]] = amount);
+ host_row.[[missing-schema-method:start]]missing[[missing-schema-method:end]]([[missing-schema-method-label:start]]amount[[missing-schema-method-label:end]] = amount);
+ absent::[[unknown-qualified-call:start]]missing[[unknown-qualified-call:end]]([[unknown-qualified-label:start]]amount[[unknown-qualified-label:end]] = [[unknown-qualified-value:start]]amount[[unknown-qualified-value:end]]);
+ api::[[private-call:start]]secret[[private-call:end]]([[private-label:start]]amount[[private-label:end]] = amount);
+ [[private-alias-call:start]]hidden[[private-alias-call:end]]([[private-alias-label:start]]amount[[private-alias-label:end]] = amount);
+ api::[[source-any-call:start]]erase[[source-any-call:end]]([[source-any-label:start]]value[[source-any-label:end]] = amount);
+ api::[[source-unknown-call:start]]untyped[[source-unknown-call:end]]([[source-unknown-param-label:start]]value[[source-unknown-param-label:end]] = amount);
+ let joined = if condition { row } else { other }; joined.[[joined-method:start]]apply[[joined-method:end]]([[joined-method-label:start]]amount[[joined-method-label:end]] = amount);
+ let mixed = if condition { row } else { host_row }; mixed.[[mixed-method:start]]apply[[mixed-method:end]]([[mixed-method-label:start]]amount[[mixed-method-label:end]] = amount);
+ let incomplete = if condition { row } else { dynamic }; incomplete.[[incomplete-method:start]]apply[[incomplete-method:end]]([[incomplete-method-label:start]]amount[[incomplete-method-label:end]] = amount);
+ { let [[shadow-namespace:start]]ns[[shadow-namespace:end]]: Any = 1; ns::[[shadow-qualified-call:start]]combine[[shadow-qualified-call:end]]([[shadow-qualified-label:start]]amount[[shadow-qualified-label:end]] = amount); }
+ { let [[shadow-import:start]]merge[[shadow-import:end]]: Any = 1; [[shadow-import-call:start]]merge[[shadow-import-call:end]]([[shadow-import-label:start]]amount[[shadow-import-label:end]] = amount); }
+}

@@ -1,0 +1,11 @@
+use helper::combine;
+use helper::BASE;
+struct Cell { value: i64 }
+fn main([[seed-decl:start]]seed[[seed-decl:end]]: i64, [[dynamic-decl:start]]dynamic[[dynamic-decl:end]]: Any) {
+    /* [[unicode:start]]中😀[[unicode:end]] */ let [[score-decl:start]]score[[score-decl:end]] = [[primary-call:start]]combine[[primary-call:end]]([[first]][[seed-use:start]]seed[[seed-use:end]], [[second]]2);
+    /* 中😀 */ let other = [[named-call:start]]combine[[named-call:end]]([[named-right]]right = 4, [[named-left]]left = [[score-use:start]]score[[score-use:end]]);
+    /* 中😀 */ let nested = combine([[outer-first]]combine([[inner-first]]seed, [[inner-second]]2), [[outer-second]]right = score);
+    /* 中😀 */ let cell = Cell { value: score };
+    /* 中😀 */ cell.[[field:start]]value[[field:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]missing[[dynamic-member:end]]([[dynamic-argument]]1); [[unknown-call:start]]unknown[[unknown-call:end]]([[unknown-argument]]2);
+    /* 中😀 */ return score + [[base:start]]BASE[[base:end]];
+}

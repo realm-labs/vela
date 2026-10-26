@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const test=require("node:test"),assert=require("node:assert/strict"),path=require("node:path");
 const {workspacePickerModel,workspacePickerContracts}=require("./workspace-picker-contracts");
 const {orderedWorkspaceTies}=require("./workspace-picker-wire");
@@ -25,7 +26,7 @@ test("workspace picker keeps complete original source/schema names and absent so
   assert.deepEqual(o.rows.filter(r=>r.view.name==="source::Widget").map(r=>r.view.icon),["symbol-struct","symbol-struct"]);
   assert.equal(o.targets.find(r=>r.id==="source-widget").index,0);assert.equal(d.targets.find(r=>r.id==="nested-api-file").index,1);
   assert(m.cases.every(c=>c.absent.every(q=>c.wire(q.query).length===0)));
-  const before=structuredClone(require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"));workspacePickerModel();assert.deepEqual(require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"),before);
+  const before=structuredClone(loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json")));workspacePickerModel();assert.deepEqual(loadFixture(require.resolve("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json")),before);
 });
 test("workspace picker owns every row, source target, cold file and complete empty partition",()=>{
   const [p,n]=workspacePickerContracts(requirements,"win32");

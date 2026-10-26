@@ -4,7 +4,7 @@
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.body_scopes\"\nname = \"body_scopes\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
     "scripts/helpers.vela": "fn helper() {}\n",
-    "scripts/main.vela": "/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n"
+    "scripts/main.vela": {"sourceFile": "sources/references/reference-rename-body-scopes-files-scripts-main.vela"}
   },
   "actions": [],
   "oracle": {

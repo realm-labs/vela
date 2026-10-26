@@ -1,0 +1,7 @@
+/* 中😀 */
+pub struct Token { [[tag:start]]tag[[tag:end]]: i64 }
+pub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }
+impl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }
+pub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }
+impl Reader for Token {}
+pub fn make() -> Token { Token { tag: 1 } }

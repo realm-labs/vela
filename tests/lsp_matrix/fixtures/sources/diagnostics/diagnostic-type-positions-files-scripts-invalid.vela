@@ -1,0 +1,13 @@
+use defs::Cell
+/* 中😀 */ fn arity_array(value: Array[[array:start]]<>[[array:end]]) {}
+fn arity_map(value: Map[[map:start]]<i64>[[map:end]]) {}
+fn arity_result(value: Result[[result:start]]<String>[[result:end]]) {}
+fn arity_option(value: Option[[option:start]]<>[[option:end]]) {}
+fn arity_iterator(value: Iterator[[iterator:start]]<>[[iterator:end]]) {}
+fn arity_set(value: Set[[set:start]]<String, i64>[[set:end]]) {}
+fn generic_source(value: Cell[[generic-args:start]][[generic:start]]<[[generic:end]]i64>[[generic-args:end]]) {}
+fn bad_map_key(value: Map<[[map-key:start]]Function[[map-key:end]], String>) {}
+fn bad_set_key(value: Set<[[set-key:start]]Function[[set-key:end]]>) {}
+fn bad_map_tuple(value: Map<[[map-tuple:start]](String, i64)[[map-tuple:end]], String>) {}
+fn bad_set_tuple(value: Set<[[set-tuple:start]](String, i64)[[set-tuple:end]]>) {}
+fn one_tuple(value: [[tuple:start]](String,)[[tuple:end]]) {}

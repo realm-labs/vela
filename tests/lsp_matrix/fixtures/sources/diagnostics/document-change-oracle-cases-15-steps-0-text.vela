@@ -1,0 +1,16 @@
+// opened 中😀 %
+/* 中😀 */ fn consume(arg: i64) {}
+fn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {
+ [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];
+ [[local-write:start]]total[[local-write:end]] += 1;
+ if [[param-condition:start]]value[[param-condition:end]] > 0 {
+  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;
+  [[shadow-write:start]]total[[shadow-write:end]] += 1;
+  consume([[shadow-read:start]]total[[shadow-read:end]]);
+ } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }
+ let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };
+ callback();
+ match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };
+ for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }
+ [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];
+}

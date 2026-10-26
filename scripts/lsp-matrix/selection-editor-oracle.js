@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const assert = require("node:assert/strict");
 const selection = require("./selection-trivia-oracle");
 const cmp = (a, b) => a.line - b.line || a.character - b.character;
@@ -97,7 +98,7 @@ function publicRanges(rows) {
 }
 function resolve(ref) {
   assert(/^selection-[a-z-]+$/.test(ref.fixture));
-  const fixture = require(`../../tests/lsp_matrix/fixtures/${ref.fixture}.json`);
+  const fixture = loadFixture(require.resolve(`../../tests/lsp_matrix/fixtures/${ref.fixture}.json`));
   const item = fixture.oracle.cases.find(c => c.id === ref.case);
   assert(item, `authored editor case ${ref.fixture}/${ref.case}`);
   return { fixture, item };

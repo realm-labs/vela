@@ -1,0 +1,54 @@
+use api::Box as Foreign;
+use api::Cell as ForeignCell;
+struct [[cell:start]]Cell[[cell:end]] { value: i64 }
+struct Box {}
+fn [[make:start]]make[[make:end]]([[first:start]]first[[first:end]]: Cell, [[second:start]]second[[second:end]]: Cell = Cell { value: 0 }) -> Cell { return first; }
+impl Box {
+    fn [[put:start]]put[[put:end]](self, [[item:start]]item[[item:end]]: Cell = Cell { value: 0 }) -> Cell { return item; }
+}
+trait Reader {
+    fn [[read:start]]read[[read:end]](self, [[interface-param:start]]item[[interface-param:end]]: Cell) -> Cell;
+    fn [[fallback:start]]fallback[[fallback:end]](self, [[default-param:start]]item[[default-param:end]]: Cell = Cell { value: 1 }) -> Cell { return item; }
+}
+impl Reader for Box {
+    fn [[override:start]]read[[override:end]](self, [[override-param:start]]item[[override-param:end]]: Cell) -> Cell { return item; }
+}
+fn run(boxed: Box, reader: Reader, [[value:start]]value[[value:end]]: Cell, dynamic: Any) {
+    let text = "中😀"; [[function-call]]make([[positional-value]]value);
+    make([[second-label]]second = value, [[first-label]]first = [[named-value]]value);
+    make([[unknown-label]]missing = value);
+    boxed.[[method-call]]put();
+    boxed.put([[method-label]]item = value);
+    boxed.put([[method-unknown-label]]missing = value);
+    reader.[[interface-call]]read([[interface-label]]item = value);
+    boxed.[[default-call]]fallback([[default-label]]item = value);
+    boxed.[[override-call]]read([[override-label]]item = value);
+    dynamic.[[dynamic-call]]put([[dynamic-label]]item = value);
+    [[unknown-call]]absent([[unknown-call-label]]item = value);
+    math::[[stdlib-function]]abs([[stdlib-label]]value = -1);
+    let values = [1]; values.[[stdlib-method]]push([[stdlib-method-label]]value = 2);
+    boxed.[[missing-method]]absent([[missing-method-label]]item = value);
+}
+fn foreign(boxed: Foreign, value: ForeignCell) { boxed.[[foreign-call]]put([[foreign-label]]item = value); }
+fn nested(value: Cell) { make(first = make([[nested-label]]first = value), second = value); }
+fn schema_calls(boxed: HostBox, metadata: MetadataOnly, [[host-value:start]]value[[host-value:end]]: HostCell) {
+    [[schema-function]]host_make([[schema-function-label]]item = [[schema-value]]value);
+    boxed.[[schema-method]]put([[schema-method-label]]item = value);
+    [[metadata-function]]metadata_make([[metadata-function-label]]item = value);
+    metadata.[[metadata-method]]put([[metadata-method-label]]item = value);
+}
+struct Ambiguous {}
+struct OtherCell {}
+trait Left { fn pick(self, item: Cell) -> Cell; }
+trait Right { fn pick(self, item: OtherCell) -> OtherCell; }
+impl Left for Ambiguous { fn pick(self, item: Cell) -> Cell { return item; } }
+impl Right for Ambiguous { fn pick(self, item: OtherCell) -> OtherCell { return item; } }
+fn ambiguous(boxed: Ambiguous, value: Cell) { boxed.[[ambiguous-call]]pick([[ambiguous-label]]item = value); }
+fn [[async-function:start]]fetch[[async-function:end]]([[async-param:start]]item[[async-param:end]]: Cell = Cell { value: 0 }) -> Cell { return item; }
+fn caller(value: Cell) { [[async-call]]fetch([[async-label]]item = value); }
+struct Preferred {}
+impl Right for Preferred { fn pick(self, item: OtherCell) -> OtherCell { return item; } }
+impl Preferred { fn [[preferred:start]]pick[[preferred:end]](self, [[preferred-param:start]]item[[preferred-param:end]]: Cell) -> Cell { return item; } }
+fn preferred(boxed: Preferred, value: Cell) { boxed.[[preferred-call]]pick([[preferred-label]]item = value); }
+fn foreign_trait(boxed: Foreign, value: ForeignCell) { boxed.[[foreign-trait-call]]read([[foreign-trait-label]]item = value); }
+fn incomplete(boxed: Box) { boxed.put([[incomplete-label]]item =

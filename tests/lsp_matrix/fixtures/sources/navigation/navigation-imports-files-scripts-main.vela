@@ -1,0 +1,35 @@
+use [[import-root]]alpha::[[import-module]]api::[[import-function]]make as [[function-alias]]create;
+use alpha::api::Cell as [[type-alias]]Imported;
+use alpha::api::[[import-const]]BASE as [[const-alias]]DEFAULT;
+use alpha::api::[[import-state]]shared as [[state-alias]]shared_alias;
+use alpha::api::[[import-extern]]external as [[extern-alias]]external_alias;
+use alpha::api::[[import-enum]]Choice as [[enum-import-alias]]Pick;
+use alpha::api::[[import-trait]]Reader as [[trait-import-alias]]Read;
+use alpha::api::[[private-import]]hidden as [[private-import-alias]]unavailable;
+use missing::[[missing-import]]make as [[missing-import-alias]]missing_factory;
+fn run(value: Imported) {
+    let text = "中😀"; [[alias-call]]create();
+    alpha::api::[[qualified-call]]make();
+    [[imported-const]]DEFAULT;
+    [[imported-state]]shared_alias;
+    [[imported-extern]]external_alias;
+    alpha::api::[[qualified-const]]BASE;
+    alpha::api::[[qualified-state]]shared;
+    alpha::api::[[qualified-extern]]external;
+    [[constructor-alias]]Imported { value: 1 };
+    alpha::api::[[qualified-constructor]]Cell { value: 2 };
+    Pick::[[alias-variant]]Empty;
+    alpha::api::Choice::[[qualified-variant]]Empty;
+    create([[named-label]]value = value);
+    [[private-call]]unavailable();
+    alpha::api::[[qualified-private]]hidden();
+    [[missing-call]]missing_factory();
+    missing::[[unresolved-qualified]]make();
+    beta::api::[[other-module-call]]make();
+}
+fn shadowed([[shadow-param:start]]create[[shadow-param:end]]: Any) { [[shadow-call]]create(); }
+fn shadowed_type([[shadow-type-param:start]]Imported[[shadow-type-param:end]]: Any) { [[shadow-value]]Imported; }
+fn hinted(a: [[enum-alias]]Pick, b: [[trait-alias]]Read) {}
+use alpha::api::[[missing-export]]absent as [[missing-export-alias]]Absent;
+use alpha::api::[[direct-import]]make;
+fn direct() { [[direct-call]]make(); [[foreign-short]]foreign(); }

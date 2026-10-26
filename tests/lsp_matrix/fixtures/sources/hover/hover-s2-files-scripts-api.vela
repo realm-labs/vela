@@ -1,0 +1,32 @@
+/* 中😀 */
+#[doc("Row documentation")]
+pub struct Row { #[doc("Row value")] value: i64 }
+pub enum Choice { Empty, Pair(count: i64, reason: String), Named { value: i64 } }
+#[doc("Predicate")]
+pub fn accept(value: i64) -> bool { return value > 0; }
+pub fn apply(callback: Function) -> i64 { return callback(1); }
+pub fn total() -> bool { return false; }
+pub fn absent() -> String { return "decoy"; }
+pub trait Readable {
+ #[doc("Required method")]
+ fn required(self, extra: i64) -> i64;
+ fn default_body([[trait-self-decl:start]]self[[trait-self-decl:end]], [[trait-extra-decl:start]]extra[[trait-extra-decl:end]]: i64) -> i64 {
+  let [[trait-local-decl:start]]sum[[trait-local-decl:end]] = [[trait-self-use:start]]self[[trait-self-use:end]].[[trait-method-use:start]]required[[trait-method-use:end]]([[trait-extra-use:start]]extra[[trait-extra-use:end]]);
+  let capture = || [[trait-captured-local:start]]sum[[trait-captured-local:end]] + [[trait-captured-param:start]]extra[[trait-captured-param:end]];
+  return [[trait-local-use:start]]sum[[trait-local-use:end]];
+ }
+}
+impl Row {
+ pub fn read([[method-self-decl:start]]self[[method-self-decl:end]], [[method-extra-decl:start]]extra[[method-extra-decl:end]]: i64) -> i64 {
+  let [[method-local-decl:start]]before[[method-local-decl:end]] = [[method-self-read:start]]self[[method-self-read:end]].[[method-field-read:start]]value[[method-field-read:end]];
+  [[method-self-write:start]]self[[method-self-write:end]].[[method-field-write:start]]value[[method-field-write:end]] += [[method-extra-use:start]]extra[[method-extra-use:end]];
+  let capture = || [[method-self-captured:start]]self[[method-self-captured:end]].[[method-field-captured:start]]value[[method-field-captured:end]];
+  return [[method-local-use:start]]before[[method-local-use:end]];
+ }
+}
+impl Readable for Row {
+ fn required([[override-self-decl:start]]self[[override-self-decl:end]], [[override-extra-decl:start]]extra[[override-extra-decl:end]]: i64) -> i64 {
+  let [[override-local-decl:start]]sum[[override-local-decl:end]] = [[override-self-use:start]]self[[override-self-use:end]].[[override-field:start]]value[[override-field:end]] + [[override-extra-use:start]]extra[[override-extra-use:end]];
+  return [[override-local-use:start]]sum[[override-local-use:end]];
+ }
+}

@@ -2,8 +2,8 @@
   "version": 1,
   "id": "workspace-symbol-lifecycle",
   "files": {
-    "scripts/main.vela": "[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]run[[main-fn-name:end]](host: Host, value: Any) { let value = 1; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: i64[[local-value-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n[[file:end]]",
-    "scripts/api.vela": "[[file:start]]/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]value[[api-field-name:end]]: i64[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]read[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n[[file:end]]",
+    "scripts/main.vela": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-files-scripts-main.vela"},
+    "scripts/api.vela": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-files-scripts-api.vela"},
     "scripts/origins.vela": "[[file:start]][[origin-a-range:start]]fn [[origin-a-name:start]]origin_a[[origin-a-name:end]]() {}[[origin-a-range:end]]\n[[origin-b-range:start]]fn [[origin-b-name:start]]origin_b[[origin-b-name:end]]() {}[[origin-b-range:end]]\n[[file:end]]",
     "vela.toml": "[package]\nid = 'dev.vela.outline.lifecycle'\nname = 'outline_lifecycle'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'schema.json'\n",
     "schema.json": "{\"formatVersion\":4,\"facts\":{}}"
@@ -12,7 +12,7 @@
   "oracle": {
     "variants": {
       "main-base": {
-        "source": "[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]run[[main-fn-name:end]](host: Host, value: Any) { let value = 1; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: i64[[local-value-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-files-scripts-main.vela"},
         "symbols": [
           {
             "id": "main-fn",
@@ -74,7 +74,7 @@
         ]
       },
       "main-dirty": {
-        "source": "[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 dirty prefix\n\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]dirty[[main-fn-name:end]](host: Host, value: Any) { let value = \"text\"; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: String[[local-value-range:end]], [[local-extra-range:start]][[local-extra-name:start]]extra[[local-extra-name:end]]: bool[[local-extra-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-oracle-variants-main-dirty-source.vela"},
         "symbols": [
           {
             "id": "main-fn",
@@ -147,7 +147,7 @@
         ]
       },
       "main-disk": {
-        "source": "[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 new disk\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]disk_run[[main-fn-name:end]](host: Host, value: Any) { host.replaced; missing(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-new-range:start]][[local-new-name:start]]new_value[[local-new-name:end]]: bool[[local-new-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-oracle-variants-main-disk-source.vela"},
         "symbols": [
           {
             "id": "main-fn",
@@ -209,7 +209,7 @@
         ]
       },
       "main-second": {
-        "source": "[[file:start]]use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 second unsaved buffer\n\n\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]second_dirty[[main-fn-name:end]](host: Host, value: Any) { host.replaced; let row = Row { value: 2 }; row.value += 1; }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-extra-range:start]][[local-extra-name:start]]extra[[local-extra-name:end]]: Array<i64>[[local-extra-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-oracle-variants-main-second-source.vela"},
         "symbols": [
           {
             "id": "main-fn",
@@ -271,7 +271,7 @@
         ]
       },
       "api-base": {
-        "source": "[[file:start]]/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]value[[api-field-name:end]]: i64[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]read[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-files-scripts-api.vela"},
         "symbols": [
           {
             "id": "widget",
@@ -333,7 +333,7 @@
         ]
       },
       "api-replaced": {
-        "source": "[[file:start]]// 中😀 replaced dependency\n\n[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]changed[[api-field-name:end]]: String[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { changed: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]preview[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-oracle-variants-api-replaced-source.vela"},
         "symbols": [
           {
             "id": "widget",
@@ -395,7 +395,7 @@
         ]
       },
       "api-new": {
-        "source": "[[file:start]]// 中😀 recreated dependency\n[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]new_value[[api-field-name:end]]: bool[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { new_value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]restored[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n[[file:end]]",
+        "source": {"sourceFile": "sources/symbols/workspace-symbol-lifecycle-oracle-variants-api-new-source.vela"},
         "symbols": [
           {
             "id": "widget",

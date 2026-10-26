@@ -5,10 +5,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 
 const root = path.resolve(__dirname, "../../..");
 const fixtures = path.join(root, "tests/lsp_matrix/fixtures");
-const load = (name) => JSON.parse(fs.readFileSync(path.join(fixtures, `${name}.json`), "utf8"));
+const load = (name) => loadFixture(path.join(fixtures, `${name}.json`));
 
 function inspectArtifacts(value, file) {
   if (typeof value === "string" && value.trimStart().startsWith("{")) {
@@ -32,7 +33,7 @@ function inspectArtifacts(value, file) {
 
 test("shared editor artifacts reject obsolete schema formats and removed metadata", () => {
   for (const file of fs.readdirSync(fixtures).filter((file) => file.endsWith(".json"))) {
-    inspectArtifacts(JSON.parse(fs.readFileSync(path.join(fixtures, file), "utf8")), file);
+    inspectArtifacts(load(file.slice(0, -5)), file);
   }
 });
 
@@ -61,7 +62,9 @@ test("mixed call matrices keep ordinary coverage and no removed callable success
     assert.doesNotMatch(group.fixture, /^completion-service-/);
   }
   for (const name of ["call-parameter-mapping", "callable-imports", "completion-call-expressions", "signature-s5"]) {
-    assert.doesNotMatch(Object.values(load(name).files).join("\n"), /serviceSet|#\[service_impl/);
+    const sources = Object.values(load(name).files);
+    assert.ok(sources.every((source) => typeof source === "string"), `${name}: resolved source strings`);
+    assert.doesNotMatch(sources.join("\n"), /serviceSet|#\[service_impl/);
   }
   for (const labels of Object.values(load("callable-imports").oracle.expressionSets)) {
     assert.ok(labels.every((label) => !label.startsWith("service::")));

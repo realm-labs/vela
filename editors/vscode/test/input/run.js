@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("../../../../scripts/lsp-matrix/fixture-sources");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
@@ -87,7 +88,7 @@ async function run() {
   new FixtureWorkspace(diagnostics).appendTo(workspace);
   const quickFix = require("../../../../tests/lsp_matrix/fixtures/diagnostic-action-method-typo.json");
   new FixtureWorkspace(quickFix).appendTo(workspace);
-  const tokens = require("../../../../tests/lsp_matrix/fixtures/input-semantic-tokens.json");
+  const tokens = loadFixture(require.resolve("../../../../tests/lsp_matrix/fixtures/input-semantic-tokens.json"));
   new FixtureWorkspace(tokens).appendTo(workspace);
   const hoverSignature = require("../../../../tests/lsp_matrix/fixtures/input-hover-signature.json");
   new FixtureWorkspace(hoverSignature).appendTo(workspace);

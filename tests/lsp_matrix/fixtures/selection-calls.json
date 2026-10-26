@@ -2,7 +2,7 @@
   "version": 1,
   "id": "selection-calls",
   "files": {
-    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[first:start]][[first-label:start]]fi[[first-label-cursor]]rst[[first-label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[second:start]][[callback-label:start]]call[[callback-label-cursor]]back[[callback-label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[binary:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[binary:end]][[lambda:end]][[second:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/main.vela": {"sourceFile": "sources/selection/selection-calls-files-scripts-main.vela"},
     "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper() [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]] [[apply-item:start]]pub fn apply(first, callback = fallback) { return first; }[[apply-item:end]]\n[[eof]][[file:end]]"
   },
   "actions": [],
@@ -39,7 +39,7 @@
     "cases": [
       {
         "id": "qualified-named-callback-and-positional-owners",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[first:start]][[first-label:start]]fi[[first-label-cursor]]rst[[first-label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[second:start]][[callback-label:start]]call[[callback-label-cursor]]back[[callback-label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[binary:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[binary:end]][[lambda:end]][[second:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "source": {"sourceFile": "sources/selection/selection-calls-files-scripts-main.vela"},
         "queries": [
           {
             "position": "member-cursor",

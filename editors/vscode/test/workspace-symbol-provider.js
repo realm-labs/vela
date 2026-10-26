@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -10,7 +11,7 @@ const { readTrace, workspaceReadiness } = require("./input/readiness");
 const { findLog } = require("./input/logs");
 
 const specs = Object.fromEntries(["declarations", "ownership"].map(name =>
-  [name, require(`../../../tests/lsp_matrix/fixtures/workspace-symbol-${name}.json`)]));
+  [name, loadFixture(require.resolve(`../../../tests/lsp_matrix/fixtures/workspace-symbol-${name}.json`))]));
 const checkName = "workspace symbol provider preserves complete source and schema sets through Unicode dirty close restoration";
 const workspaceFor = root => path.join(root, "中文 % workspace symbols");
 const familyFor = (root, name, crlf) => path.join(workspaceFor(root), `${name}-${crlf ? "crlf" : "lf"}`);

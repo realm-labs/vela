@@ -6,9 +6,9 @@
     "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
     "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
     "schema.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"api::Token\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Token\"}}],\"methods\":[{\"owner\":\"api::Token\",\"name\":\"choose_schema\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"String\"}},\"docs\":\"Wrong schema owner 中😀.\"}],\"functions\":[{\"name\":\"api::choose\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"String\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"String\"}},\"docs\":\"Wrong registry callable docs.\"}]}}",
-    "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-    "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
-    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: String }\npub struct Returned { [[payload:start]]payload[[payload:end]]: String }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: \"hidden\" } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: \"hidden\" } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: \"hidden\" } }\n",
+    "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+    "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
+    "deps/hidden/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-hidden-scripts-api.vela"},
     "scripts/root_all.vela": "/* 中😀 */ fn run(value: api::Token) { value.[[replace:start]][[cursor]][[replace:end]]; }\n",
     "scripts/root_method.vela": "/* 中😀 */ fn run(value: api::Token) { value.[[replace:start]]cho[[cursor]][[replace:end]]; }\n",
     "scripts/root_default.vela": "/* 中😀 */ fn run(value: api::Token) { value.[[replace:start]]rea[[cursor]][[replace:end]]; }\n",
@@ -50,8 +50,8 @@
       {
         "id": "initial",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -341,15 +341,15 @@
         "diagnostics": [],
         "action": null,
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
         "openSource": null,
         "overlayParseErrors": false
       },
       {
         "id": "open",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -640,18 +640,18 @@
         "action": {
           "op": "open",
           "file": "deps/external/scripts/api.vela",
-          "source": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n"
+          "source": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"}
         },
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
-        "openSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
+        "openSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
         "overlayParseErrors": false
       },
       {
         "id": "broken_neighbor",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -942,18 +942,18 @@
         "action": {
           "op": "change",
           "file": "deps/external/scripts/api.vela",
-          "source": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n"
+          "source": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"}
         },
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
-        "openSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
+        "openSource": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"},
         "overlayParseErrors": true
       },
       {
         "id": "repair_neighbor",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn repaired(value: i64) -> i64 { value }\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-repair_neighbor-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -1244,18 +1244,18 @@
         "action": {
           "op": "change",
           "file": "deps/external/scripts/api.vela",
-          "source": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn repaired(value: i64) -> i64 { value }\n"
+          "source": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-repair_neighbor-files-deps-external-scripts-api.vela"}
         },
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
-        "openSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn repaired(value: i64) -> i64 { value }\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
+        "openSource": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-repair_neighbor-files-deps-external-scripts-api.vela"},
         "overlayParseErrors": false
       },
       {
         "id": "break_again",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -1546,18 +1546,18 @@
         "action": {
           "op": "change",
           "file": "deps/external/scripts/api.vela",
-          "source": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n"
+          "source": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"}
         },
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
-        "openSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n\nfn unfinished( {\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
+        "openSource": {"sourceFile": "sources/completion/completion-source-recovery-oracle-sourceLifecycle-broken_neighbor-files-deps-external-scripts-api.vela"},
         "overlayParseErrors": true
       },
       {
         "id": "close_restores",
         "files": {
-          "scripts/api.vela": "/* root 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: i64 }\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_root: i64) -> i64 { zz_root } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: 1 } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: 1 } }\n/// zz_root documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_root: i64) -> i64 { zz_root }\n",
-          "deps/external/scripts/api.vela": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n"
+          "scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-scripts-api.vela"},
+          "deps/external/scripts/api.vela": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"}
         },
         "queries": [
           {
@@ -1850,7 +1850,7 @@
           "file": "deps/external/scripts/api.vela"
         },
         "overlayFile": "deps/external/scripts/api.vela",
-        "diskSource": "/* dependency 中😀 */\npub struct Token { [[tag:start]]tag[[tag:end]]: bool }\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Token { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]next[[next:end]](self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn [[read:start]]read[[read:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[fallback:start]]fallback[[fallback:end]](self) -> Returned { Returned { payload: true } } }\nimpl Reader for Token {}\npub fn make() -> Token { Token { tag: true } }\n/// zz_dep documentation 中😀.\npub fn [[function:start]]choose[[function:end]](zz_dep: bool) -> bool { zz_dep }\n",
+        "diskSource": {"sourceFile": "sources/completion/completion-source-callable-lifecycle-files-deps-external-scripts-api.vela"},
         "openSource": null,
         "overlayParseErrors": false
       }

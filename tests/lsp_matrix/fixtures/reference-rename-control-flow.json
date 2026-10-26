@@ -3,7 +3,7 @@
   "id": "reference-rename-control-flow",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.control_flow\"\nname = \"control_flow\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
-    "scripts/main.vela": "/* 中😀 */ fn main([[outer-decl:start]]value[[outer-decl:end]]: i64) {\n [[for-keyword:start]]for[[for-keyword:end]] [[loop-decl:start]]value[[loop-decl:end]] [[in-keyword:start]]in[[in-keyword:end]] [ [[outer-iterable:start]]value[[outer-iterable:end]] ] {\n  [[loop-before:start]]value[[loop-before:end]];\n  [[match-keyword:start]]match[[match-keyword:end]] [[loop-subject:start]]value[[loop-subject:end]] {\n   [[arm-decl:start]]value[[arm-decl:end]] [[guard-keyword:start]]if[[guard-keyword:end]] [[arm-guard:start]]value[[arm-guard:end]] > 0 => [[arm-body:start]]value[[arm-body:end]],\n   [[wildcard:start]]_[[wildcard:end]] => [[loop-fallback:start]]value[[loop-fallback:end]]\n  };\n  [[if-keyword:start]]if[[if-keyword:end]] [[loop-condition:start]]value[[loop-condition:end]] > 0 { [[break-keyword:start]]break[[break-keyword:end]]; }\n  [[continue-keyword:start]]continue[[continue-keyword:end]];\n }\n [[outer-after:start]]value[[outer-after:end]];\n}\n",
+    "scripts/main.vela": {"sourceFile": "sources/references/reference-rename-control-flow-files-scripts-main.vela"},
     "scripts/helpers.vela": "fn helper() {}\n"
   },
   "actions": [],

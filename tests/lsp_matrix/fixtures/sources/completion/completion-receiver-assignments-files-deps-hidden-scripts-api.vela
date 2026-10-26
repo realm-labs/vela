@@ -1,0 +1,6 @@
+/* 中😀 */
+pub struct Token { [[field:start]]own_hidden[[field:end]]: String, [[shared:start]]own_shared[[shared:end]]: String }
+impl Token { fn [[call:start]]own_hidden_call[[call:end]](self, zz_hidden: String) -> String { zz_hidden } }
+pub fn produce() -> Token { Token { own_hidden: "hidden", own_shared: "hidden" } }
+pub fn erase() -> Any { null }
+impl Token { fn next(self) -> Token { produce() } }

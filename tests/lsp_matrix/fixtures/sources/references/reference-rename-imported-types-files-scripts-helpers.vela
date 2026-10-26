@@ -1,0 +1,9 @@
+/* 中😀 */ pub struct [[struct-decl:start]]Inventory[[struct-decl:end]] { slots: i64 }
+pub enum [[enum-decl:start]]Phase[[enum-decl:end]] { Ready, Done }
+pub trait [[trait-decl:start]]Rewardable[[trait-decl:end]] { fn grant(self) -> i64; }
+struct [[private-decl:start]]Secret[[private-decl:end]] { value: i64 }
+fn own(value: [[private-param:start]]Secret[[private-param:end]]) -> [[private-return:start]]Secret[[private-return:end]] { return value; }
+trait [[private-trait-decl:start]]HiddenTrait[[private-trait-decl:end]] { fn read(self) -> i64; }
+struct HiddenOwner { value: i64 }
+impl [[private-trait-impl:start]]HiddenTrait[[private-trait-impl:end]] for HiddenOwner { fn read(self) -> i64 { return self.value; } }
+fn wrapped(items: [[array:start]]Array[[array:end]]<[[array-secret:start]]Secret[[array-secret:end]]>, maybe: [[option:start]]Option[[option:end]]<[[option-secret:start]]Secret[[option-secret:end]]>, result: [[result:start]]Result[[result:end]]<[[result-secret:start]]Secret[[result-secret:end]], [[primitive:start]]i64[[primitive:end]]>, map: [[map:start]]Map[[map:end]]<[[key:start]]String[[key:end]], [[map-secret:start]]Secret[[map-secret:end]]>, erased: [[any:start]]Any[[any:end]], missing: [[unknown-type:start]]Missing[[unknown-type:end]]) {}

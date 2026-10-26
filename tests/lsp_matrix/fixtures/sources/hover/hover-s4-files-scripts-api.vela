@@ -1,0 +1,19 @@
+/* 中😀 */
+#[doc("Source row")]
+pub struct Row { #[doc("Source count")] count: i64, #[doc("Source title")] title: String, #[doc("Source dynamic")] misc: Any, #[doc("Source child")] child: Nested }
+pub struct Nested { #[doc("Nested value")] value: i64 }
+pub struct Sibling { value: i64 }
+impl Readable for Sibling { fn read(self, amount: i64) -> i64 { return amount; } }
+#[doc("Empty source")] pub struct Empty {}
+struct Secret { count: i64 }
+enum SecretChoice { Hidden { count: i64 } }
+pub enum Choice { #[doc("Unit variant")] Empty, #[doc("Tuple variant")] Pair(count: i64, title: String), #[doc("Record variant")] Named { #[doc("Variant count")] count: i64, #[doc("Variant title")] title: String }, #[doc("Other variant")] Other { #[doc("Other count")] count: String } }
+pub trait Readable { #[doc("Required read")] fn read(self, amount: i64) -> i64; #[doc("Default preview")] fn preview(self, amount: i64) -> bool { return amount > 0; } #[doc("Trait rank")] fn rank(self, amount: i64) -> bool { return amount > 0; } }
+impl Readable for Row { #[doc("Override read")] fn read(self, amount: i64) -> i64 { return amount; } #[doc("Override rank")] fn rank(self, amount: i64) -> bool { return amount > 0; } }
+impl Row { #[doc("Source rank")] pub fn rank(self, amount: i64) -> i64 { return amount; } #[doc("Source next")] pub fn next(self) -> Row { return self; } #[doc("Source fetch")] pub fn fetch(self) -> Row { return self; } #[doc("Source dynamic return")] pub fn dynamic(self) -> Any { return self; } }
+impl Choice { #[doc("Enum describe")] pub fn describe(self) -> String { return "enum"; } }
+impl Readable for Choice { #[doc("Enum read")] fn read(self, amount: i64) -> i64 { return amount; } }
+pub fn make() -> Row { return Row { count: 1, title: "x", misc: 0, child: Nested { value: 1 } }; }
+pub fn erased() -> Any { return make(); }
+pub fn choice() -> Choice { return Choice::Empty; }
+pub fn erased_choice() -> Any { return Choice::Empty; }

@@ -1,0 +1,12 @@
+use helpers::Measure as Alias
+/* 中😀 */ fn main(item: Alias, other: consumer::Measure, concrete: consumer::Counter, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {
+ item.measure([[main-label:start]]amount[[main-label:end]] = [[caller-use:start]]amount[[caller-use:end]]);
+ item.plain([[plain-label:start]]amount[[plain-label:end]] = 2);
+ other.measure([[other-label:start]]amount[[other-label:end]] = 4);
+ concrete.measure([[impl-label:start]]amount[[impl-label:end]] = 5, spare = 0, extra = 0);
+ let call = || item.measure([[closure-label:start]]amount[[closure-label:end]] = 6);
+ item.measure([[unknown-label:start]]bogus[[unknown-label:end]] = 7);
+ let note = "[[literal:start]]amount[[literal:end]]";
+}
+fn incomplete(item: Alias) { item.measure([[recovery-label:start]]amount[[recovery-label:end]] = ); }
+fn unknown(item) { item.measure([[unknown-receiver:start]]amount[[unknown-receiver:end]] = 1); }

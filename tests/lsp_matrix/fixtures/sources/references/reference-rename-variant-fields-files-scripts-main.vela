@@ -1,0 +1,16 @@
+use helpers::Event as Alias
+use helpers::Event::Item as ItemAlias
+/* 中😀 */ fn main([[main-param:start]]value[[main-param:end]]: i64) {
+ let x = Alias::Item { [[alias-label:start]]value[[alias-label:end]]: value, spare: 0 };
+ let y = ItemAlias { [[qualified-shorthand:start]]value[[qualified-shorthand:end]], spare: 1 };
+ match x { Alias::Item { [[pattern-label:start]]value[[pattern-label:end]]: extracted, spare: _ } => extracted };
+ match y { helpers::Event::Item { [[pattern-shorthand:start]]value[[pattern-shorthand:end]], spare: _ } => [[pattern-body:start]]value[[pattern-body:end]] };
+ consumer::Event::Item { [[other-label:start]]value[[other-label:end]]: 9 };
+ helpers::Event::Other { [[sibling-label:start]]value[[sibling-label:end]]: 2 };
+ match x { Alias::Other { [[sibling-pattern:start]]value[[sibling-pattern:end]]: extracted } => extracted };
+ let note = "[[literal:start]]value[[literal:end]]";
+}
+fn invalid() { helpers::Event::Item { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 }; Missing::Item { [[unknown-owner:start]]value[[unknown-owner:end]]: 7 }; }
+fn invalid_Unit() { helpers::Event::Unit { [[invalid-unit:start]]value[[invalid-unit:end]]: 4 }; }
+fn invalid_Tuple() { helpers::Event::Tuple { [[invalid-tuple:start]]value[[invalid-tuple:end]]: 4 }; }
+fn invalid_Missing() { helpers::Event::Missing { [[invalid-missing:start]]value[[invalid-missing:end]]: 4 }; }

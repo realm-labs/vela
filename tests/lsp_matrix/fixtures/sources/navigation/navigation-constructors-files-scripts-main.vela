@@ -1,0 +1,47 @@
+use api::Box as Foreign;
+use api::Choice as ForeignChoice;
+struct [[cell:start]]Cell[[cell:end]] { [[value-field:start]]value[[value-field:end]]: i64 }
+struct [[box:start]]Box[[box:end]] { [[item-field:start]]item[[item-field:end]]: Cell }
+enum [[choice:start]]Choice[[choice:end]] {
+    [[unit:start]]Empty[[unit:end]],
+    [[tuple:start]]Tuple[[tuple:end]]([[tuple-field:start]]item[[tuple-field:end]]: Cell),
+    [[record:start]]Record[[record:end]] { [[record-field:start]]item[[record-field:end]]: Cell },
+}
+fn run([[item-param:start]]item[[item-param:end]]: Cell, boxed: Box, unknown: Any) {
+    let text = "中😀"; [[constructor]]Box { [[field-label]]item: [[field-value]]item };
+    Box { [[shorthand]]item };
+    Box { [[missing-label]]missing: item };
+    Missing { [[missing-owner-label]]item: item };
+    Choice::[[tuple-constructor]]Tuple([[tuple-value]]item);
+    Choice::Tuple([[tuple-label]]item = item);
+    Choice::Tuple([[tuple-unknown-label]]missing = item);
+    Choice::[[record-constructor]]Record { [[variant-field-label]]item: item };
+    Choice::Record { [[variant-shorthand]]item };
+    Choice::Record { [[variant-unknown-label]]missing: item };
+    Choice::Missing { [[unknown-variant-label]]item: item };
+    Choice::[[unit-constructor]]Empty;
+    boxed.[[field-set]]item = item;
+    boxed.item.[[field-add]]value += 1;
+    boxed.item.[[field-subtract]]value -= 1;
+    unknown.[[dynamic-write]]item = item;
+    unknown.[[dynamic-add]]value += 1;
+    Foreign { [[foreign-label]]item: item };
+    ForeignChoice::Record { [[foreign-variant-label]]item: item };
+    ForeignChoice::Tuple([[foreign-tuple-label]]item = item);
+}
+fn patterns(value: Choice) {
+    match value { Choice::[[record-pattern]]Record { [[pattern-label]]item: [[binding:start]]bound[[binding:end]] } => [[binding-use]]bound, _ => Cell { value: 0 } };
+    match value { Choice::Tuple([[tuple-binding:start]]bound[[tuple-binding:end]]) => [[tuple-binding-use]]bound, _ => Cell { value: 0 } };
+    match value { Choice::Record { [[shorthand-binding:start]]item[[shorthand-binding:end]] } => [[shorthand-binding-use]]item, _ => Cell { value: 0 } };
+}
+fn schema_fields(value: HostCell, boxed: HostBox, metadata: MetadataOnly) {
+    [[host-constructor]]HostBox { [[host-label]]item: value };
+    HostChoice::Record { [[host-variant-label]]item: value };
+    HostBox { [[host-unknown-label]]missing: value };
+    MetadataOnly { [[metadata-label]]item: value };
+    boxed.[[host-write]]item = value;
+    metadata.[[metadata-write]]item = value;
+}
+fn no_binding() { Box { [[unbound-shorthand]]item }; }
+fn private_owner(value: Cell) { api::Hidden { [[private-owner-label]]item: value }; }
+fn incomplete() { Box { [[incomplete-label]]item:

@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -8,7 +9,7 @@ const { materializeWorkspaceSymbols } = require("./workspace-symbol-provider");
 
 for (const kind of ["document", "workspace"]) {
   test(`${kind} symbol materialization loads schema4 owned record facts without invented source locations`, t => {
-    const spec = require(`../../../tests/lsp_matrix/fixtures/${kind}-symbol-ownership.json`);
+    const spec = loadFixture(require.resolve(`../../../tests/lsp_matrix/fixtures/${kind}-symbol-ownership.json`));
     const original = structuredClone(spec);
     fs.mkdirSync(path.join(__dirname, "../test-results"), { recursive: true });
     const root = fs.mkdtempSync(path.join(__dirname, "../test-results/symbol-schema-"));

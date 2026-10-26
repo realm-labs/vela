@@ -1,0 +1,7 @@
+/* 中😀 */ use host::[[parcel-terminal:start]]Parcel[[parcel-terminal:end]] as [[parcel-alias:start]]Boxed[[parcel-alias:end]];
+use host::[[mode-terminal:start]]Mode[[mode-terminal:end]] as [[mode-alias:start]]Stage[[mode-alias:end]];
+use host::[[trait-terminal:start]]Readable[[trait-terminal:end]] as [[trait-alias:start]]R[[trait-alias:end]];
+use host::[[opaque-terminal:start]]Opaque[[opaque-terminal:end]] as [[opaque-alias:start]]Ghost[[opaque-alias:end]];
+fn inspect(value: [[parcel-param:start]]Boxed[[parcel-param:end]], mode: [[mode-param:start]]Stage[[mode-param:end]], rule: [[trait-param:start]]R[[trait-param:end]], ghost: [[opaque-param:start]]Ghost[[opaque-param:end]]) -> [[parcel-return:start]]Boxed[[parcel-return:end]] { return value; }
+struct MainLocal { value: i64 }
+impl [[trait-impl-alias:start]]R[[trait-impl-alias:end]] for MainLocal { fn read(self) -> i64 { return self.value; } }

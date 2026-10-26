@@ -1,0 +1,11 @@
+/* 中😀 */
+#[doc("Source combine")] pub fn combine([[api-amount:start]]amount[[api-amount:end]]: i64, [[api-title:start]]title[[api-title:end]]: String = "default") -> i64 { return amount; }
+#[doc("Source async")] pub fn fetch([[api-fetch-amount:start]]amount[[api-fetch-amount:end]]: i64 = 1) -> String { return "ready"; }
+#[doc("Source erase")] pub fn erase([[api-any-value:start]]value[[api-any-value:end]]: Any) -> Any { return value; }
+#[doc("Source unknown")] pub fn untyped([[api-unknown-value:start]]value[[api-unknown-value:end]]) { return value; }
+#[doc("Private source")] fn secret(amount: i64) -> i64 { return amount; }
+pub struct Row { count: i64 }
+impl Row { #[doc("Source apply")] pub fn apply(self, [[api-method-amount:start]]amount[[api-method-amount:end]]: i64, [[api-method-title:start]]title[[api-method-title:end]]: String = "method") -> i64 { return amount; } #[doc("Source next")] pub fn next(self) -> Row { return self; } #[doc("Source method async")] pub fn fetch(self, [[api-method-fetch:start]]amount[[api-method-fetch:end]]: i64 = 1) -> String { return "done"; } }
+pub trait Readable { #[doc("Source required")] fn read(self, [[api-required-amount:start]]amount[[api-required-amount:end]]: i64, [[api-required-title:start]]title[[api-required-title:end]]: String = "required") -> i64; #[doc("Source default")] fn preview(self, [[api-default-amount:start]]amount[[api-default-amount:end]]: i64 = 1) -> bool { return amount > 0; } }
+impl Readable for Row { #[doc("Source override")] fn read(self, [[api-override-amount:start]]amount[[api-override-amount:end]]: i64, title: String = "override") -> i64 { return amount; } }
+pub fn row() -> Row { return Row { count: 1 }; }

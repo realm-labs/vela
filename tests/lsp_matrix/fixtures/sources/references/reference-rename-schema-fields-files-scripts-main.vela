@@ -1,0 +1,17 @@
+use host::Record as Alias
+/* 中😀 */ pub struct Record { [[source-decl:start]]value[[source-decl:end]]: i64 }
+fn main([[main-param:start]]value[[main-param:end]]: i64, item: host::Record) {
+ let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };
+ let b = Alias { [[short:start]]value[[short:end]] };
+ match a { Alias { [[pattern:start]]value[[pattern:end]]: bound } => bound };
+ match b { host::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]] } => [[pattern-body:start]]value[[pattern-body:end]] };
+ item.[[dot-read:start]]value[[dot-read:end]];
+ item.[[dot-write:start]]value[[dot-write:end]] += 1;
+ Record { [[source-label:start]]value[[source-label:end]]: 1 };
+ third::Record { [[other-label:start]]value[[other-label:end]]: 2 };
+ other::Record { [[metadata-label:start]]value[[metadata-label:end]]: 3 };
+ host::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 };
+ Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 5 };
+ let note = "[[literal:start]]value[[literal:end]]";
+}
+fn dynamic(boxed: Any, number: i64) { boxed.[[dynamic-field:start]]value[[dynamic-field:end]]; number.[[primitive-field:start]]value[[primitive-field:end]]; }

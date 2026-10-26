@@ -1,0 +1,80 @@
+use models::Row as SourceRow;
+use models::Kind as SourceKind;
+use models::Preview as SourcePreview;
+use host::Row as HostRow;
+use host::Kind as HostKind;
+use host::Preview as HostPreview;
+/* 中😀 */
+fn accept_unit(value: ()) -> () { return value; }
+fn run_unit(value: ()) { accept_unit([[unit]]value); }
+fn accept_bool(value: bool) -> bool { return value; }
+fn run_bool(value: bool) { accept_bool([[bool]]value); }
+fn accept_char(value: char) -> char { return value; }
+fn run_char(value: char) { accept_char([[char]]value); }
+fn accept_i8(value: i8) -> i8 { return value; }
+fn run_i8(value: i8) { accept_i8([[i8]]value); }
+fn accept_i16(value: i16) -> i16 { return value; }
+fn run_i16(value: i16) { accept_i16([[i16]]value); }
+fn accept_i32(value: i32) -> i32 { return value; }
+fn run_i32(value: i32) { accept_i32([[i32]]value); }
+fn accept_i64(value: i64) -> i64 { return value; }
+fn run_i64(value: i64) { accept_i64([[i64]]value); }
+fn accept_u8(value: u8) -> u8 { return value; }
+fn run_u8(value: u8) { accept_u8([[u8]]value); }
+fn accept_u16(value: u16) -> u16 { return value; }
+fn run_u16(value: u16) { accept_u16([[u16]]value); }
+fn accept_u32(value: u32) -> u32 { return value; }
+fn run_u32(value: u32) { accept_u32([[u32]]value); }
+fn accept_u64(value: u64) -> u64 { return value; }
+fn run_u64(value: u64) { accept_u64([[u64]]value); }
+fn accept_f32(value: f32) -> f32 { return value; }
+fn run_f32(value: f32) { accept_f32([[f32]]value); }
+fn accept_f64(value: f64) -> f64 { return value; }
+fn run_f64(value: f64) { accept_f64([[f64]]value); }
+fn accept_string(value: String) -> String { return value; }
+fn run_string(value: String) { accept_string([[string]]value); }
+fn accept_bytes(value: Bytes) -> Bytes { return value; }
+fn run_bytes(value: Bytes) { accept_bytes([[bytes]]value); }
+fn accept_array(value: Array<i64>) -> Array<i64> { return value; }
+fn run_array(value: Array<i64>) { accept_array([[array]]value); }
+fn accept_map(value: Map<String, i64>) -> Map<String, i64> { return value; }
+fn run_map(value: Map<String, i64>) { accept_map([[map]]value); }
+fn accept_set(value: Set<i64>) -> Set<i64> { return value; }
+fn run_set(value: Set<i64>) { accept_set([[set]]value); }
+fn accept_iterator(value: Iterator<i64>) -> Iterator<i64> { return value; }
+fn run_iterator(value: Iterator<i64>) { accept_iterator([[iterator]]value); }
+fn accept_option(value: Option<i64>) -> Option<i64> { return value; }
+fn run_option(value: Option<i64>) { accept_option([[option]]value); }
+fn accept_result(value: Result<Array<i64>, String>) -> Result<Array<i64>, String> { return value; }
+fn run_result(value: Result<Array<i64>, String>) { accept_result([[result]]value); }
+fn accept_tuple(value: (i64, Option<String>)) -> (i64, Option<String>) { return value; }
+fn run_tuple(value: (i64, Option<String>)) { accept_tuple([[tuple]]value); }
+fn accept_function(value: Function) -> Function { return value; }
+fn run_function(value: Function) { accept_function([[function]]value); }
+fn accept_closure(value: Closure) -> Closure { return value; }
+fn run_closure(value: Closure) { accept_closure([[closure]]value); }
+fn accept_source_record(value: SourceRow) -> SourceRow { return value; }
+fn run_source_record(value: SourceRow) { accept_source_record([[source-record]]value); }
+fn accept_source_enum(value: SourceKind) -> SourceKind { return value; }
+fn run_source_enum(value: SourceKind) { accept_source_enum([[source-enum]]value); }
+fn accept_source_trait(value: SourcePreview) -> SourcePreview { return value; }
+fn run_source_trait(value: SourcePreview) { accept_source_trait([[source-trait]]value); }
+fn accept_host_record(value: HostRow) -> HostRow { return value; }
+fn run_host_record(value: HostRow) { accept_host_record([[host-record]]value); }
+fn accept_host_enum(value: HostKind) -> HostKind { return value; }
+fn run_host_enum(value: HostKind) { accept_host_enum([[host-enum]]value); }
+fn accept_host_trait(value: HostPreview) -> HostPreview { return value; }
+fn run_host_trait(value: HostPreview) { accept_host_trait([[host-trait]]value); }
+fn accept_any(value: Any) -> Any { return value; }
+fn run_any(value: Any) { accept_any([[any]]value); }
+fn accept_unknown(value: Missing) -> Missing { return value; }
+fn run_unknown(value: Missing) { accept_unknown([[unknown]]value); }
+fn accept_nested_unknown(value: Result<Array<Missing>, String>) -> Result<Array<Missing>, String> { return value; }
+fn run_nested_unknown(value: Result<Array<Missing>, String>) { accept_nested_unknown([[nested-unknown]]value); }
+fn accept_range(value: Range) -> Range { return value; }
+fn run_range(value: Range) { accept_range([[range]]value); }
+fn accept_erased_array(value: Array) -> Array { return value; }
+fn run_erased_array(value: Array) { accept_erased_array([[erased-array]]value); }
+fn inferred(value) { return value; }
+fn erased(any: Any, unknown: Missing) { inferred([[unhinted]]any); any.check([[dynamic]]1); unknown.check([[unknown-receiver]]1); absent([[unresolved]]1); }
+fn range_method(value: Range) { value.len([[range-method]]); }

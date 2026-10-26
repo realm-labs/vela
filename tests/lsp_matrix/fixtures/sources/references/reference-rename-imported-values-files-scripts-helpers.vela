@@ -1,0 +1,6 @@
+/* 中😀 */ [[pub-keyword:start]]pub[[pub-keyword:end]] [[const-keyword:start]]const[[const-keyword:end]] [[const-decl:start]]BASE_REWARD[[const-decl:end]]: i64 = 4;
+pub [[extern-keyword:start]][[extern-keyword:end]] [[state-keyword:start]]state[[state-keyword:end]] [[state-decl:start]]reward_scale[[state-decl:end]]: i64 = 1;
+const [[private-decl:start]]SECRET[[private-decl:end]]: i64 = 7;
+[[private-state-keyword:start]]state[[private-state-keyword:end]] [[private-state-decl:start]]internal_total[[private-state-decl:end]]: i64 = 1;
+fn bump() { [[private-state-write:start]]internal_total[[private-state-write:end]] += 1; [[private-state-read:start]]internal_total[[private-state-read:end]]; }
+fn own() { let value = [[private-own:start]]SECRET[[private-own:end]]; }

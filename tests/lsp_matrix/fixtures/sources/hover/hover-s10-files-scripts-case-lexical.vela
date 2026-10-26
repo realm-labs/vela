@@ -1,0 +1,13 @@
+use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;
+/* 中😀 */fn run(){
+/* 中😀 */[[lexical-before:start]]grant[[lexical-before:end]](1);
+let [[lexical-outer:start]]grant[[lexical-outer:end]]=[[lexical-initializer:start]]grant[[lexical-initializer:end]](1); [[lexical-after:start]]grant[[lexical-after:end]];
+{let [[lexical-inner:start]]grant[[lexical-inner:end]]="inner"; [[lexical-inner-use:start]]grant[[lexical-inner-use:end]]; let capture=||{[[lexical-capture-inner:start]]grant[[lexical-capture-inner:end]];};}
+[[lexical-after-block:start]]grant[[lexical-after-block:end]]; let captured=||{[[lexical-capture-outer:start]]grant[[lexical-capture-outer:end]];};
+let [[lexical-dynamic:start]]Row[[lexical-dynamic:end]]:Any=1; [[lexical-dynamic-use:start]]Row[[lexical-dynamic-use:end]].[[lexical-dynamic-member:start]]count[[lexical-dynamic-member:end]];
+let [[lexical-unknown:start]]missing[[lexical-unknown:end]]=no_value; [[lexical-unknown-use:start]]missing[[lexical-unknown-use:end]].[[lexical-unknown-member:start]]rank[[lexical-unknown-member:end]];
+let callback=|[[lexical-lambda:start]]grant[[lexical-lambda:end]]:bool|{[[lexical-lambda-use:start]]grant[[lexical-lambda-use:end]];};
+for [[lexical-loop:start]]grant[[lexical-loop:end]] in [1,2] {[[lexical-loop-use:start]]grant[[lexical-loop-use:end]];} [[lexical-after-loop:start]]grant[[lexical-after-loop:end]];
+match Choice::Pair(1) { Choice::Pair([[lexical-pattern:start]]grant[[lexical-pattern:end]]) => [[lexical-pattern-use:start]]grant[[lexical-pattern-use:end]], _=>0 };
+[[lexical-qualified-module:start]]api[[lexical-qualified-module:end]]::[[lexical-qualified-function:start]]grant[[lexical-qualified-function:end]](1);
+}

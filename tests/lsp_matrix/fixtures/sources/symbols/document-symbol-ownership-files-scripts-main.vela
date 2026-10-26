@@ -1,0 +1,19 @@
+use source::Widget as Row; use source::Choice as Pick; use source::Choice::Empty as Unit;
+use source::Readable as Reader; use source::make as build; use source::LIMIT as Cap;
+use source::live as Shared; use source::external as External; use source as api;
+use host::Box as Host; use host::Choice as HostPick; use host::Readable as HostReader;
+use host::make as host_build; use host as native; use metadata::Box as Metadata;
+use std::array as arrays; use std::print as output;
+/* 中😀 */ [[local-range:start]]struct [[local-name:start]]Widget[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: bool[[local-value-range:end]] }[[local-range:end]]
+[[uses-range:start]]fn [[uses-name:start]]uses[[uses-name:end]](row: Row, host: Host, reader: Reader, hreader: HostReader, meta: Metadata, dynamic: Any) {
+ let value = 1; let rec = Row { value, other: value }; let local = Widget { value: true };
+ row.value += 1; row.read(); reader.read(); host.value += 1; host.read(); hreader.read();
+ Pick::Empty; Pick::Pair(value); Pick::Named { value }; Unit;
+ HostPick::Empty; HostPick::Pair(value); HostPick::Named { value }; meta.value; meta.read();
+ build(value = 2); host_build(); native::make(); api::Widget { value, other: value }; Cap; Shared += 1; External += 1; arrays::new(); output(value);
+ dynamic.value; dynamic.read(); row.missing; unknown::Box { value }; missing();
+ match value { Pick::Named { value } => value, Pick::Pair(value) => value, Pick::Empty => 0 }
+}[[uses-range:end]]
+[[imported-impl-range:start]][[imported-impl-name:start]]impl Row[[imported-impl-name:end]] { [[added-range:start]]fn [[added-name:start]]added[[added-name:end]](self) -> bool { return true; }[[added-range:end]] }[[imported-impl-range:end]]
+[[host-impl-range:start]][[host-impl-name:start]]impl Host[[host-impl-name:end]] { [[scripted-range:start]]fn [[scripted-name:start]]scripted[[scripted-name:end]](self) -> i64 { return 1; }[[scripted-range:end]] }[[host-impl-range:end]]
+[[trait-imported-impl-range:start]][[trait-imported-impl-name:start]]impl Reader for Row[[trait-imported-impl-name:end]] { [[imported-read-range:start]]fn [[imported-read-name:start]]read[[imported-read-name:end]](self) -> i64 { return 1; }[[imported-read-range:end]] }[[trait-imported-impl-range:end]]

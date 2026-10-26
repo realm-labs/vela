@@ -1,0 +1,47 @@
+use foreign::Remote as Imported;
+/* 中😀 */ struct [[cell:start]]Cell[[cell:end]] { value: i64 }
+enum [[choice:start]]Choice[[choice:end]] { Empty }
+trait [[reader:start]]Reader[[reader:end]] { fn read(self) -> Cell; }
+fn builtin_0(value: [[builtin-any]]Any) {}
+fn builtin_1(value: [[builtin-bool]]bool) {}
+fn builtin_2(value: [[builtin-char]]char) {}
+fn builtin_3(value: [[builtin-i8]]i8) {}
+fn builtin_4(value: [[builtin-i16]]i16) {}
+fn builtin_5(value: [[builtin-i32]]i32) {}
+fn builtin_6(value: [[builtin-i64]]i64) {}
+fn builtin_7(value: [[builtin-u8]]u8) {}
+fn builtin_8(value: [[builtin-u16]]u16) {}
+fn builtin_9(value: [[builtin-u32]]u32) {}
+fn builtin_10(value: [[builtin-u64]]u64) {}
+fn builtin_11(value: [[builtin-f32]]f32) {}
+fn builtin_12(value: [[builtin-f64]]f64) {}
+fn builtin_13(value: [[builtin-string]]String) {}
+fn builtin_14(value: [[builtin-bytes]]Bytes) {}
+fn builtin_15(value: [[builtin-array]]Array) {}
+fn builtin_16(value: [[builtin-map]]Map) {}
+fn builtin_17(value: [[builtin-set]]Set) {}
+fn builtin_18(value: [[builtin-range]]Range) {}
+fn builtin_19(value: [[builtin-iterator]]Iterator) {}
+fn builtin_20(value: [[builtin-function]]Function) {}
+fn builtin_21(value: [[builtin-closure]]Closure) {}
+fn builtin_22(value: [[builtin-option]]Option) {}
+fn builtin_23(value: [[builtin-result]]Result) {}
+fn container_Array(value: Array<[[inner-array]]Cell>) {}
+fn container_Set(value: Set<[[inner-set]]Cell>) {}
+fn container_Map(value: Map<String, [[inner-map]]Cell>) {}
+fn container_Iterator(value: Iterator<[[inner-iterator]]Cell>) {}
+fn container_Option(value: Option<[[inner-option]]Cell>) {}
+fn container_Result(value: Result<[[inner-result]]Cell, String>) {}
+fn tuple(value: ([[tuple-cell]]Cell, Option<[[tuple-import]]Imported>), unit: [[unit]]()) {}
+fn deep(value: Array<Map<String, Result<Option<[[deep-import]]Imported>, [[deep-unknown]]Missing>>>) {}
+fn unknown(value: [[unknown]]Missing, private: foreign::[[private]]Hidden, module: [[module]]foreign::Remote) {}
+fn Missing() -> Cell { return Cell { value: 1 }; }
+struct Container { field: Option<[[struct-field]]Cell> }
+enum Wrapped { Tuple(value: Array<[[tuple-field]]Cell>), Record { value: Result<[[record-field]]Cell, String> } }
+const CONST_VALUE: [[const-hint]]Cell = Cell { value: 1 };
+state shared: [[state-hint]]Cell = Cell { value: 2 };
+state external: [[extern-hint]]Cell = Cell {};
+trait Other { fn transform(self, value: [[trait-param]]Cell) -> [[trait-return]]Cell; }
+impl Other for Cell { fn transform(self, value: [[impl-param]]Cell) -> [[impl-return]]Cell { return value; } }
+fn local() { let Cell = 7; let value: [[local-hint]]Cell = 8; }
+fn returns() -> Result<[[return-enum]]Choice, [[return-trait]]Reader> { return Result::Ok(Choice::Empty); }

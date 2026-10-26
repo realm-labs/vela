@@ -1,0 +1,24 @@
+use helper::source_any as imported_any;
+struct [[cell:start]]Cell[[cell:end]] { value: i64 }
+struct Holder { [[item:start]]item[[item:end]]: Cell }
+impl Holder {
+    fn [[get:start]]get[[get:end]](self) -> Cell { return self.item; }
+    fn [[method:start]]opaque[[method:end]](self) -> Any { return self.item; }
+}
+fn [[source:start]]source_any[[source:end]]() -> Any { return Holder { item: Cell { value: 1 } }; }
+fn main(boxed: HostBox, holder: Holder) {
+    let text = "中😀"; [[source-call]]source_any().[[source-field]]item;
+    source_any().[[source-method]]get();
+    let value = source_any(); value.[[source-local-field]]item;
+    [[import-call]]imported_any().[[import-field]]item;
+    holder.[[source-method-call]]opaque().[[method-field]]item;
+    holder.opaque().[[method-method]]get();
+    [[schema-call]]schema_any().[[schema-field]]item;
+    schema_any().[[schema-method]]get();
+    let host = schema_any(); host.[[schema-local-field]]item;
+    boxed.[[schema-method-call]]opaque().[[host-method-field]]item;
+    boxed.opaque().[[host-method-method]]get();
+    holder.[[source-positive]]item;
+    boxed.[[schema-positive]]item;
+}
+fn shadowed(source_any: Any) { source_any().[[shadow-field]]item; }

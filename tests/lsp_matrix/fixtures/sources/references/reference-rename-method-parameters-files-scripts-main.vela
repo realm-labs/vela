@@ -1,0 +1,15 @@
+use helpers::Counter as Count
+use helpers::Measure as Measured
+/* 中😀 */ fn main(item: Count, other: consumer::Counter, measured: Measured, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {
+ item.add([[method-label:start]]amount[[method-label:end]] = [[caller-read:start]]amount[[caller-read:end]]);
+ item.sibling([[sibling-label:start]]amount[[sibling-label:end]] = 2);
+ other.add([[other-label:start]]amount[[other-label:end]] = 4);
+ measured.measure([[default-label:start]]amount[[default-label:end]] = 5);
+ let callback = || item.add([[closure-label:start]]amount[[closure-label:end]] = 6);
+ item.add([[unknown-label:start]]bogus[[unknown-label:end]] = 7);
+ let text = "[[literal:start]]amount[[literal:end]]";
+}
+fn incomplete(item: Count) { item.add([[recovery-label:start]]amount[[recovery-label:end]] = ); }
+fn overridden(item: consumer::Counter) { item.measure([[override-label:start]]amount[[override-label:end]] = 8); }
+fn unknown(item) { item.add([[unknown-callee:start]]amount[[unknown-callee:end]] = 1); }
+fn dynamic(item: Any) { item.[[dynamic-method:start]]add[[dynamic-method:end]]([[dynamic-label:start]]amount[[dynamic-label:end]] = 1); }

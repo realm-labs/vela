@@ -1,0 +1,11 @@
+/* 中😀 */
+/// dependency function documentation.
+pub fn [[fn-choose:start]]choose[[fn-choose:end]](disk_peer: String, reason: String = "dependency") -> String { return disk_peer; }
+pub struct Token { tag: String }
+impl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, disk_peer: String, reason: String = "dependency") -> String { return disk_peer; } }
+pub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, disk_peer: String, reason: String = "dependency") -> String { return disk_peer; } }
+impl Reader for Token {}
+pub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: "x" }; }
+pub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: String), Empty }
+pub const [[budget:start]]budget[[budget:end]]: String = "x";
+fn private(value: String) -> String { return value; }

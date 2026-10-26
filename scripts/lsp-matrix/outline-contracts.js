@@ -1,4 +1,5 @@
 "use strict";
+const { loadFixture } = require("./fixture-sources");
 const path = require("node:path");
 const { document } = require("./document-symbol-oracle");
 const spec = require("../../tests/lsp_matrix/fixtures/input-outline.json");
@@ -9,7 +10,7 @@ const spec = require("../../tests/lsp_matrix/fixtures/input-outline.json");
 function outlineModel() {
   const files = {}, cases = [];
   for (const form of spec.forms) for (const source of spec.sources) {
-    const fixture = require(path.join(__dirname, "../../tests/lsp_matrix/fixtures", source.fixture));
+    const fixture = loadFixture(path.join(__dirname, "../../tests/lsp_matrix/fixtures", source.fixture));
     const remap = file => `scripts/outline_${form}_${source.namespace}/${file.replace(/^scripts\//, "")}`;
     for (const [file, text] of Object.entries(fixture.files).filter(([file]) => file.endsWith(".vela")))
       files[remap(file)] = document(text, form === "crlf").text;

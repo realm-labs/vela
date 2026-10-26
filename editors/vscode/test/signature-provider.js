@@ -1,10 +1,11 @@
 "use strict";
+const { loadFixture } = require("../../../scripts/lsp-matrix/fixture-sources");
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const { FixtureWorkspace, parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
-const spec = require("../../../tests/lsp_matrix/fixtures/signature-editor.json");
+const spec = loadFixture(require.resolve("../../../tests/lsp_matrix/fixtures/signature-editor.json"));
 
 function materializeSignature(workspace) {
   new FixtureWorkspace(spec).appendTo(workspace);
