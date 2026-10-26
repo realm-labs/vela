@@ -41,19 +41,43 @@ Current formats are **portable program 8 / Rust-binding schema 7 / tooling
 schema 4**. Incompatible formats reject before use/link/activation. Package
 metadata remains unsupported by the portable codec; no new encoding was added.
 
-## Test Organization: TO00–TO09 Complete With Validation Limits
+## Test Organization: Selective Extraction In Progress
 
-The [plan](test-organization-plan.md) has been executed in ten stage commits.
-All 23 root-workspace owners and separate repository owners have reviewed
-conversion/no-change dispositions. Eighteen crates use dev-only `rstest`;
-examples retain their separate manifest. Eleven canonical source fixtures serve
-compiler/VM/Engine consumers, and HIR/analysis share fresh conformance graph setup.
-Homogeneous rows are independently selectable; safety/lifecycle scenarios,
-whole-manifest audits and specialized runners remain explicit. No framework or
-runtime feature was added, and no unrelated locked package was upgraded.
+The previous TO00–TO09 commits completed a bounded parameterization/helper pass,
+**not a complete repository-wide input-organization review**. Eighteen crates use dev-only
+`rstest`, eleven new shared `.vela` fixtures serve compiler/VM/Engine tests and
+HIR/analysis share fresh graph setup. Those changes remain useful and are retained.
+However, many complete programs still live inside Rust cases/helpers, lifecycle
+scenarios, shared tooling JSON and repository consumers. The earlier completion
+claim was too broad. Inline source is not itself a defect: review readability and
+reuse rather than treating either parameterization or blanket extraction as completion.
 
-[Execution evidence](archive/test-organization-acceptance.md) records changes,
-assertion preservation and actual commands. Final results:
+The redesigned [input-organization plan](test-organization-plan.md) defines
+SF00–SF12: repository-wide suitability review, extraction of substantial/reused
+sources, preservation of concise local cases and consolidation of meaningful
+repetition. Short complete programs, tiny reload pairs and self-contained JSON
+may remain inline when clearer; there is no zero-inline target. Any selected JSON
+extraction coordinates existing readers and provenance, but reader changes are
+not required merely for uniformity. Rust/JS retain independent assertions.
+The plan now explicitly requires three language UI layers: parser source/diagnostic
+goldens (SF02), semantic/compiler diagnostic corpora (SF03/SF04), and real CLI
+stdout/stderr/exact-status cases (SF08), each with fixture inventory checks.
+Existing macro trybuild and editor UI tests do not satisfy these deliverables.
+A follow-up structural audit adds explicit target/helper ownership, selected
+formatter and source/portable execution equivalence, bounded CLI process/IO proof,
+actual site-example linkage, current grammar/query checks and benchmark semantic
+preflight to the owning stages. Existing GC/budget/reload lifecycle proof must be
+preserved, not described as absent. Actual browser Playground execution remains
+a separately scoped coverage gap; native WASM checks and site builds do not close it.
+Stage execution and one commit per stage are now authorized. SF00 records the
+runtime/compiler, tooling/matrix and public-consumer census, concrete dispositions,
+helper/target boundaries and packaging obligations. Later-stage implementation and
+actual validation are tracked in the [SF execution record](archive/test-input-organization-acceptance.md).
+No new framework or runtime feature is authorized.
+
+[Previous execution evidence](archive/test-organization-acceptance.md) records
+actual TO changes and tests. These results are historical to that pass, not fresh
+validation of the proposed selective migration:
 
 - Rust discovery reconciled against bounded passes: **4,532 all-feature / 4,517
   default**, zero failed or missing identities, two existing ignored. These are

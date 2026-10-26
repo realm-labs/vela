@@ -1,464 +1,587 @@
-# Repository Test Organization Plan
+# Test Input Organization And Selective Fixture Extraction
 
-Status: TO00–TO09 execution complete, one commit per stage, including reviewed
-no-change dispositions. [Execution evidence](archive/test-organization-acceptance.md)
-records bounded test coverage and validation limitations: aggregate Rust/editor
-commands timed out; native Input/Render and Windows acceptance remain incomplete.
-This is not a claim that every test was converted or every possible duplicate removed.
+Status: SF00–SF12 execution authorized, with one verified commit per stage.
+SF00 census is recorded; subsequent implementation and gate results are tracked in
+[the execution record](archive/test-input-organization-acceptance.md).
+This replaces the previous TO00–TO09 completion criteria.
 
 ## Objective And Authority
 
-Consolidate equivalent test inputs, compatible preparation and homogeneous
-assertions using **existing `rstest`**, not a custom framework. Organize current
-tests by their semantic owner and execution boundary; remove demonstrated
-redundancy and stale scaffolding without weakening retained contracts.
+**Improve test readability and consolidate meaningful repeated inputs; extract
+source files where doing so helps, not mechanically for every string.** Review
+the whole repository, but keep concise local inputs inline when that makes the
+input/assertion relationship clearer. Reused or substantial programs, source trees
+and source/golden families are strong extraction candidates. There is no target
+of zero inline scripts, a fixed line-count threshold or maximum fixture count.
+Use existing `rstest`, ordinary Rust tests and specialized runners—not a custom
+framework, registration macro, test catalog or expectation DSL.
 
 [goal.md](goal.md) and [architecture.md](architecture.md) remain authoritative.
-The completed runtime-removal pass is not reopened. Do not add language/runtime
-features, replacement opaque objects, conversion APIs or a new re-entry model.
-[validation.md](validation.md) owns commands; this document owns migration scope
-and organization, not a replacement validation policy.
+Runtime simplification is complete and is not reopened. This work changes test
+organization, not language semantics, runtime APIs or executable artifact formats.
+[validation.md](validation.md) remains the gate source of truth.
 
-Success is understandable ownership, canonical input data and independently
-selectable cases—not fewer tests, fewer assertions or an unmeasured speed claim.
+### Correction To The Previous Pass
 
-## Current Inventory And Evidence
+Commits `0f1f66d9d` through `044e5afc7` delivered useful parameterization, eleven
+shared source fixtures and helper cleanup. Preserve them. The
+[TO execution record](archive/test-organization-acceptance.md) records actual
+changes and tests, **not completion of the broader input-organization review**.
+Revisit source-storage choices instead of treating rstest adoption as completion;
+reviewed inline retention is also a valid outcome.
 
-Snapshot: `bb11d53eb` plus the uncommitted `rstest` pilot. Inventory combines Cargo
-metadata, test wiring, shared fixture consumers and representative bodies. It is
-an entrypoint/family audit, **not a proof that every test has already been
-classified or that all duplicate tests have been found**.
+In particular, `crates/vela_engine/src/tests/strings.rs` has three named cases
+but still embeds all three programs. Review each for useful extraction rather than
+assuming either that rstest finishes the work or that all three need files.
+VM numeric/bytes cases, diagnostic rows, lifecycle versions and tooling JSON need
+the same suitability review. Neither source length nor test category alone decides
+storage; context, reuse, byte sensitivity and navigation cost matter.
 
-- Root workspace: **23 crates**. Metadata was inspected with
-  `cargo metadata --locked --offline --no-deps --format-version 1`.
-- `rstest = { version = "0.28.0", default-features = false }` is workspace-managed;
-  only `vela_bytecode` and `vela_vm` currently opt in as dev dependencies.
-- The pilot shares `tests/fixtures/conformance/record_writes/{nested,indexed}.vela`
-  across compiler and VM named cases. The four original input copies were
-  byte-identical to the extracted files; four independently scheduled cases and
-  scoped Clippy/format checks passed in the preceding pilot, not this planning run.
-- The previous removal acceptance recorded **4,333 passes and two ignored tests**.
-  That is historical evidence, not a newly executed baseline, a migration quota,
-  or a requirement to preserve exactly that generated test count.
-- Existing shared root corpora are `tests/fixtures/{conformance,diagnostics,
-  completion,lsp_highlighting}` and `tests/lsp_matrix/fixtures`.
-- Examples, fuzzing and the Zed extension have separate Cargo manifests. They are
-  not additional root-workspace test owners. There are 14 retained example bins.
+### Reference Patterns Actually Reviewed
 
-### Root Rust Workspace: All Owners
+The read-only reference audit checked executable fixtures, paired parser/UI
+expectations, formatter cases, compiler inputs, reload versions and Cargo fixture
+invalidation—not just dependency declarations. The useful patterns are:
 
-Paths in this table are relative to `crates/<crate>/`. “Library” includes the
-proc-macro library harness where applicable. Explicit integration aggregators
-must stay aggregators: their module files are not independent Cargo targets.
+| Pattern observed | Vela adaptation |
+|---|---|
+| Feature-local source directories discovered by `#[files]` | One independently selectable file per homogeneous case, using the current owner runner. |
+| Named cases carrying `include_str!` inputs and paired outputs/options | Keep typed Rust expectations and options; source and long textual goldens live in files. |
+| Source plus diagnostic sidecar and exact-pair inventory checks | Reuse Vela's existing `.expected`, typed diagnostics and reviewed JSON oracles; no new universal schema. |
+| Reload scenarios loading explicit version files | Use version files for substantial scenarios; retain short adjacent version pairs when they make the change clearer. Preserve every intermediate assertion. |
+| Directory change tracking for macro-discovered inputs | Verify add/delete discovery without a clean build; add only minimal Cargo invalidation if required. |
 
-| Crate | Current test entrypoints and input forms | Planned disposition |
+The reference is not uniformly file-first: some inline cases and source generation
+remain there too. Choose the representation that fits each Vela test; do not copy another
+runtime's features, boolean-result convention, test framework or validation policy.
+Keep repository artifacts domain-neutral and free of sibling-project paths.
+
+## Additional Structural Comparison Findings
+
+The follow-up audit compared actual owner modules, integration targets, process
+helpers, formatter/runtime routes, repository consumers and CI—not just fixture
+layouts. The following obligations supplement selective extraction. Distinguish
+**preserving existing proof** from **adding missing coverage** in stage reviews;
+source relocation must not silently change assertions or product behavior.
+
+| Area | Existing baseline / remaining obligation | Stage |
 |---|---|---|
-| `vela_common` | Library tests in `primitive`, `capability`, `interop_type`, `diagnostic_render`, and `lib.rs`; Rust tables and constructed diagnostics. | Named scalar/tag/capability rows; retain exact renderer output and const-context proof. |
-| `vela_def` | Library `stable`/`script` identity and hash tests; fixed Rust vectors. | Named canonical path/hash rows, preserving independently authored expected IDs and typed identities. |
-| `vela_syntax` | Library parser/CST/AST/recovery/format tests; `tests/diagnostic_fixtures.rs`. | Named pure cases and owner-local file pairs; keep lossless bytes, typed recovery and exact output. |
-| `vela_hir` | Library attributes/source-ingestion/module-graph/script-method tests; `tests/integration.rs` wires conformance and removal modules. | Parameterize independent resolution permutations; share conformance source descriptions, not owner-sensitive results. |
-| `vela_analysis` | Library facts/hints/literals/validation/registry/flow tests; `tests/integration.rs` wires completion and conformance fixtures. | Named pure type/literal rows; preserve fixed-point, executable-owner, neighbor-fact and diagnostic assertions. |
-| `vela_registry` | Library registration/compile-view/type-hint tests. | Separate typed registration/rejection families; preserve collision kinds and complete projections. |
-| `vela_package` | Library identity/manifest/filesystem graph tests; `tests/architecture.rs`. | Parameterize pure identity/manifest inputs; keep filesystem/cycle/authorization and repository audits explicit. |
-| `vela_mir` | Library builder/verifier/input/effect tests and full MIR dumps; constructed malformed graphs. | Named homogeneous build/verify cases; retain typed structural, liveness, root and budget proof. |
-| `vela_bytecode` | Library compiler/semantic-input/linker/verifier/portable/schema/selection tests; `tests/instruction_layout.rs`. | Extend the pilot, share exact sources, group homogeneous cases; keep raw instruction/artifact mutation and layout assertions. |
-| `vela_vm` | Library execution/heap/collection/native/reflection tests; `integration`, `conformance`, `baseline_workload_contract` targets. | Named ordinary executions, numeric tags and failure rows; preserve GC/budget/session/cache/root proof and raw instruction inputs. |
-| `vela_engine` | Library source/package/runtime/registration/binding tests; `tests/integration.rs` wires args/reload/reflection/portable/removal tests. | Named ordinary execution/conversion cases and fresh preparation; retain installed/native/package/re-entry/state scenarios. |
-| `vela_hot_reload` | Library function/method/schema/state/package/module/trait ABI and policy/report tests. | Named narrow ABI families; preserve staging/owner/state/report sequencing and exact error payloads. |
-| `vela_host` | Owned structural-carrier library test; `tests/unsafe_boundaries.rs`. | Likely retain unchanged: one coherent roundtrip and a workspace unsafe-source audit are not redundant source suites. |
-| `vela_reflect` | Library registry/metadata/member/policy/script-type tests; `tests/value_access.rs`. | Named same-shape queries; share only equivalent constructors and retain permissions and before/after value observations. |
-| `vela_stdlib` | Library ID/manifest/reflection-native tests. | Named typed lookup subsets; keep whole-manifest uniqueness/completeness and registration/policy checks. |
-| `vela_stdlib_runtime` | Library binding-vector/implementation/ID checks against the stdlib manifest. | Likely retain manifest-wide loops: a fixed representative case list would lose automatic coverage of additions. |
-| `vela_macros` | Proc-macro library tests; `integration`, `interop_exports`, `ui` targets; Rust tokens and trybuild fixtures. | `rstest` for ordinary token/classification cases; **keep trybuild** pass/fail discovery and `.stderr` comparisons. |
-| `vela_bindgen` | Library source-to-schema/generated-Rust tests in `src/rust.rs`. | Named keywords/unsupported-boundary cases; retain deterministic generation and structural/source-bearing diagnostics. |
-| `vela_bindgen_compile_test` | `build.rs` plus shared `script.vela`, generated `OUT_DIR` bindings and library execution/reload tests. | Fresh setup helper if useful; keep build-time stubs, real runtime implementations and generated public calls distinct. |
-| `vela_language_service` | Feature-local library tests; shared JSON/Rust support; direct database/query observations. | Named independent input/line-ending/capability rows; preserve incremental/frozen/fresh and overlay lifecycle scenarios. |
-| `vela_lsp_server` | Library protocol and binary tests; `tests/stdio_transport.rs`; real request/notification/process execution. | Named independent wire/process inputs; keep lifecycle, cancellation, publication and termination assertions. |
-| `vela_cli` | Library metadata tests; real-binary `tests/run_scripts.rs`. | Named process-output/source-rejection cases; preserve flags, exit status, streams and source locations. |
-| `vela_playground_wasm` | Host-side compile/run/JSON tests in `src/lib.rs`; wasm32 release compilation. | Named rejection/output cases, preserving compile-versus-run routes; do not equate host tests or cross-compilation with browser execution. |
+| Semantic ownership and harness placement | Shared block-tail/conformance inputs already have distinct compiler/VM assertions; Engine and VM already aggregate integration modules. Record what each family proves (resolution, lowering/verifier, execution, public API), each target's boundary, and helper ownership/consumers. Do not run every input through every layer or move all integration tests under `src/`. | SF00, owning stages |
+| Formatter corpus reuse | Syntax, language-service and LSP tests already check selected idempotence cases. Add a small explicit retained-valid source selection with successful reparsing, second-format equality and selected executable before/after result equivalence. Keep malformed-source behavior, byte-sensitive cases and layout goldens separate. | SF02 |
+| Source/portable execution equivalence | Engine has a decoded-program execution smoke; bytecode has round-trip, structural corruption and old-format rejection tests. Add a small portable-supported set comparing source execution with encode/decode/link execution in a fresh receiving Engine, with equivalent arguments/settings and exact results or errors/effects. Codec round-trip alone is not execution equivalence. | SF04–SF06 |
+| Runtime modes and lifecycle endpoints | Existing scalar-plan tests pin exact budget failure points/overflow spans; re-entry tests cover roots, failure unwind and reuse. Preserve relevant mode selections, cleanup and effect ordering. Reload proof includes final-old-owner reclamation, no generation self-retention and isolated state for Runtimes sharing an image—not just old/new return values. | SF05–SF06 |
+| Actual CLI process boundaries | Existing process helpers use unbounded `Command::output()`. Add bounded process/output capture and isolated temporary ownership; extend actual dispatch proof to supported schema, path and filesystem routes, alongside full UI-C goldens. | SF08 |
+| Advertised executable inputs | All 14 example bins already execute. The four site playground programs are not directly tied to their own execution expectations by native WASM tests. Connect their actual source/entry names to existing compile/run routes, with independently authored results; do not assume similar-looking test programs are identical. | SF08, SF11 |
+| Grammar/query consumers | Tree-sitter corpus, highlighting checks and historical query execution already exist. Name the current retained-valid parse selection and execution of the six shipped Zed query files on an existing complete fixture, checking captures/ranges. Package-text checks alone do not prove query behavior. | SF11 |
+| Benchmark correctness preflight | Existing benchmark compilation/checksum plumbing is not a complete semantic oracle. Add untimed, low-iteration expected-result checks for the external-comparison workloads; selected-runtime execution failures must fail distinctly from unavailable optional runtimes. Preserve workload IDs and timing windows; no performance claim. | SF11 |
 
-### Repository-Level And Non-Rust Owners
+Implementation constraints for these obligations:
 
-| Area | Existing entrypoints/corpora | Disposition |
-|---|---|---|
-| `tests/fixtures` | Shared `.vela`/`.expected` diagnostics/completion, multi-module conformance, highlighting data. | Canonical shared data only when multiple owners really consume it; preserve logical source identities and expectations. |
-| `tests/lsp_matrix` | JSON corpora, Rust `support`, catalog, obligations, immutable baseline, migration journal and captures. | Reuse existing machinery; preserve IDs, contract hashes, pending proof and evidence levels. No second registry. |
-| `scripts/lsp-matrix` | Node tests, fixture/oracle/trace/provenance helpers, Rust suite discovery and matrix runner. | Keep Node ownership. Parameterized Rust names require exact linkage review, not a new runner. |
-| `examples` | Separate Cargo package; 14 real bins, `runnable_examples.rs`, `removed_entrypoints.rs`, bin-local tests. | Replace existing homogeneous registration macros with `rstest`; keep real processes and package/reload scenarios. |
-| `editors/vscode` | Node helpers, `@vscode/test-electron`, installed VSIX suites, separate native-input runner. | Reuse existing fixture materialization and short isolated-session paths; retain input/render/trust/process/provenance checks. |
-| `editors/tree-sitter-vela` | Generator, generated parser, corpus and query checks. | Keep Tree-sitter corpus semantics and runner; not a Rust parametrization target. |
-| `editors/zed` | Isolated Rust extension and Node package/cache/query validation. | Keep extension/package ownership; package validation is not installed Zed behavior proof. |
-| `site` | Node docs/syntax checks, independent Shiki scope goldens, Astro build and playground data. | Reuse data where semantics agree; keep existing JS/TS tooling. Site build is not DOM/browser runtime proof. |
-| `fuzz` | Isolated libFuzzer parser/portable-plan targets and raw malformed seeds. | Preserve fuzz infrastructure; deterministic regression cases supplement, not replace, campaigns. |
-| Benchmarks | Engine actor/memory/generation/reload/interop, VM baseline/comparison/scalar/MIR, language-service latency targets. | Keep build contracts separate from timed measurements; do not move performance probes into ordinary cases. |
-| `.cargo` / `.github` | `test-fast`, Rust/example CI, scheduled fuzz, VS Code OS/version jobs, pages/WASM and release jobs. | Reconcile filters, target/feature/OS coverage and commands after renames. Preserve existing final gates. |
+- Use ordinary review notes for ownership, not an executable catalog. A helper's
+  contract includes error phase, setup freshness and instrumentation; VM execution
+  helpers must not swallow compiler diagnostics. Do not cache a mutable global
+  Engine or consolidate deliberately different helpers just to reduce duplication.
+- Keep actual external-consumer, macro visibility, process and allocator contracts
+  at their current boundaries. Any justified target move must preserve feature
+  gates, ignored status, filters and assertions, and review newly concurrent global
+  state/temp paths. There is no target-count or test-runtime reduction quota.
+- Select relevant runtime modes explicitly, not a Cartesian product of all inputs,
+  GC settings, cache/profile settings and physical plans. Cleanup assertions must
+  respect legitimately retained results/state rather than require universal zero
+  allocations. Portable coverage does not add package metadata, retained MIR or
+  process-local generation encoding to the current format.
+- CLI helpers stay owner-local: finite deadlines and both-stream output caps,
+  kill/reap on failure, and atomic temporary-directory creation with collision and
+  unwind-cleanup tests. Keep exact status/goldens. Exercise `--print-schema` without
+  script execution, missing source files, controlled relative cwd and filesystem
+  roots at the script directory, including an unchanged outside sentinel. Do not
+  invent additional filesystem restrictions or CLI commands.
+- Reuse the actual site programs without a second authored copy or a new fixture
+  schema. Keep independently expected results and existing compile/run contracts.
+  Ordinary prose fences are not automatically executable test cases.
 
-## Concrete Cleanup Backlog
+### Separate Coverage Gap: Real Browser Execution
 
-These findings distinguish demonstrated input/setup repetition from possible
-redundant proof. No candidate authorizes deletion merely by appearing here.
+The site has docs/syntax/build commands but no actual browser execution gate.
+Native WASM tests and wasm32 compilation do not exercise generated JS glue, asset
+base paths or Playground UI behavior. Editor-owned `playwright-core` is present,
+but is not a site browser suite. Track a separately scoped finite smoke for actual
+Compile/Run of the four playground examples, displayed results/diagnostics and
+page/asset failures. Reuse an existing browser tool where appropriate; do not
+implement a browser framework, new workers/session APIs or new product features.
+This is **not an SF source-organization completion requirement** and must remain
+explicitly open rather than being marked passed by site builds or editor tests.
 
-| ID | Existing evidence | Action and retained proof |
-|---|---|---|
-| C01 | `.cargo/config.toml` skips `removed_service_macros_are_unavailable`, but `crates/vela_macros/tests/ui.rs` now declares `removed_macros_and_borrow_apis_are_unavailable`. | Confirm actual discovered names and repair the fast-lane filter. Do not accidentally omit UI from full validation. |
-| C02 | `examples/tests/runnable_examples.rs` defines `success_example!` and `output_contains_example!`. | Replace both registration macros with two ordinary named rstest families. Keep exact-output versus substring contracts distinct. |
-| C03 | Compiler/VM assignment, index-read, block-tail, break/continue and script-method-writeback programs are repeated literals. | Extract each exact shared input; keep opcode/operand checks in bytecode and results/effects in VM. |
-| C04 | Compiler/Engine named String/Array method programs are repeated, but compiler uses a minimal registry and Engine installs standard natives. | Share text, **not** the registry or execution boundary. Preserve named-argument order and type facts. |
-| C05 | HIR and analysis conformance tests both construct `conformance::core` / `conformance::reward` with SourceIds 1/2. | Share a source-set description or narrow test-only graph helper; keep facts and execution setup separate. `reward_module.vela` is not a standalone executable case. |
-| C06 | VM bytes/char/conversion source runners repeat standard compilation/link/native setup; existing test support already handles related paths. | Compare settings and reuse an existing fresh runner where equivalent; retain exact tags, error payloads and heap/budget assertions. |
-| C07 | Engine string tests, VM numeric conversions/bytes bounds, pure identity tables, macro classification and bindgen keyword tests have homogeneous orchestration. | Named cases with explicit expected values, errors and options; no universal callback-based assertion registry. |
-| C08 | LSP Rust and JS consumers already share Unicode/schema/selection corpora and independent marker goldens. | Consolidate only repeated transformations/materialization. Keep byte versus UTF-16 coordinate and service/protocol/editor proof separate. |
-| C09 | Provider and native-input editor runners repeat marker stripping and file-copy setup. | Reuse existing helpers or a narrow collision-checked append operation; do not weaken new-root materialization or session isolation. |
-| C10 | VM `program_execution.rs` has source/result-similar compiled and linked convenience-call tests. | Review the distinct public API paths and ownership/error observations before proposing removal. Identical return values are not enough. |
-| C11 | Names such as `service_impl.rs`, `task_targets.rs`, `service_path_tests.rs` and Provider-era tooling modules now own rejection/ordinary-trait proof. | Consider cohesive renaming and exact reference updates. Never delete removal rejection by historical filename or generic word. |
-| C12 | `standard_borrowed_native_dispatch.rs` concerns invocation-local access to VM-owned values. | Keep its safety proof; do not confuse it with removed caller-borrowed Rust injection. Rename only if it improves clarity. |
-| C13 | Diagnostic helpers currently normalize CRLF and trim trailing output; recovery/format tests assert authored bytes. | Freeze each owner's existing comparison policy first. Do not spread normalization to hide range/order/whitespace regressions. Any policy strengthening is a reviewed assertion change. |
+Do not import reference-only source-free SDK features, async/JIT/object APIs,
+a script-language test command, syntax-aware structural linter or its CI-only
+validation policy. Test proposals in reference docs are not implemented features.
+Vela's current default/affected-feature/codec/serde/platform gates and production
+dependency boundaries remain authoritative.
 
-### Representative Sources For C03/C04/C07
+## Current Inventory And Remaining Scope
 
-- Bytecode: `src/compiler/tests/expressions/assignments_and_access.rs`,
-  `block_tail_semantics.rs`, `loops_and_errors.rs`, `script_methods.rs`,
-  `literals_and_calls.rs` and `value_method_shapes.rs`.
-- VM: `src/tests/execution_core.rs`, `block_tail_semantics.rs`, `control_flow.rs`,
-  `script_methods.rs`, `evaluation_order.rs`, `numeric_conversions.rs`, `bytes.rs`
-  and `tests/conformance.rs`.
-- Engine: `src/tests/strings.rs`, `src/tests/native/compiler_options.rs` and
-  `src/runtime/inline_cache_method_tests.rs`.
-- Macro signatures: `src/export/signature/tests.rs`; bindgen: `src/rust.rs`.
+Audit baseline: `044e5afc7`; working tree was clean before this planning change.
+There are 23 root-workspace crates, 18 with dev-only `rstest`, plus separate
+examples/fuzz/editor/site owners. Root conformance currently contains 22 `.vela`
+files, eleven introduced by TO00/TO02. Existing file-backed inputs are preferred
+canonical origins; evidence-backed deduplication may change their location.
 
-The named-argument family must keep compiler slot projection and runtime trace
-`[2, 1]` as separate observations. The method-with/without-registry family must
-continue exercising both environments. These are input-sharing opportunities,
-not certified duplicate tests.
+The table's **signal counts are triage only**, not counts of programs/tests or
+completed migrations. They count tracked Rust files, including benches and mixed
+production/test files, containing this exact regex:
 
-## Organization Rules
+```text
+r#+"|"(pub )?fn |"let |"state |"struct |"enum |"(pub )?use |"(pub )?mod[ ]
+```
 
-### What Counts As The Same Input
+Method: enumerate `git ls-files`, select `crates/**/*.rs`, apply `rg -l` to those
+paths and group by crate. There are 420 matching files. Raw Rust strings/audit
+needles cause false positives; const/trait-only documents, expressions and assembled
+inputs can be missed. **A zero regex count does not close an owner.** SF00 follows
+source arguments and helper consumers as well as lexical searches.
 
-Compare source/token/raw-input bytes **and** logical filenames/SourceIds,
-package/module graph, registry/schema/native installation, compiler options,
-capabilities/reflection policy, budgets/GC settings, initial state, ordered events,
-load route, line ending and platform/process requirements.
+The following tables define review coverage, **not a mandatory extraction list**.
+Apply the suitability rules below to each family; no-change is allowed when
+supported by its readability/semantics rather than a blanket owner exemption.
 
-- Same text with different registries or lifecycle states remains distinct cases.
-- Same owner/environment/assertion shape can use one rstest function with named
-  cases and multiple meaningful observations per case.
-- Same bytes at different semantic layers share a fixture, not an oracle.
-- Reuse immutable prepared products within a compatible case only where creation
-  identity is not being tested. No global preparation cache or shared mutable
-  Runtime/heap/budget/registry/cache across independently isolated cases.
-- Fresh-versus-incremental, source-versus-decoded-artifact and old-versus-active
-  generations are required execution dimensions, not incidental duplicated work.
+| Owner | Signal files | Input families to review / likely disposition |
+|---|---:|---|
+| `vela_common` | 1 | Diagnostic renderer source documents and suitable output goldens; retain Rust diagnostics/spans. |
+| `vela_def` | 0 | Identity/hash unit data stays Rust; verify no hidden source consumers. |
+| `vela_registry` | 0 | Type-hint fragments and registry metadata stay typed unit data. |
+| `vela_package` | 3 | Graph source trees/manifests, including one-line dependency modules; exclude Rust audit needles. |
+| `vela_syntax` | 24 | Parser, AST/CST, recovery, removal rejection, formatting input/output; not just existing diagnostic fixtures. |
+| `vela_hir` | 11 | Source ingestion, resolution, defaults/recovery, imports and rejection modules; preserve logical identities. |
+| `vela_analysis` | 29 | Facts, flow, hints, ownership and finite formatted programs; literal spelling tables remain unit data. |
+| `vela_mir` | 28 | Builder/verifier source programs and helper-built variants; raw MIR stays constructed Rust. |
+| `vela_bytecode` | 40 | All compiler source families, semantic inputs and diagnostics; raw instruction/codec corruption stays Rust. |
+| `vela_vm` | 57 | Execution, conversions, bytes, collections, reflection, cache/GC/budget sources and static bench workloads. |
+| `vela_engine` | 63 | Native/state/re-entry, strings, package trees, reload versions, test source factories and bench sources. |
+| `vela_hot_reload` | 11 | Function/state/module/trait ABI generations; retain policy/report/activation sequences. |
+| `vela_host` | 0 | Owned-carrier tests and unsafe Rust audit remain; no invented Vela fixture requirement. |
+| `vela_reflect` | 3 | Script metadata and member-reordering versions; Rust values and source audits remain Rust. |
+| `vela_stdlib` | 0 | Manifest/ID/registration audits remain exhaustive typed Rust checks. |
+| `vela_stdlib_runtime` | 0 | Manifest-to-runtime coverage stays exhaustive, not representative file cases. |
+| `vela_macros` | 2 | Vela execution sources in integration tests; Rust token tests and trybuild `.rs/.stderr` remain. |
+| `vela_bindgen` | 1 | Source-to-schema/generation and rejection inputs; keyword strings remain unit data. |
+| `vela_bindgen_compile_test` | 0 | Existing `script.vela` retained; derived static reload version still needs review despite zero signal. |
+| `vela_language_service` | 63 | All feature documents, incremental/overlay/snapshot versions and static bench support modules. |
+| `vela_lsp_server` | 81 | Protocol, global-state, watcher/schema/lifecycle and stdio documents, including short malformed updates. |
+| `vela_cli` | 2 | Real-process success/rejection inputs, including removed-flag setup source; preserve filenames/coordinates. |
+| `vela_playground_wasm` | 1 | All compile/run/JSON input documents; preserve distinct entry routes. |
 
-### Use Existing Forms, Not A Framework
+Repository-level scope is equally binding:
 
-1. **`#[rstest]` + `#[case::name]`:** typed Rust inputs, expected values/errors,
-   explicit options and homogeneous assertion logic.
-2. **`#[rstest]` + `#[files]`:** curated source/expected directories with one
-   execution contract per family. A matched source is one independently named
-   test; pair its expected file by stem, not a second independent glob.
-3. **Existing goldens:** keep `.expected`, `.stderr`, JSON fixture oracles and
-   typed expectations already owned by the relevant subsystem. Do not invent
-   source-comment directives, a general expected-result JSON language or a new
-   bless/update mode. Normal tests only read reviewed expectations.
-4. **Ordinary `#[test]` scenarios:** stateful ownership, reload, re-entry, caches,
-   races, forged artifacts and whole-manifest/source audits. Parameterizing an
-   independent outer setting must not flatten their internal sequences.
-5. **Existing specialized runners:** trybuild, Node, test-electron/native input,
-   Tree-sitter, libFuzzer and benchmark harnesses stay with their current owners.
+| Owner | Remaining work |
+|---|---|
+| `tests/fixtures` | Reuse existing source/golden families and shared graphs. Do not relocate for visual uniformity alone. |
+| `tests/lsp_matrix` | Review JSON `files`, actions, phases and source-bearing oracles. Keep concise self-contained JSON; any selected extraction must coordinate Rust/JS readers. |
+| `scripts` / VS Code | Inline fixture/protocol/editor seed documents; preserve existing Node/provider/input runners and independent oracles. |
+| Examples | Adjacent source files already common; package-demo trees/updates and removal-test programs remain inline. |
+| Site | Four playground programs and complete highlighting probes; independent token/scope goldens stay authoritative. |
+| Benchmarks | Static Engine/VM/LS workloads, including Rust modules named `workload_sources`; genuine size generators remain explicit. |
+| Fuzz | Static portable-plan base program; retain malformed binary corpora, mutation logic and libFuzzer. |
+| Tree-sitter / Zed | Existing specialized corpus/package/query inputs remain; do not duplicate corpus source into parallel `.vela` files. |
+| CI / Cargo / docs | Discovery, skips, target/feature wiring, byte preservation and source packaging; ordinary documentation snippets are not automatically test cases. |
 
-Add `rstest.workspace = true` only as a dev dependency in participating root
-crates. Keep default features disabled. Do not build wrapper macros, an
-assertion-callback registry, custom discovery/expectation DSL, shared support
-crate, production serialization API or a new integration binary just to adopt it.
-A narrow ordinary helper or `rstest` fixture needs real consumers/responsibility
-and must construct fresh state; do not add forwarding layers for a single caller.
+The matrix alone has 218 tracked JSON files. A separate decoded-string scan found
+source-like declarations in 208; these are workload indicators, not exact document
+counts. Review nested lifecycle sources as well as `files`; neither extracting
+only easy fields nor extracting every JSON string is the goal. Existing raw-byte
+provenance covers the fixture subtree.
 
-The separate examples package cannot inherit root workspace dependencies without
-changing workspace ownership. If converted, declare the same dev-only version
-there and update its lockfile without joining workspaces or upgrading unrelated
-packages. Fuzz/Zed do not need rstest merely because they are in this repository.
+## Target Layout And Responsibilities
 
-### Fixture And Naming Policy
+The following layout is proposed, not a claim these new paths already exist:
 
-- Keep owner-local data under `crates/<owner>/tests/fixtures/<family>/`; existing
-  genuinely multi-owner sources may stay under `tests/fixtures`. Do not relocate
-  all data solely to make the tree visually uniform.
-- Shared input is canonical; owner-specific expected values, opcodes, diagnostics
-  and state observations remain explicit near their assertions.
-- Preserve bytes on initial extraction and demonstrate equivalence. Formatting
-  ordinary fixtures can follow separately after reviewing source spans, dumps,
-  logical filenames, expected coordinates and replacement-match counts. No loader
-  normalization or blanket golden regeneration.
-- Do not glob mixed parser/runtime diagnostic directories or dependency modules
-  as if each file were a standalone test. Check missing/orphan pairs and empty
-  selections through small owner-local inventory assertions, not a new harness.
-- A raw MIR/bytecode/artifact/native Rust input stays that kind of input; source
-  compilation does not replace a forged handle/register/offset/layout boundary.
-- Record old test identity to actual new discovered case names in the migration
-  review/commit notes, not a second global catalog. `#[case::name]` can generate
-  `case_1_name`; changing order can change exact names. Verify `--list`, filters,
-  explicit integration wiring, `.cargo` skips and linked evidence.
+```text
+crates/<owner>/tests/fixtures/
+  <feature>/<case>.vela
+  formatting/<case>.input.vela
+  formatting/<case>.expected.vela
+  diagnostics/<case>.vela
+  diagnostics/<case>.expected
+  reload/<scenario>/v1.vela
+  reload/<scenario>/v2.vela
+  reload/<scenario>/rejected.vela
+  packages/<scenario>/<package>/vela.toml
+  packages/<scenario>/<package>/src/...
+crates/<owner>/benches/fixtures/<workload>.vela
+
+tests/fixtures/conformance/<feature>/<case>.vela
+  # Genuinely cross-owner inputs; avoid cosmetic relocation.
+tests/lsp_matrix/fixtures/<family>.json
+  # Logical paths, ordered events, query data and independent oracles.
+tests/lsp_matrix/fixtures/sources/<family>/<phase>/<document>.vela
+  # Marked source documents, inside the existing provenance subtree.
+```
+
+Examples normally keep public scripts adjacent to their binaries; shared example
+inputs may have one example-local location. Example-only rejection inputs belong
+under `examples/tests/fixtures`. Site-only and fuzz-only inputs stay with those
+owners. Use the real source extension for external-language benchmark workloads,
+not `.vela` for everything.
+
+SF00 chooses one authored origin for each group selected for sharing.
+Required package/build and provenance reachability take precedence over cosmetic
+directory uniformity. Reuse or relocate an existing fixture when it removes actual
+duplication; update all consumers and hashing/packaging rules together. The two
+example reload binaries currently have byte-identical v1 scripts and need this
+review too. Repository-only test sharing is different from a distributed input.
+If independent distribution requires a physical copy, it must be a reviewed
+`distribution-copy` of one authored origin with an existing copy/byte-verification
+path, not another editable source. No symlink workaround or new packaging framework.
+
+- **Source files** own inputs selected for extraction: substantial/reused programs,
+  useful dependency/version trees and long source/golden pairs. Suitable concise
+  documents can remain next to their assertions in Rust/JS or existing JSON.
+- **Rust/JS tests** own registrations/options, logical names/SourceIds/URIs,
+  entry names/arguments, typed expected values/errors, orchestration and assertions.
+- **Existing goldens** own long formatted/rendered output. Do not replace typed
+  scalar tags, opcode checks, spans or error payloads with stringified snapshots.
+- **Existing specialized formats** remain authoritative for Rust compile-fail,
+  Tree-sitter source/tree corpora and malformed binary inputs. No parallel copies.
+
+Physical fixture paths must never silently replace logical compiler filenames,
+package/module identity or LSP URIs. Writable package/editor tests materialize fresh
+copies; no test modifies checked-in fixtures.
+
+## Source Classification And Deduplication Rules
+
+Review suitability before changing storage:
+
+- Prefer extraction for substantial multi-function programs, meaningful repeated
+  inputs, package/module trees, sizeable reload versions and long source/golden
+  pairs. Files should make source easier to read, edit or reuse.
+- Prefer inline for a short source closely coupled to one assertion, a small table
+  of syntax errors, a tiny before/after comparison or explicit byte/escape/EOL
+  cases where an external file hides the behavior under test. This can include a
+  complete one-line function, not only tokens.
+- Do not add dozens of tiny files or a reader/schema migration merely to meet an
+  extraction quota. Keep useful existing JSON corpora self-contained when that
+  representation is clearer. There is no automatic rule based on line count.
+
+Each source-bearing family receives a disposition in ordinary review notes; use
+location-specific rationale where needed, not a new case catalog or a mandatory
+comment on every short literal:
+
+| Disposition | Rule |
+|---|---|
+| `file-backed` | Chosen when a separate source file improves readability, editing, reuse or source-tree/golden organization. |
+| `retain-inline` | Short/local documents or existing self-contained JSON whose meaning is clearer beside assertions/events; record the family-level reason. |
+| `shared-input` | Same evaluated bytes can have one file with several consumers; registries/options/assertions may still differ. |
+| `unit-data` | Identifiers, literal spellings, isolated lexer tokens, Rust token streams, expected labels, diagnostic needles and marker-parser micro-inputs can remain inline. |
+| `generated` | Genuine bounded scale/combinatorial/mutation input whose construction is part of the test; name the generator and why files would lose coverage. |
+| `specialized-corpus` | Existing authoritative source/tree, trybuild or binary format; already file-backed without conversion. |
+| `distribution-copy` | Only for independently packaged routes that cannot share a path; name the single authored origin, packaging requirement and copy/equality verification. Never a second canonical source. |
+| `not-test-input` | Production text, documentation or audit needle; explicitly exclude rather than counting it as migrated. |
+
+A small fixed `format!` table can remain when it clearly exposes the varying
+expression and avoids duplicated wrappers; it need not become one file per row.
+Do not use string factories to hide large programs that would be clearer in files.
+Partial editor documents and complete functions both use the same suitability test.
+
+**Lifecycle orchestration and source storage are separate choices.** Review before,
+after, incompatible and removed-state versions together. Prefer version files for
+substantial scenarios; a tiny adjacent `return 1`/`return 2` pair can be clearer
+inline. Intentional replacements retain exact match-count/change-scope checks.
+Do not flatten old/new-generation proof into result-only rows, and do not retain
+large duplicated scripts merely because their tests are stateful.
+
+Source equality alone does not justify a global tiny fixture or test deletion:
+coincidental `fn main() { return 1; }` inputs in unrelated scenarios may stay local.
+Share meaningful repeated inputs when it improves ownership and maintenance.
+Combine orchestration only
+when source bytes, logical identities, graph, registration, load route, options,
+permissions, budgets, initial state and ordered events are equivalent. Retain
+source-vs-artifact, old-vs-active, registry-vs-no-registry and service-vs-protocol
+observations. No global mutable Runtime/registry/cache or hidden setup cache.
+
+Use the existing compile/run helpers first. Within one compatible case, compile
+once and retain all meaningful observations where compilation count/identity is
+not itself tested. Do not merge different programs into a larger artificial
+program or replace exact Rust assertions with a universal `return true` contract.
+Remove a duplicate helper/test only after mapping every assertion and public path.
+
+## Using Rstest Without A Framework
+
+1. **`#[case::name]`:** use typed inline data or `include_str!` according to the
+   suitability decision, especially when expected values/errors/options vary.
+   Preserve current named identities where possible. Moving a large literal into
+   `const &str` alone is not extraction.
+2. **`#[files]`:** for one homogeneous contract over a curated directory. Pair
+   expected files by stem; do not create a Cartesian product of source/output globs.
+   Keep dependency modules and reload versions outside standalone-case globs.
+3. **Ordinary `#[test]`:** keep lifecycle, raw artifact, race and exhaustive audit
+   scenarios; independently choose inline or file-backed input for readability.
+4. **Small owner-local inventory assertions:** reject missing/orphan expected
+   pairs, empty discovery and accidental extra inputs. These inspect filenames;
+   they are not a runner, registry, callback table or expectation language.
+
+Adding/deleting a globbed fixture must change actual `--list` output without a
+clean build. Verify this in SF01 using a temporary test input that is then removed.
+If the current macro/Cargo combination does not invalidate discovery, add a minimal
+owner build-script `rerun-if-changed` for that directory, integrating with any
+existing build script. Do not generate tests or build a custom discovery system.
+Existing named include cases require explicit case registration by design.
+
+No new support crate, wrapper macro, generalized result JSON, source-comment
+expectation directives, bless mode or snapshot dependency. Keep rstest dev-only,
+with default features disabled; no dependency adoption quota or unrelated upgrades.
+
+## Required Language UI Test Deliverable
+
+This is an explicit deliverable of the redesign, not an optional extraction
+candidate. Here **UI means user-visible language diagnostics and CLI output**,
+not graphical editor interaction. Rust macro trybuild tests remain a separate
+boundary suite and do not satisfy this deliverable. Suitable golden families
+are required; that does not require converting every diagnostic unit test.
+
+### Existing Baseline And Gap
+
+- `crates/vela_syntax/tests/diagnostic_fixtures.rs` already compares one parser
+  source/rendered-output pair from `tests/fixtures/diagnostics`.
+- VM diagnostic fixtures cover division-by-zero stack rendering and reflection
+  lookup candidates; hot-reload tests have an ABI-report golden. Preserve these
+  specialized environment/sequence assertions instead of putting them into one
+  generic parser runner.
+- HIR/analysis/compiler already have detailed typed diagnostic assertions, such as
+  `crates/vela_bytecode/src/compiler/tests/diagnostic_contracts.rs`. They are not
+  yet organized into a discoverable source/rendered-expectation UI corpus.
+- `crates/vela_cli/tests/run_scripts.rs` runs actual processes. Success output is
+  compared exactly; diagnostic cases mostly check failure plus stderr fragments.
+  They do not yet pin complete stdout/stderr and the exact exit code.
+
+The new work builds on these tests; it is not a claim that diagnosis or error
+coverage was previously absent.
+
+### Three Required Layers
+
+| Deliverable / owning stage | Required corpus and contract |
+|---|---|
+| UI-P — Parser, SF02 | A nonempty source/golden family for existing syntax errors, recovery and removed-syntax diagnostics. Preserve lossless/recovery assertions and validate diagnostic count/order/code/severity/spans/labels as applicable before comparing complete rendered output. Include valid-input control coverage; successful parsing cannot accidentally satisfy an error golden. |
+| UI-S — Semantics, SF03/SF04 | Source/golden families for existing name/import/visibility, call/type-contract and literal-range errors at their actual HIR/analysis/compiler boundary. Keep positive controls, logical source/module identities and explicit bare/registered or multi-module setup where needed. Do not flatten all failures into `is_err()` or route every test through Engine. |
+| UI-C — CLI, SF08 | Real-process source/output cases for success, compile error, runtime error with stack and removed-source/flag rejection. Compare full stdout, full stderr and exact exit code, retaining existing source locations and forbidden obsolete guidance. Keep argument/flag errors distinct from errors obtained by compiling a script. |
+
+Use existing supported behavior only. Do not add a lint command, warning policy,
+JSON diagnostic output mode or CLI options to imitate a reference repository.
+`--print-schema` is not a JSON-diagnostics lane. If a currently supported case is
+platform-dependent, make the expectation difference explicit rather than weakening
+all comparisons.
+
+### File And Runner Organization
+
+Proposed locations for new owner-local cases:
+
+```text
+crates/vela_syntax/tests/fixtures/ui/parser/<case>.vela
+crates/vela_syntax/tests/fixtures/ui/parser/<case>.expected
+crates/vela_hir/tests/fixtures/ui/semantic/<case>.vela
+crates/vela_hir/tests/fixtures/ui/semantic/<case>.expected
+crates/vela_analysis/tests/fixtures/ui/semantic/<case>.vela
+crates/vela_analysis/tests/fixtures/ui/semantic/<case>.expected
+crates/vela_bytecode/tests/fixtures/ui/semantic/<case>.vela
+crates/vela_bytecode/tests/fixtures/ui/semantic/<case>.expected
+crates/vela_cli/tests/fixtures/ui/<case>.vela
+crates/vela_cli/tests/fixtures/ui/<case>.stdout
+crates/vela_cli/tests/fixtures/ui/<case>.stderr
+```
+
+These are proposed paths, not newly created files. Reuse existing shared inputs
+where appropriate; do not copy the existing root diagnostic corpus just to make
+names uniform. A multi-module case can be a small source tree with one expectation
+for the complete ordered diagnostic set, not a glob that treats dependencies as
+separate cases. Source-less CLI argument errors need not have dummy scripts.
+
+- Reuse owner test targets/module wiring and current compile/render/process
+  helpers. Use `rstest #[files]` for a truly homogeneous corpus; named cases with
+  `include_str!` for varying environments, arguments and expected status codes.
+  Store exact CLI exit codes and arguments as typed Rust case data, not a new
+  metadata/command DSL. Empty stdout/stderr expectations must be explicit.
+- Add narrow owner-local pair/inventory tests: missing/orphan expectations, empty
+  corpus, unexpected inputs and undiscovered cases must fail. Verify automatic
+  add/delete discovery without a clean build for globbed families. For explicitly
+  named cases, verify registration/inventory consistency and nonempty selection.
+- Keep Vela's existing `.expected` format and typed assertions; no generic
+  `.diagnostics.json` schema, custom harness, snapshot dependency or bless mode.
+- Goldens are reviewed files, never generated from the implementation during
+  comparison. A malformed span must fail a typed range check, not disappear during
+  rendering and match an anonymous diagnostic. Preserve related labels and notes.
+- Make subprocess output deterministic through controlled cwd, logical names and
+  actual supported settings. If needed, replace only the known temporary-root
+  prefix with a fixed token using an owner-local helper. Do not strip arbitrary
+  paths, lines, whitespace, ordering or messages to obtain matches.
+- Keep existing diagnostic CRLF/trailing-newline normalization local and explicit.
+  New golden lanes state their exact comparison policy. Any change from substring
+  checks to full output/status checks is intentional UI coverage strengthening,
+  reviewed separately from byte-preserving source extraction.
+
+### UI Acceptance
+
+UI-P, UI-S and UI-C each require discovered, independently runnable passing cases
+and their inventory checks; macro trybuild or editor-provider passes cannot replace
+any of them. Demonstrate that a wrong expected message/span, an extra diagnostic,
+a missing output file and a wrong CLI status fail the relevant check, then restore
+reviewed fixtures. Retain focused typed unit tests and VM/reload report tests that
+establish additional contracts. Record actual test names/targets and commands in
+[validation.md](validation.md) when implementation lands, not placeholder commands
+for suites that do not yet exist.
+
+## Exact Bytes, Goldens And Package Inputs
+
+Initial extraction must preserve **evaluated bytes**, not the appearance of the
+Rust/JSON literal: raw-string leading/trailing newlines, cooked escapes, Rust line
+continuations, JSON escapes, indentation, NULs, Unicode, tabs and missing EOF newline.
+Check old/new length and bytes before deleting the literal; a UTF-8 byte hash may
+be recorded in review, but hash equality is not a replacement for assertion review.
+
+- No automatic trimming, reindentation, formatting or newline insertion during
+  extraction. No blanket golden regeneration or normalization in new readers.
+- File readers use strict UTF-8 with matching Rust/JS rejection of invalid bytes,
+  not replacement characters from permissive Node reads. An authored BOM remains
+  source content rather than being silently stripped. Existing reader parity tests
+  must cover invalid UTF-8, BOM, NUL, mixed EOL and missing final newline; malformed
+  byte inputs belong in decoder fixtures, not a lossy string representation.
+- Existing diagnostic helpers' CRLF/`trim_end()` policies stay local; formatter,
+  lossless parser, source slices and coordinate tests retain exact comparison.
+- Protect ordinary LF fixtures with scoped Git attributes. Use byte-preserving
+  exceptions for authored CRLF/mixed-EOL files; check with `git check-attr` and
+  byte reads. There is no current tracked `.gitattributes`; do not renormalize the
+  whole repository. Editor formatting must not silently rewrite sensitive files.
+- Existing intentional LF-to-CRLF variants may remain generated from one canonical
+  LF input. Do not double-convert already-CRLF data or remove independent EOL proof.
+- Recheck `.find`/`.rfind`, match counts, span slicing, caret constants and rendered
+  filename/line/column assertions. Storage-path changes must not update oracles
+  merely to hide a changed logical name.
+- Static manifests/package trees can be fixtures too. Preserve relative dependency
+  paths, insertion order, platform path tests and isolated mutable copies.
+- Source needed at Cargo package/build time must be included in that owner's
+  package and tracked by its build dependencies. Verify package contents and the
+  affected build/run route from an isolated packaged tree, not just the checkout.
+  Cross-owner test sharing must not accidentally make published production code
+  depend on repository test data.
+
+## Shared Tooling JSON: Coordinated Migration, Not Shadow Files
+
+Current `tests/lsp_matrix/support/mod.rs` uses `Spec.files: BTreeMap<String, String>`
+and `Action.source: Option<String>`; JS `FixtureWorkspace` also interprets these
+values as source text. Putting a filename into a string field would compile the
+filename, not load it. The current corpus README explicitly relies on JSON escaping
+for Unicode/EOL. This requires an explicit test-data change, not textual replacement.
+
+First decide whether extraction has concrete value for a family. Short sources
+whose relationship to actions/oracles is clearer in JSON may remain there; adding
+a loader/schema is not justified just to eliminate inline text. If no worthwhile
+family is found, SF10 records a no-change outcome without introducing new readers.
+
+For families selected for extraction, the proposed representation is an explicit
+`{"sourceFile":"sources/<family>/<phase>/<document>.vela"}` reference, relative
+to its owning fixture JSON. Resolve only declared source fields through existing
+Rust/JS fixture readers, before marker parsing/materialization. No implicit path
+strings, arbitrary recursive object interpretation or generalized includes.
+
+- JSON continues to own logical paths, graph topology, action ordering, phase/query
+  identities and independent coordinate/behavior oracles.
+- Review initial files, change/write payloads, phase files, `diskSource`/`openSource`,
+  recovery/repaired and post-edit expected documents. Extract only suitable inputs;
+  partial edit text, small source/event sequences and parser micro-inputs may remain.
+- If extraction is justified, SF10 specifies the accepted fields/version transition
+  and ports a selected family across all consumers. A document has one canonical
+  representation: inline text or a file reference, never a duplicate fallback.
+  Inline and referenced forms can coexist for different documents by design;
+  retained inline source is not obsolete compatibility to remove.
+- Missing files, wrong types/unknown reference fields, traversal, absolute/drive
+  paths, backslashes, symlink escape and conflicting source forms fail identically
+  in Rust and JS. Fixture storage containment is distinct from logical-path checks.
+- Compare decoded marked bytes, stripped text, marker positions and full expected
+  responses before/after. Goldens remain authored independently of production APIs.
+- Keep sources inside the existing recursively hashed fixture subtree. Review all
+  provenance consumers, including direct `include_str!`/JSON readers and specialized
+  oracle modules; updating only the shared `Spec` parser is insufficient.
+
+Path-bearing hashes change even for byte-identical extraction. Raw-byte provenance,
+normalized contract digests and executable/server identity are different evidence.
+Preserve 1,327 semantic / 1,477 execution IDs, immutable baselines and pending proof.
+Keep B02–B08 reopening and native-input gaps; use existing reviewed migrations where
+contracts change. Recapture affected proof under the new input fingerprints—never
+rewrite old captures or promote provider proof to physical Input/Render acceptance.
 
 ## Execution Stages
 
-Each stage consists of small, coherent, independently verifiable changes, not
-one crate-wide search-and-replace. Add a dev dependency with its first actual
-conversion. Update related test wiring, names, filters, docs and evidence in the
-same owning change; commit only when authorized by the execution request.
+These are new stages, not renamed claims that TO00–TO09 already completed them.
+The SF00 census covers [runtime/compiler](test-input-census-runtime.md),
+[tooling/matrix](test-input-census-tooling.md) and
+[public/repository consumers](test-input-census-consumers.md). Each stage reviews its whole assigned scope and closes the selected
+changes, not merely a sample of easy cases; it does not externalize every input.
+On later implementation authorization, preserve the requested stage commit
+boundary; coordinate disjoint owners and assign each shared fixture one writer.
 
-### TO00 — Baseline, Ownership And Pilot Acceptance
+| Stage | Work and concrete starting points | Required exit |
+|---|---|---|
+| SF00 — Full census | All source entrypoints/helpers across the owner tables; `#[case]`, ordinary tests, constants, format/replace/concat/include, filesystem writes, JSON/JS/TS, build/bench/fuzz. | Every source-bearing location has owner, route, consumers and a disposition; each duplicate group selected for sharing has a canonical origin and packaging/provenance obligations; reviewed independent copies may remain independent. Record family proof responsibilities, target boundaries and helper contracts/freshness. Unresolved rows remain open. Use ordinary review notes, not a new executable catalog. |
+| SF01 — Representative decisions | Review all three Engine string cases, a formatter input/output family and a retained-closure scenario. Demonstrate both useful extraction and justified inline retention; use glob discovery only for a suitable family. | Complete each selected change; prove bytes/assertions and applicable discovery. A short inline case and a substantial file-backed case both show the intended policy. These samples do not finish an owner. |
+| SF02 — Source syntax, rendering and UI-P | Review common renderer and syntax input families; implement the required parser UI corpus and inventory checks. | UI-P passes with complete output and retained typed/recovery assertions; selected formatter corpus reparses, is idempotent and preserves executable results. Suitable extraction and intentional inline retention accounted for. |
+| SF03 — Semantic graphs and UI-S | Review HIR/analysis/package source families; implement semantic UI cases for resolution/import/visibility at their actual owners. | Semantic UI corpus/inventory and positive controls pass; SourceId/package/path/order and typed facts remain unchanged. Short local unit cases can stay inline. |
+| SF04 — MIR, compilation and UI-S completion | Review compiler inputs and fixed variants; complete compiler-boundary UI cases for call/type-contract and literal-range errors. Coordinate shared consumers. | All UI-S owner lanes pass without flattening errors; raw MIR/bytecode/codec proof and lowering/runtime assertions retained. Select portable-supported equivalence cases with SF06 without expanding the format. |
+| SF05 — VM and value reflection | Review VM suites and script reflection documents, including numeric/bytes cases; audit host/stdlib/runtime unit-data dispositions. | Large/shared inputs extracted where useful; short cases may remain beside typed expectations. Exact tags/bits/errors, selected mode comparisons, budget charges, effects and cleanup sequences retained. |
+| SF06 — Engine and reload | Review Engine/hot_reload scenarios, source factories and rejected versions; extract substantial/shared generations and package trees. | Selected scenarios improved without fragmenting tiny version pairs; old executable/state/native owners and rejected-activation identity proof unchanged. Preserve final-owner reclamation, self-retention rejection and shared-image state isolation; add the selected source/decoded execution comparisons. |
+| SF07 — Rust boundary tools | Macro integration Vela inputs, bindgen schema inputs and compile-test reload version; preserve Rust token/unit/trybuild data. | UI stderr/native/value/generated-call proof passes; build script/source-package dependencies include fixtures. |
+| SF08 — Public routes and UI-C | Implement real CLI UI source/output families with exact exit codes and pair checks; organize suitable WASM/example inputs. | UI-C full stdout/stderr/status checks pass with bounded processes/output and isolated temp ownership; actual schema/path/filesystem routes covered. All 14 example bins, source spans and distinct compile/run routes remain covered; coordinate actual site inputs with SF11. |
+| SF09 — Tooling-local documents | Review language-service/LSP feature and lifecycle sources, including malformed updates. Extract substantial/shared documents; retain concise local edits when clearer. | No flattened sequences or changed logical URIs; each selected move preserves bytes and linked identity/evidence mapping. |
+| SF10 — Shared matrix corpus | Review source-bearing JSON families for actual readability/reuse gains before changing readers. Migrate only justified selections with all their consumers; keep useful self-contained JSON. | Either a justified no-change result or validated reader/byte/marker/provenance migration. No shadow sources; inline source is supported where suitable. |
+| SF11 — Other repository inputs | Script/editor seeds, site programs/probes, static benchmark and fuzz base sources; audit existing grammar/Zed corpora. | No missed source modules/templates; actual site inputs execute with independent results, current grammar/query checks run, and external-comparison semantic preflight fails wrong results. No file IO in timed loops; package/build paths and specialized runners still work. Real-browser smoke remains separately scoped. |
+| SF12 — Residual and acceptance audit | Reconcile reviewed families, selected extraction/sharing work, inline-retention decisions, references, test identities, filters/CI and docs. | Selected work and all three required language UI layers complete; remaining inputs have sensible reviewed storage. No shadow copies, unused fixtures, missing pairs or lost assertions. No zero-inline target; gates/evidence reported separately. |
 
-Scope: this inventory, Cargo/test target wiring, the existing pilot, `.cargo`
-filters and links into the plan. The inventory is recorded; executable baseline
-capture and repository migration remain pending.
+Stages SF02–SF09 may be developed in parallel only with disjoint writes; shared
+source changes and matrix readers require explicit coordination. Do not batch
+unrelated assertion strengthening or language fixes into source relocation.
 
-- Select bounded initial families; record owner/input/route/assertions and existing
-  helper consumers. Mark each family `parameterize`, `share-input`, `share-setup`,
-  `retain-scenario`, `retain-audit` or `duplicate-review` in ordinary review notes.
-- Discover exact test names and feature gates; resolve C01. Preserve the pilot's
-  four independently runnable cases and unchanged input bytes.
-- Do not treat root `Cargo metadata` as an executed coverage baseline or claim
-  all tests were classified from this document's representative sample.
+## Completion And Verification
 
-Exit: supported target map, nonempty selected before/after case lists, reviewed
-old/new identity mapping and no custom framework. Pilot status is explicit.
+Each owner/family review answers:
 
-### TO01 — Foundations And Front-End
+1. Which source families were reviewed, including helpers and lifecycle versions?
+   Why does each selected extraction/sharing change improve readability or reuse,
+   and which concise/local/byte-sensitive inputs are better retained inline?
+2. Which identical source copies were removed? Which environments or public paths
+   must remain separate? What setup was consolidated without sharing mutable state?
+3. Are decoded input bytes and independent expected outputs unchanged? Does every
+   old assertion, failure phase, cleanup check and logical identity still exist?
+4. Which actual discovered test identities changed? Update real filters/catalogs,
+   preserve integration aggregators and require nonempty exact selection.
+5. Do files have real consumers, pairs match, and newly added/deleted cases invalidate
+   discovery? Does packaging include all inputs required by each retained route,
+   with one authored origin and verified distribution copies only where necessary?
+6. Do UI-P/UI-S/UI-C each have an actual source/output corpus, correct owner route,
+   inventory checks and full comparisons, without weakening existing typed tests?
+7. Are the additional structural comparison obligations closed at their owning
+   stages, distinguishing preserved proof from intentionally added coverage?
+8. Which commands passed, timed out or could not run? Which evidence became stale?
+   Keep the separately scoped browser gap visible; builds are not browser proof.
 
-Owners: common, def, registry, package, syntax, HIR and analysis.
+**Completion means reviewed, useful organization—not zero inline source.** Finish
+identified worthwhile extraction/sharing work and preserve deliberate inline tests.
+Do not use a blanket owner exemption to ignore large repeated programs, or force
+small clear tests into files to improve a grep score. There is no fixture-count or
+extraction-percentage target and no promised rstest speedup; expanded named-case
+counts are not a regression by themselves.
 
-- Start with typed scalar/hash/name/literal/manifest tables and independent graph
-  insertion-order permutations; retain complete expected types and errors.
-- Extract owner-local formatter/diagnostic pairs only where one contract fits;
-  preserve existing exact bytes/recovery/typed diagnostic observations.
-- Share conformance source descriptions (C05), not an SDK Engine or runtime with
-  parser/HIR tests. Keep package filesystem/identity scenarios explicit.
+For each implementation stage: run current focused baseline tests, preserve byte
+and assertion mappings, then owner tests/default+affected feature lanes, discovery,
+formatting and scoped Clippy. Include reader/invalid-reference/empty-pair tests as
+needed. Follow the full Rust/example/WASM/site/Node/editor/bench/fuzz gates in
+[validation.md](validation.md) at closure or the owning CI lane; do not import a
+different repository's validation policy. Bounds must be finite and timeouts remain
+recorded. Partition results require exact discovery/feature/binary reconciliation
+and never become an aggregate exit-zero claim.
 
-Exit: each former row remains independently selectable; Unicode/CRLF, ordering,
-source/executable identity and positive/rejection boundaries remain covered.
+Installed editor results require fresh identical input/server/platform provenance;
+physical Input/Render and OS obligations remain distinct. The existing missing
+observer-extension prerequisite is tracked in [blocked.md](blocked.md), not solved
+by fixture migration. A source reorganization can be implemented while an external
+gate is pending, but neither the gate nor new evidence may be marked accepted.
 
-### TO02 — MIR, Compiler And Artifact Owners
-
-Owners: MIR/bytecode, with paired VM consumers only when extracting shared input.
-
-- Extend the pilot to C03/C04; keep lowering, operand/effect and runtime oracles
-  with their owners. Use existing compiler/test support first.
-- Split homogeneous verifier build-success/source-rejection loops into named
-  cases; keep special tuple-arity, source-span and error-phase assertions.
-- Keep raw malformed MIR, linker/bytecode verification, checksum-valid invalid
-  artifacts, physical selection and format rejection as explicit boundary tests.
-
-Exit: source extraction equivalence plus existing MIR/root/budget/selection,
-link/codec and rejected-input proof. No production dependency or format change.
-
-### TO03 — VM, Reflection And Standard Values
-
-Owners: VM, reflect, stdlib, stdlib_runtime and host.
-
-- Named ordinary executions, numeric conversion/tag/bit-pattern cases and bytes
-  bounds; separate compile rejection from runtime traps in conformance.
-- Consolidate equivalent fresh standard runners after checking existing helpers.
-- Parameterize typed metadata/ID lookup subsets, not one erased ID/expectation
-  table. Keep manifest-wide completeness/uniqueness and unsafe audits.
-- Retain GC roots, memory accounting, budgets/call depth, permissions, exact
-  owner/cache/dispatch and synchronous callback sequencing as explicit scenarios.
-
-Exit: original scalar tags/float bits/error payloads and cleanup observations
-remain; host/stdlib_runtime may have a documented no-change outcome.
-
-### TO04 — Engine, Reload And Generated Bindings
-
-Owners: Engine, hot_reload, bindgen and bindgen_compile_test.
-
-- Start with Engine strings/ordinary conversions and bindgen keywords/narrow
-  diagnostic families. Share exact compiler/Engine inputs without merging setup.
-- Reuse fresh constructors for equivalent cache/Engine/registration preparation;
-  retain each injected cache corruption or binding policy observation.
-- Reload before/after pairs can share files. Assert every source replacement's
-  intended match count; do not let formatting silently turn reload into a no-op.
-- Preserve exact old closure code/state/native owner, active-image rejection,
-  runtime affinity, native host effects, package declarations/capability expansion,
-  binding ceilings and error unwinding. Build-time stubs remain distinct.
-
-Exit: existing old-generation, state, re-entry and authorization regressions pass
-without global caches or flattening lifecycle tests into result-only rows.
-
-### TO05 — Macros And Rust Boundary Tests
-
-Owner: macros plus affected generated-binding consumers.
-
-- Use named ordinary TokenStream/classification cases with exact diagnostics.
-- Keep trybuild's existing pass/fail globs and reviewed `.stderr` fixtures; do
-  not wrap each compile-fail file in a new rstest or custom registration layer.
-- Preserve removed-feature compile-fail/doctest coverage and owned-value/native
-  macro execution. Review historical module/runner names with exact references.
-
-Exit: ordinary macro cases and the existing UI/doctest lanes remain meaningful;
-fast-lane skips and complete gates use actual current names.
-
-### TO06 — Language Service And LSP Protocol
-
-Owners: language_service, lsp_server and their shared matrix Rust support.
-
-- Convert independent fixture/line-ending/cursor/capability rows, not ordered
-  edit/save/close/schema/cancellation sequences into a Cartesian product.
-- Reuse existing pure marker/schema/event transformations; keep independent
-  byte/UTF-16 goldens, source IDs and database versus wire adapters.
-- Preserve repeated queries and old snapshots when they prove cache invalidation,
-  immutability or fresh equivalence. Keep real stdio frames/deadlines/cleanup.
-- Review exact catalog/gate/rust-suite identities before renaming a linked test;
-  land mapping changes with test changes, using existing migration machinery.
-
-Exit: nonempty discovery and exact results in service, protocol and stdio owners;
-unchanged contract or explicit reviewed migration; no accidental proof promotion.
-
-### TO07 — CLI, Browser Boundary And Examples
-
-Owners: CLI, playground_wasm and the separate examples package.
-
-- Replace C02 macros with rstest named exact-output and contains-output families.
-  Keep direct example binaries and package/reload/state scenarios.
-- Parameterize real CLI success/rejection cases, preserving complete exit and
-  stream assertions. Removed source and removed CLI flags are different cases.
-- Parameterize WASM compile/run/JSON expectations without collapsing the entry
-  routes; retain wasm32 release checking. Browser UI loading remains separate
-  evidence, not a capability claimed by host-side Rust tests.
-
-Exit: actual processes still run, every retained example target is represented,
-feature/manifest/lock boundaries remain intact and no browser proof is invented.
-
-### TO08 — Non-Rust Consumers And Fixture Housekeeping
-
-Owners: scripts, editors, site, matrix, benchmark and fuzz data.
-
-- Keep current Node/Tree-sitter/editor/fuzz/benchmark frameworks, not rstest ports.
-- Reuse collision-checked materialization while preserving existing new-root
-  guarantees, logical names, isolated workspace-symbol/selection sessions, private
-  profiles and byte-based macOS socket limits.
-- Remove proven unused helpers/orphan data; keep source-backed and metadata-only
-  schema setup distinct. Review stale filenames/comments by current contract,
-  not blanket replacement of words such as `host`, `provider` or `task`.
-- Preserve package/grammar/highlighting/parity tests and independent scope goldens.
-  Keep malformed fuzz seeds and actual benchmark measurement methodology.
-
-Exit: affected native/provider/command/input/render boundaries and provenance
-checks still exist; no stale capture is relabeled current because helpers moved.
-
-### TO09 — Repository Acceptance And Documentation
-
-Scope: all changed owners, Cargo manifests/locks, CI/aliases, fixture inventory
-and current testing guidance. This is not a second full implementation pass.
-
-- Every audited family has a justified disposition, including intentional
-  no-change outcomes. Remove obsolete macro/helper wrappers only after consumers
-  and assertions are accounted for.
-- Review old/new independently selectable cases and exact linked identities;
-  no lost expectation, empty glob, stale skip filter or dangling integration mod.
-- Final default/all-feature/serde/artifact-codec, example, WASM and platform jobs
-  retain their meaning. Dependency updates are dev-only and unrelated locked
-  package versions remain unchanged where possible.
-- Update the durable testing strategy/validation entrypoints, archive phase
-  ledgers if needed, and record software results separately from strict/native
-  evidence gaps. Do not mark this plan complete from code formatting alone.
-
-Exit: final gates below pass or explicit genuinely external/evidence limitations
-remain recorded without claiming their acceptance.
-
-## Required Before/After Review For Every Family
-
-A short review/commit note must answer:
-
-1. Which existing semantic contract and owner does each old test establish?
-2. Are inputs byte-identical, or do installation/options/IDs/events differ?
-3. What setup is actually duplicated, and what must remain fresh/independent?
-4. Where is every old assertion, error phase, side effect and cleanup check now?
-5. What actual generated names replace the old names, and which filters/catalogs
-   consume them? Does a selected test command execute a nonzero expected set?
-6. For a proposed deletion, which retained test establishes the **same complete
-   contract and public path**? If none is demonstrated, retain it.
-7. Which targeted commands ran and what do their results prove—not prove?
-
-Do not create a permanent parallel case database to collect these answers.
-Existing matrix catalogs remain authoritative where they already own evidence.
-
-## Evidence Preservation
-
-The existing LSP inventory retains **1,327 semantic / 1,477 execution IDs** and
-an immutable execution baseline; 158 migrated proof records remain pending.
-B02–B08 are reopened, with B00/B01/B09 historical acceptance preserved and B02
-as the current native checkpoint (1,423 execution obligations remain).
-
-- Test renaming/link changes must use existing reviewed old/new identity/hash
-  records where required; never delete pending obligations to improve counts.
-- Passing a renamed historical test does not certify changed contracts.
-- The previous 27 installed checks passed only in matching-provenance partitions;
-  aggregate npm timed out. New helper/fixture inputs need fresh provenance before
-  reusing that proof. Existing merge validation must remain strict.
-- Service, protocol, installed-provider, command, physical Input/Render and OS
-  coverage are independent. This refactor is not permission to declare strict
-  or Windows/native acceptance complete.
-
-## Validation And Completion
-
-Ordinary iterations run nonempty selected owner families, generated-case listing,
-formatting and affected Clippy. Full gates remain required at repository closure
-or in the owning CI lane; phases are not permission to skip them.
-
-Pilot naming/selection examples (commands for future execution):
-
-```sh
-cargo test -p vela_bytecode --lib compiler_lowers_record_writeback --all-features --locked -- --list
-cargo test -p vela_vm --lib runs_compiled_record_writeback --all-features --locked
-cargo test -p vela_bytecode --lib compiler::tests::expressions::assignments_and_access::compiler_lowers_record_writeback::case_1_nested --all-features --locked -- --exact
-```
-
-Use actual discovered names for later families, rather than copying a filter
-that quietly matches zero tests. Selected modes must cover the ordinary default
-lane and relevant feature lanes, not solely all-feature unification.
-
-Final Rust gates, from [validation.md](validation.md):
-
-```sh
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-cargo test --workspace --all-features --locked --no-fail-fast
-cargo clippy --manifest-path examples/Cargo.toml --all-targets --all-features --locked -- -D warnings
-cargo test --manifest-path examples/Cargo.toml --all-features --locked --no-fail-fast
-cargo doc --workspace --all-features --locked --no-deps
-```
-
-Include affected default-feature, example-bin, wasm32, benchmark/fuzz-build,
-site/grammar/package, Node matrix, protocol/process and installed-editor gates
-from the same source of truth. Preserve finite timeouts and raw failed runs;
-partitions need the existing exact-provenance checks, not relaxed validation.
-A site build, fuzz compilation or benchmark build is not corresponding behavioral
-or performance acceptance.
-
-Measure performance only if claimed: record matching toolchain/features, selected
-inputs, preparation/compilation counts, execution counts and repeated timing
-samples separately from the organization change. No promised speedup or test-
-count target is part of this plan.
-
-## Execution Outcome
-
-The inventory and stage checklists above preserve the pre-migration baseline and
-review criteria. All stages have owner-scoped implementation or explicit no-change
-outcomes in the [execution record](archive/test-organization-acceptance.md).
-
-| Backlog | Outcome |
-|---|---|
-| C01 | Current macro UI skip repaired and discovery checked; full UI gates retained. |
-| C02 | Both example registration macros replaced; all 14 actual bins covered. |
-| C03–C04 | Eleven shared exact-byte fixtures including the pilot; lowering and execution assertions remain independent. |
-| C05 | One narrow fresh HIR/analysis source-graph helper; no shared result oracle. |
-| C06–C07 | Existing fresh setup consolidated and homogeneous typed cases named across owners. |
-| C08–C09 | Existing marker/schema/fixture materialization reused, with collision/symlink regression checks and fresh installed provenance. |
-| C10 | Compiled/linked convenience APIs retained: equal results do not establish duplicate public-path coverage. |
-| C11–C12 | Historical filenames retained where they still own rejection or invocation-local safety proof; no cosmetic rename required. |
-| C13 | Existing diagnostic normalization and exact formatter/recovery bytes preserved; no policy spreading or golden regeneration. |
-
-The completed bounded pass does not impose a conversion quota or a new discovery
-framework. Future test additions should follow the ownership/naming rules here;
-aggregate CI gates and separate native-input evidence remain required, not replaced
-by this refactor's partition records.
+The census is review evidence, not implementation acceptance. Follow the execution
+record for completed changes and actual commands; historical TO results do not
+validate SF work. Execute the suitability decisions rather than another rstest-only
+pass or mechanical extraction sweep.

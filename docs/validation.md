@@ -39,9 +39,32 @@ cargo test --manifest-path examples/Cargo.toml --test runnable_examples --all-fe
 Require a nonempty intended selection. Keep default and relevant feature lanes,
 trybuild, audits and lifecycle scenarios; rstest is not a substitute runner for
 Node/editor/grammar/fuzz/benchmark owners. The
-[execution record](archive/test-organization-acceptance.md) records the completed
-organization pass and its aggregate timeout/partition limitations. These focused
-commands do not replace the full workspace gates above.
+[execution record](archive/test-organization-acceptance.md) records the earlier
+bounded parameterization pass and its aggregate timeout/partition limitations,
+not the broader suitability review. The [input-organization plan](test-organization-plan.md)
+adds byte-equivalence, fixture/pair coverage, add/delete discovery invalidation
+and reviewed extraction/inline-retention decisions to migration acceptance.
+Zero inline source is not a validation gate. These focused commands
+do not replace the full workspace gates above.
+
+### Planned Language UI Gates
+
+The [language UI deliverable](test-organization-plan.md#required-language-ui-test-deliverable)
+requires three distinct lanes: parser, semantic/compiler and real CLI. At their
+implementation checkpoints, record actual nonempty test discovery/commands and
+source/expectation inventory checks here. Parser/semantic lanes preserve typed
+diagnostic fields and compare complete rendered goldens; CLI compares complete
+stdout/stderr and exact exit code. Retain macro trybuild and existing VM/reload
+report tests separately. No new suite is claimed runnable by this planning update.
+
+The [structural comparison obligations](test-organization-plan.md#additional-structural-comparison-findings)
+also require selected formatter reparse/idempotence/result checks, source/decoded
+execution comparisons, bounded CLI process and filesystem cases, execution of
+actual site inputs, current grammar/query checks and untimed benchmark semantic
+preflight. Record concrete commands when implemented; build/codec checks alone
+are not substitutes. Existing runtime budget/GC/reload endpoint assertions remain
+required. A real browser Playground smoke is separately scoped and still absent;
+site build, native WASM tests and editor browser tooling do not establish it.
 
 ## Retained Baseline And Removal Boundaries
 

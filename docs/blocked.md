@@ -9,7 +9,10 @@ installed-provider partitions have current proof.
 
 ## Test Organization Validation Limits
 
-TO00–TO09 implementation is complete; see the
+TO00–TO09 delivered a bounded parameterization/helper pass; it did not complete
+the broader input-organization review. The redesigned
+[selective extraction plan](test-organization-plan.md) is pending implementation, not blocked
+by a runtime design decision. The following limits belong to the prior
 [execution record](archive/test-organization-acceptance.md). Default/all-feature
 Rust aggregate commands hit their 240-second bounds; bounded per-owner/module and
 individual runs reconcile all discovered test identities with no failures or

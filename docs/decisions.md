@@ -13,6 +13,15 @@ compiler, VM or editor proof into one layer; execution conditions and independen
 assertions stay with their semantic owner. Stateful lifecycle tests remain
 explicit scenarios rather than uncontrolled parameter products.
 
+The [input-organization redesign](test-organization-plan.md) corrects the earlier
+scope: parameterization alone is not organization, and mechanical externalization
+is not the goal either. Extract suitable substantial/reused sources and golden
+families; keep concise local programs, tiny version pairs and self-contained JSON
+inline when clearer. There is no zero-inline or extraction-percentage target.
+Use existing rstest/readers and preserve typed expectations/orchestration. Any
+justified JSON extraction must coordinate readers/provenance without shadow copies;
+do not add a loader/schema solely for uniformity. Implementation remains pending.
+
 ## Synchronous Runtime With Value And Opaque Object Interop
 
 The accepted product direction is a synchronous interpreted dynamic language

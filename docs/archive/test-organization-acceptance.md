@@ -1,5 +1,16 @@
 # Test Organization Execution Record
 
+## Scope Correction After User Review
+
+This is historical evidence for the bounded TO00–TO09 parameterization/helper
+pass through `044e5afc7`. Its broad completion language did **not** establish the
+full input-organization review. Remaining substantial/reused programs and source
+families need suitability review; the presence of inline strings alone is not a
+failure. The prior changes and actual results are preserved. The redesigned
+[SF00–SF12 plan](../test-organization-plan.md) calls for useful extraction and
+justified inline retention, not zero inline source. It supersedes the previous
+completion criterion; no SF implementation is claimed here.
+
 This records the owner-scoped TO00–TO09 migration from `bb11d53eb`, not a
 claim that every test should become parameterized. The
 [plan](../test-organization-plan.md) owns scope; [validation](../validation.md)

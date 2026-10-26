@@ -102,12 +102,21 @@ registration macro, discovery harness or expectation DSL. Share identical source
 fixtures and compatible setup, but retain each semantic owner's assertions and
 keep stateful lifecycle scenarios explicit. Each parameterized case must remain
 independently selectable; do not hide a directory in one serial test loop.
-The [repository test organization plan](../test-organization-plan.md) records
-current owners, cleanup dispositions and TO00–TO09 execution stages. The
-[execution record](../archive/test-organization-acceptance.md) distinguishes
-completed test organization and bounded coverage from aggregate-command timeouts
-and unresolved native-input evidence. Existing audit loops and lifecycle tests
-are intentional no-change outcomes, not missed rstest conversions.
+The redesigned [test-input plan](../test-organization-plan.md) extracts suitable
+substantial/reused sources and golden families, not every static string. Concise
+local programs, tiny lifecycle pairs, byte-sensitive micro-cases and self-contained
+JSON may remain inline when clearer. Source storage and lifecycle orchestration
+are separate decisions; neither implies blanket conversion or blanket exemption.
+Typed unit data, raw artifacts and bounded generators retain suitable representations.
+The [TO execution record](../archive/test-organization-acceptance.md) proves only
+the earlier bounded parameterization/helper pass and its recorded gates, not the
+full suitability review. SF00–SF12 is planned, not yet implemented. Changes to JSON
+readers/evidence fingerprints are required only for justified source moves.
+The plan also requires parser, semantic/compiler and real CLI language UI suites:
+reviewed source/output fixtures, preserved typed diagnostic contracts and exact
+CLI stdout/stderr/status comparisons. These are user-visible diagnostic tests,
+not Rust macro trybuild or graphical editor evidence; implementation is pending.
+Use existing rstest/owner helpers and golden formats, not a new test framework.
 
 Do not delete tests just to obtain green gates. Move obsolete success expectations
 with their removal while retaining safety/rejection coverage. Run commands from
