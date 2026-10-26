@@ -122,3 +122,26 @@ library tests: 914 passed. All-feature tests/docs in the owner snapshot: 980
 passed with its incomplete-root unsafe audit skipped; the real-root unsafe audit
 passed separately. Discovery, exact selections, conformance skip, scoped Clippy
 and formatting passed. Final root coverage runs the unsafe audit without exclusion.
+
+## TO04 — Engine, Reload And Bindings
+
+Three string tests become `executes_string_literals::{case_1_multiline,
+case_2_interpolated,case_3_escaped_braces}` with original bytes, fresh Engine/VM
+and exact strings. Scalar conversion retains its prefix with 11 typed cases;
+decoding/rejection assertions move intact to
+`script_arg_conversions_decode_and_reject_scalar_tags`. Four invalid Option
+inputs move from the positive scenario to `script_arg_conversions_reject_invalid_optional_values`.
+Byte buffers, tuples, Result/maps/sets and runtime call tests stay explicit.
+
+Bindgen's keyword family exposes five exact escaped identifiers and syn parsing;
+its schema-only iterator rejection family exposes parameter and nested-model
+cases, retaining diagnostic code and source presence. Source replacement in the
+generated-binding reload test now asserts exactly one match before replacement.
+Hot-reload ABI, old code/state/native owners, rejected activation, runtime affinity,
+re-entry, cache fault and authorization scenarios retain existing fresh helpers
+and all observations. Hot-reload and compile-test need no rstest dependency.
+
+Four-owner baseline: 608 passes; after: 627 default and 633 all-feature passes,
+including integration and doctests. Both-mode Clippy, case discovery, nonempty
+exact selection, changed-file format and whitespace checks passed in the isolated
+source snapshot. No active external references required migration.

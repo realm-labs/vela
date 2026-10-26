@@ -169,8 +169,9 @@ mod tests {
             .expect("runtime");
 
         assert_eq!(super::call_generated_add(&mut runtime), Ok(42));
-        let updated_source = include_str!("../script.vela")
-            .replace("return left + right;", "return left + right + 1;");
+        let source = include_str!("../script.vela");
+        assert_eq!(source.matches("return left + right;").count(), 1);
+        let updated_source = source.replace("return left + right;", "return left + right + 1;");
         runtime
             .stage_reload(updated_source.as_str())
             .expect("compatible update should stage");

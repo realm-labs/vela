@@ -1,3 +1,4 @@
+use rstest::rstest;
 use vela_common::SourceId;
 use vela_vm::owned_value::OwnedValue;
 
@@ -16,38 +17,22 @@ fn run_linked_program(engine: &Engine, source: &str) -> OwnedValue {
         .expect("string test program should run")
 }
 
-#[test]
-fn executes_multiline_string_literals() {
-    let value = run_linked_program(
-        &Engine::builder().build().expect("engine should build"),
-        "fn main() { return \"\"\"line1\nline2\"\"\"; }",
-    );
-
-    assert_eq!(value, OwnedValue::String("line1\nline2".to_owned()));
-}
-
-#[test]
-fn executes_interpolated_strings() {
-    let value = run_linked_program(
-        &Engine::builder().build().expect("engine should build"),
-        r#"
+#[rstest]
+#[case::multiline("fn main() { return \"\"\"line1\nline2\"\"\"; }", "line1\nline2")]
+#[case::interpolated(
+    r#"
 fn main() {
     let name = "gold";
     let amount = 7;
     return f"reward {name}: {amount}";
 }
 "#,
-    );
+    "reward gold: 7"
+)]
+#[case::escaped_braces(r#"fn main() { return f"{{status}} {"ok"}"; }"#, "{status} ok")]
+fn executes_string_literals(#[case] source: &str, #[case] expected: &str) {
+    let engine = Engine::builder().build().expect("engine should build");
+    let value = run_linked_program(&engine, source);
 
-    assert_eq!(value, OwnedValue::String("reward gold: 7".to_owned()));
-}
-
-#[test]
-fn executes_interpolated_strings_with_escaped_braces() {
-    let value = run_linked_program(
-        &Engine::builder().build().expect("engine should build"),
-        r#"fn main() { return f"{{status}} {"ok"}"; }"#,
-    );
-
-    assert_eq!(value, OwnedValue::String("{status} ok".to_owned()));
+    assert_eq!(value, OwnedValue::String(expected.to_owned()));
 }

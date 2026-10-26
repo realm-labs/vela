@@ -9,6 +9,7 @@ vela_bytecode = { workspace = true }
 vela_common = { workspace = true }
 
 [dev-dependencies]
+rstest.workspace = true
 syn = { workspace = true }
 vela_engine = { workspace = true }
 

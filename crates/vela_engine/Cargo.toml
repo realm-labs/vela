@@ -30,6 +30,7 @@ schema-artifact = ["dep:vela_language_service"]
 serde = ["dep:serde", "vela_vm/serde"]
 
 [dev-dependencies]
+rstest.workspace = true
 stats_alloc = "0.1"
 vela_bytecode = { workspace = true, features = ["test-support"] }
 vela_macros = { workspace = true }

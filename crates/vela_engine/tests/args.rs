@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+use rstest::rstest;
+use vela_common::ScalarValue;
 use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
@@ -17,50 +19,27 @@ fn call_raw(
     runtime.value_to_owned(&value)
 }
 
-#[test]
-fn script_arg_conversions_preserve_exact_scalar_tags() {
-    assert_eq!(
-        1_i8.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I8(1))
-    );
-    assert_eq!(
-        2_i16.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I16(2))
-    );
-    assert_eq!(
-        3_i32.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I32(3))
-    );
-    assert_eq!(
-        4_i64.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(4))
-    );
-    assert_eq!(
-        5_u8.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::U8(5))
-    );
-    assert_eq!(
-        6_u16.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::U16(6))
-    );
-    assert_eq!(
-        7_u32.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::U32(7))
-    );
-    assert_eq!(
-        8_u64.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::U64(8))
-    );
-    assert_eq!(
-        1.5_f32.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::F32(1.5))
-    );
-    assert_eq!(
-        2.5_f64.into_script_arg(),
-        OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5))
-    );
-    assert_eq!('奖'.into_script_arg(), OwnedValue::Char('奖'));
+#[rstest]
+#[case::i8(1_i8, OwnedValue::Scalar(ScalarValue::I8(1)))]
+#[case::i16(2_i16, OwnedValue::Scalar(ScalarValue::I16(2)))]
+#[case::i32(3_i32, OwnedValue::Scalar(ScalarValue::I32(3)))]
+#[case::i64(4_i64, OwnedValue::Scalar(ScalarValue::I64(4)))]
+#[case::u8(5_u8, OwnedValue::Scalar(ScalarValue::U8(5)))]
+#[case::u16(6_u16, OwnedValue::Scalar(ScalarValue::U16(6)))]
+#[case::u32(7_u32, OwnedValue::Scalar(ScalarValue::U32(7)))]
+#[case::u64(8_u64, OwnedValue::Scalar(ScalarValue::U64(8)))]
+#[case::f32(1.5_f32, OwnedValue::Scalar(ScalarValue::F32(1.5)))]
+#[case::f64(2.5_f64, OwnedValue::Scalar(ScalarValue::F64(2.5)))]
+#[case::unicode_char('奖', OwnedValue::Char('奖'))]
+fn script_arg_conversions_preserve_exact_scalar_tags<T: IntoScriptArg>(
+    #[case] value: T,
+    #[case] expected: OwnedValue,
+) {
+    assert_eq!(value.into_script_arg(), expected);
+}
 
+#[test]
+fn script_arg_conversions_decode_and_reject_scalar_tags() {
     assert_eq!(
         u64::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::U64(9))),
         Ok(9)
@@ -235,24 +214,20 @@ fn script_arg_conversions_support_optional_values() {
             }
         ],
     );
+}
+
+#[rstest]
+#[case::string(OwnedValue::String("bad".to_owned()))]
+#[case::unit(OwnedValue::Unit)]
+#[case::scalar(OwnedValue::Scalar(ScalarValue::I64(3)))]
+#[case::unknown_variant(OwnedValue::Enum {
+    enum_name: "Option".to_owned(),
+    variant: "Missing".to_owned(),
+    fields: [].into(),
+})]
+fn script_arg_conversions_reject_invalid_optional_values(#[case] value: OwnedValue) {
     assert!(matches!(
-        Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
-    ));
-    assert!(matches!(
-        Option::<i64>::from_script_arg(&OwnedValue::Unit),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
-    ));
-    assert!(matches!(
-        Option::<i64>::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I64(3))),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
-    ));
-    assert!(matches!(
-        Option::<i64>::from_script_arg(&OwnedValue::Enum {
-            enum_name: "Option".to_owned(),
-            variant: "Missing".to_owned(),
-            fields: [].into(),
-        }),
+        Option::<i64>::from_script_arg(&value),
         Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
     ));
 }

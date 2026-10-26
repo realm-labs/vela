@@ -67,6 +67,11 @@ plus fresh standard-runner reuse. Host/stdlib-runtime exhaustive audits and VM
 lifecycle/safety scenarios remain unchanged; conformance still distinguishes
 compile-time rejection from runtime failure and retains its fast-lane prefix.
 
+TO04 completes Engine string/conversion and bindgen keyword/diagnostic families.
+Reload, generated-call, affinity and authorization scenarios retain their original
+observations; generated reload now guards the source replacement count. Both
+feature modes and scoped Clippy pass.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits

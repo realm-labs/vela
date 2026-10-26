@@ -963,6 +963,7 @@ fn generation_error(diagnostic: RustBindingDiagnostic) -> RustBindingGenerationE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use vela_engine::engine::Engine;
 
     fn schema(source: &str) -> std::sync::Arc<RustBindingSchema> {
@@ -1008,20 +1009,31 @@ pub fn names(values: Array<String>) -> Result<String, String> { return "ok"; }
         assert!(named.code.contains("pub mod game_api"));
     }
 
-    #[test]
-    fn rust_keywords_remain_escaped_after_async_wrapper_removal() {
-        for keyword in ["async", "await", "type", "match", "loop"] {
-            let identifier = super::rust_identifier(keyword, super::NameStyle::Snake)
-                .expect("keyword has a Rust identifier");
-            assert_eq!(identifier, format!("r#{keyword}"));
-            syn::parse_str::<syn::Ident>(&identifier).expect("valid escaped Rust keyword");
-        }
+    #[rstest]
+    #[case::async_keyword("async")]
+    #[case::await_keyword("await")]
+    #[case::type_keyword("type")]
+    #[case::match_keyword("match")]
+    #[case::loop_keyword("loop")]
+    fn rust_keywords_remain_escaped_after_async_wrapper_removal(#[case] keyword: &str) {
+        let identifier = super::rust_identifier(keyword, super::NameStyle::Snake)
+            .expect("keyword has a Rust identifier");
+        assert_eq!(identifier, format!("r#{keyword}"));
+        syn::parse_str::<syn::Ident>(&identifier).expect("valid escaped Rust keyword");
     }
 
-    #[test]
-    fn generation_uses_schema_only_and_rejects_unsupported_iterator_boundaries() {
-        let schema =
-            schema("pub fn consume(values: Iterator<i64>) -> i64 { return values.count(); }");
+    #[rstest]
+    #[case::parameter("pub fn consume(values: Iterator<i64>) -> i64 { return values.count(); }")]
+    #[case::nested_model_field(
+        r#"
+pub struct Stream { values: Iterator<i64> }
+pub fn echo(value: Stream) -> Stream { return value; }
+"#
+    )]
+    fn generation_uses_schema_only_and_rejects_unsupported_iterator_boundaries(
+        #[case] source: &str,
+    ) {
+        let schema = schema(source);
         let error = RustBindingsBuilder::new(&schema)
             .generate()
             .expect_err("iterator boundary should fail");
@@ -1056,23 +1068,5 @@ impl Point { pub fn sum(self) -> i64 { return self.x + self.y; } }
         );
         assert!(generated.code.contains("if fields.len() != 2"));
         assert!(generated.code.contains("\"Named\" if fields.len() == 1"));
-    }
-
-    #[test]
-    fn generation_reports_unsupported_nested_model_fields_at_their_source() {
-        let schema = schema(
-            r#"
-pub struct Stream { values: Iterator<i64> }
-pub fn echo(value: Stream) -> Stream { return value; }
-"#,
-        );
-        let error = RustBindingsBuilder::new(&schema)
-            .generate()
-            .expect_err("nested iterator boundary should fail");
-
-        assert!(error.diagnostics().iter().any(|diagnostic| {
-            diagnostic.code == "bindgen::unsupported_iterator_boundary"
-                && diagnostic.source.is_some()
-        }));
     }
 }
