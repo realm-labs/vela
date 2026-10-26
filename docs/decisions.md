@@ -20,7 +20,11 @@ families; keep concise local programs, tiny version pairs and self-contained JSO
 inline when clearer. There is no zero-inline or extraction-percentage target.
 Use existing rstest/readers and preserve typed expectations/orchestration. Any
 justified JSON extraction must coordinate readers/provenance without shadow copies;
-do not add a loader/schema solely for uniformity. Implementation remains pending.
+do not add a loader/schema solely for uniformity. The implemented matrix extraction
+uses a finite list of source-bearing fields and strict Rust/JS `sourceFile` readers,
+not recursive arbitrary JSON includes. Source bytes and markers remain authoritative.
+See the [SF execution record](archive/test-input-organization-acceptance.md) for
+implementation and validation limits.
 
 ## Synchronous Runtime With Value And Opaque Object Interop
 

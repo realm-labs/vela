@@ -47,24 +47,37 @@ and reviewed extraction/inline-retention decisions to migration acceptance.
 Zero inline source is not a validation gate. These focused commands
 do not replace the full workspace gates above.
 
-### Planned Language UI Gates
+### Language UI And Execution Equivalence
 
 The [language UI deliverable](test-organization-plan.md#required-language-ui-test-deliverable)
-requires three distinct lanes: parser, semantic/compiler and real CLI. At their
-implementation checkpoints, record actual nonempty test discovery/commands and
-source/expectation inventory checks here. Parser/semantic lanes preserve typed
-diagnostic fields and compare complete rendered goldens; CLI compares complete
-stdout/stderr and exact exit code. Retain macro trybuild and existing VM/reload
-report tests separately. No new suite is claimed runnable by this planning update.
+has three implemented lanes. Keep typed diagnostic fields/recovery assertions and
+complete rendered goldens; CLI compares full stdout/stderr and exact status. Run
+inventory and negative controls with the owner suite, not only successful rows:
 
-The [structural comparison obligations](test-organization-plan.md#additional-structural-comparison-findings)
-also require selected formatter reparse/idempotence/result checks, source/decoded
-execution comparisons, bounded CLI process and filesystem cases, execution of
-actual site inputs, current grammar/query checks and untimed benchmark semantic
-preflight. Record concrete commands when implemented; build/codec checks alone
-are not substitutes. Existing runtime budget/GC/reload endpoint assertions remain
-required. A real browser Playground smoke is separately scoped and still absent;
-site build, native WASM tests and editor browser tooling do not establish it.
+```bash
+cargo test -p vela_syntax --test diagnostic_fixtures --locked
+cargo test -p vela_hir --test integration semantic_ui:: --locked
+cargo test -p vela_analysis --test integration semantic_ui:: --locked
+cargo test -p vela_bytecode --lib compiler::tests::ui_semantic:: --locked
+cargo test -p vela_cli --test run_scripts --locked
+cargo test -p vela_syntax --lib formatting::tests:: --locked
+cargo test -p vela_engine --test integration formatting_execution:: --locked
+cargo test -p vela_engine --test integration portable_artifact:: --features artifact-codec --locked
+cargo test -p vela_vm --test integration external_compare_contract:: --locked
+```
+
+List actual identities with `-- --list` before exact selections and require a
+nonempty result. HIR/analysis UI, Engine equivalence and VM external contracts are
+modules of existing integration targets, not standalone target names. Retain macro
+trybuild and specialized VM/reload report proof separately. Existing runtime
+budget/GC/reload endpoint assertions remain required.
+
+Source fixture additions/deletions in glob lanes must invalidate discovery without
+cleaning. Named-case lanes instead check exact registration/pair inventories.
+Preserve original byte-sensitive trailing spaces/blank EOF in extraction fixtures;
+the [final audit](archive/test-input-sf12.md) identifies those deliberate Git
+whitespace exceptions. Keep disposable package-source copies under root `target/`,
+not nested audited source roots such as `examples/target` or `fuzz/target`.
 
 ## Retained Baseline And Removal Boundaries
 
@@ -136,7 +149,14 @@ Build harnesses separately from potentially long measurements:
 ```bash
 cargo bench --workspace --no-run
 cargo check --manifest-path fuzz/Cargo.toml --bins
+cargo bench -p vela_vm --bench external_compare --locked -- --preflight-only --runtime=vela,vela-cache,lua54,rhai,node,python3
 ```
+
+The preflight command checks all 22 workloads at 0/1/2 iterations outside timed
+measurements; it is correctness evidence, not a speed comparison. Explicit runtime
+selection requires those installed runtimes and rejects unknown/empty selectors.
+Omitting `--runtime` keeps optional-runtime absence distinguishable from execution
+failure. Never treat a benchmark build as a passing result oracle.
 
 With `cargo-fuzz` installed, select bounded parser/portable-plan runs:
 
@@ -159,7 +179,22 @@ git diff --check -- AGENTS.md docs
 npm --prefix site run test:docs
 npm --prefix site run test:syntax
 npm --prefix site run build
+npm --prefix site run test:playground
+node --test site/scripts/playground-process.test.mjs site/scripts/check-playground-native.test.mjs editors/zed/scripts/query-process.test.js
+npm --prefix editors/tree-sitter-vela test
+npm --prefix editors/tree-sitter-vela run parse:fixtures
+npm --prefix editors/tree-sitter-vela run test:queries
+node editors/zed/scripts/validate-package.js
 ```
+
+`test:playground` explicitly discovers/runs exactly one repository-only ignored
+Rust test against the actual site manifest/sources. Ordinary workspace tests alone
+do not execute it. The site build also checks emitted bilingual payloads. Query
+checks run all six shipped files using an installed Tree-sitter CLI (local existing
+dev dependency, PATH or `VELA_TREE_SITTER_CLI`); they do not download tools. The
+bounded site/query launchers currently support POSIX process groups and reject
+Windows; macOS was verified, Linux is selected by CI. Real browser/JS-glue execution
+is still a separate missing smoke, not supplied by these native checks.
 
 The site's `test:docs` checks site placeholders and reduced-surface claims,
 not `docs/**` links. A passing
@@ -182,7 +217,7 @@ strict/native acceptance.
 ## Native LSP And Installed Editors
 
 ```bash
-node --test "scripts/lsp-matrix/*.test.js"
+node --test "scripts/lsp-matrix/*.test.js" "editors/vscode/scripts/*.test.js" "editors/vscode/test/*.test.js"
 node scripts/lsp-matrix/run.js --run
 npm --prefix editors/vscode ci
 npm --prefix editors/vscode test
@@ -200,6 +235,13 @@ validator confirms identical input/server/platform provenance and exactly one
 passing result for every declared check. Preserve raw runs and report the
 aggregate timeout; do not claim an exit-zero aggregate run or strict matrix
 acceptance from partitions.
+
+Use the selected suite's own bounds when sizing a supervisor: the current selection
+lifecycle suite allows 600 seconds, and four variants prescribe at least 321 seconds
+of readiness waits before overhead. A 300-second outer deadline cannot complete it.
+The [SF report](archive/test-input-sf12.md) preserves the actual 900/300-second
+timeouts and 26/27 result rather than claiming a pass. Do not shorten waits or
+rewrite old evidence to fit the deadline.
 
 Provider/command evidence does not establish actual native input/render proof.
 Recapture affected removed-feature/schema/grammar evidence without invalidating

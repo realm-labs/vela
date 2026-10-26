@@ -41,7 +41,7 @@ Current formats are **portable program 8 / Rust-binding schema 7 / tooling
 schema 4**. Incompatible formats reject before use/link/activation. Package
 metadata remains unsupported by the portable codec; no new encoding was added.
 
-## Test Organization: Selective Extraction In Progress
+## Test Organization: Implemented, Validation Limits Open
 
 The previous TO00–TO09 commits completed a bounded parameterization/helper pass,
 **not a complete repository-wide input-organization review**. Eighteen crates use dev-only
@@ -52,28 +52,41 @@ scenarios, shared tooling JSON and repository consumers. The earlier completion
 claim was too broad. Inline source is not itself a defect: review readability and
 reuse rather than treating either parameterization or blanket extraction as completion.
 
-The redesigned [input-organization plan](test-organization-plan.md) defines
-SF00–SF12: repository-wide suitability review, extraction of substantial/reused
-sources, preservation of concise local cases and consolidation of meaningful
-repetition. Short complete programs, tiny reload pairs and self-contained JSON
-may remain inline when clearer; there is no zero-inline target. Any selected JSON
-extraction coordinates existing readers and provenance, but reader changes are
-not required merely for uniformity. Rust/JS retain independent assertions.
-The plan now explicitly requires three language UI layers: parser source/diagnostic
-goldens (SF02), semantic/compiler diagnostic corpora (SF03/SF04), and real CLI
-stdout/stderr/exact-status cases (SF08), each with fixture inventory checks.
-Existing macro trybuild and editor UI tests do not satisfy these deliverables.
-A follow-up structural audit adds explicit target/helper ownership, selected
-formatter and source/portable execution equivalence, bounded CLI process/IO proof,
-actual site-example linkage, current grammar/query checks and benchmark semantic
-preflight to the owning stages. Existing GC/budget/reload lifecycle proof must be
-preserved, not described as absent. Actual browser Playground execution remains
-a separately scoped coverage gap; native WASM checks and site builds do not close it.
-Stage execution and one commit per stage are now authorized. SF00 records the
-runtime/compiler, tooling/matrix and public-consumer census, concrete dispositions,
-helper/target boundaries and packaging obligations. Later-stage implementation and
-actual validation are tracked in the [SF execution record](archive/test-input-organization-acceptance.md).
-No new framework or runtime feature is authorized.
+The [input-organization plan](test-organization-plan.md) has now been executed
+through SF11 with the SF12 residual audit complete, one commit per stage. The
+[SF execution record](archive/test-input-organization-acceptance.md) owns concrete
+changes and proof. Substantial/reused programs and source trees are extracted;
+short local cases, tiny reload pairs, explicit byte tests and useful JSON stay
+inline. No zero-inline target, custom framework or runtime feature was introduced.
+
+Implemented parser UI-P, HIR/analysis/compiler UI-S and full real-process CLI UI-C,
+with typed assertions, positive controls, golden inventories and negative checks.
+Formatter/source-artifact execution comparisons, bounded CLI/temp ownership,
+actual site-input execution, six shipped queries and untimed benchmark correctness
+preflight are present. GC/budget/re-entry/reload ownership and reclamation assertions
+remain. Matrix readers resolve 515 references to 198 marked files; all 218 resolved
+JSON trees match their original values. Existing specialized runners remain owners.
+
+[Final SF12 validation](archive/test-input-sf12.md):
+
+- Reconciled all-feature Rust identities: **4,644 passed, two existing ignored,
+  zero failed/missing**. This is bounded partition evidence after a **900-second
+  aggregate timeout**, not an aggregate exit-zero run. Unit/integration partitions
+  use workspace-built binaries; per-owner doctest feature unification may differ.
+- Workspace formatting, all-target/all-feature Clippy, docs, 29 example tests and
+  example Clippy pass. Temporary proof-copy pollution of the unsafe audit was
+  cleaned up; the unchanged audit passes. Bench/fuzz build and bounded smoke pass.
+- **340 Node tests**, **21 process/selection guards**, site docs/syntax/145-page
+  build, four actual site programs, grammar/query/package checks and wasm32 pass.
+  Actual browser Playground execution remains separately scoped and unimplemented.
+- Fresh installed VS Code proof is **26/27**, zero recorded failures, one incomplete
+  lifecycle check. Aggregate 900-second and focused 300-second timeouts remain;
+  unchanged readiness waits alone require more than 300 seconds. No longer rerun
+  was made. Completed partitions match final input/server/platform provenance.
+- Full installed/strict/native/Windows acceptance and registry package archives
+  remain unproven. Missing `observer.vsix` still blocks physical Input/Render;
+  existing versionless path dependencies block archive creation. Remote CI retains
+  the full gates and now explicitly selects new repository-consumer checks.
 
 [Previous execution evidence](archive/test-organization-acceptance.md) records
 actual TO changes and tests. These results are historical to that pass, not fresh

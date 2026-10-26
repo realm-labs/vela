@@ -1,7 +1,8 @@
 # Test Input Organization And Selective Fixture Extraction
 
-Status: SF00–SF12 execution authorized, with one verified commit per stage.
-SF00 census is recorded; subsequent implementation and gate results are tracked in
+Status: SF00–SF11 implementation and SF12 residual audit completed, one commit per
+stage. Validation limits remain open: no aggregate Rust exit-zero run and installed
+editor 26/27, not full acceptance. See
 [the execution record](archive/test-input-organization-acceptance.md).
 This replaces the previous TO00–TO09 completion criteria.
 
@@ -102,8 +103,8 @@ Implementation constraints for these obligations:
 
 ### Separate Coverage Gap: Real Browser Execution
 
-The site has docs/syntax/build commands but no actual browser execution gate.
-Native WASM tests and wasm32 compilation do not exercise generated JS glue, asset
+The site now has native actual-source and emitted-payload checks, but no actual
+browser execution gate. Native WASM tests and wasm32 compilation do not exercise generated JS glue, asset
 base paths or Playground UI behavior. Editor-owned `playwright-core` is present,
 but is not a site browser suite. Track a separately scoped finite smoke for actual
 Compile/Run of the four playground examples, displayed results/diagnostics and
@@ -513,8 +514,8 @@ The SF00 census covers [runtime/compiler](test-input-census-runtime.md),
 [tooling/matrix](test-input-census-tooling.md) and
 [public/repository consumers](test-input-census-consumers.md). Each stage reviews its whole assigned scope and closes the selected
 changes, not merely a sample of easy cases; it does not externalize every input.
-On later implementation authorization, preserve the requested stage commit
-boundary; coordinate disjoint owners and assign each shared fixture one writer.
+Execution preserves the requested stage commit boundary; shared fixtures have one
+writer. The execution record, not this work/exit checklist, owns actual gate status.
 
 | Stage | Work and concrete starting points | Required exit |
 |---|---|---|

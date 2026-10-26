@@ -234,9 +234,13 @@ prevented using a previously built checkout executable. No symlink, site include
 or fallback fixture path was used. Both commands passed with `--locked --offline`:
 
 ```sh
-CARGO_TARGET_DIR=/Users/mikai/CLionProjects/vela/examples/target/sf08-package-proof/build cargo test --manifest-path examples/target/sf08-package-proof/Cargo.toml -p vela_cli -p vela_playground_wasm --locked --offline
-CARGO_TARGET_DIR=/Users/mikai/CLionProjects/vela/examples/target/sf08-package-proof/build-examples cargo test --manifest-path examples/target/sf08-package-proof/examples/Cargo.toml --locked --offline
+CARGO_TARGET_DIR=examples/target/sf08-package-proof/build cargo test --manifest-path examples/target/sf08-package-proof/Cargo.toml -p vela_cli -p vela_playground_wasm --locked --offline
+CARGO_TARGET_DIR=examples/target/sf08-package-proof/build-examples cargo test --manifest-path examples/target/sf08-package-proof/examples/Cargo.toml --locked --offline
 ```
+
+The temporary topology was removed at SF12 after the workspace unsafe audit found
+its copied Rust sources under the audited examples tree. Future disposable source
+proofs belong under root `target/`; the audit itself was not weakened.
 
 Isolated results: CLI 29, WASM 14, examples 29 including all 14 process bins and
 runtime-loaded modules from the isolated manifest-relative tree. This proves

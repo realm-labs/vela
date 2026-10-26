@@ -110,12 +110,14 @@ are separate decisions; neither implies blanket conversion or blanket exemption.
 Typed unit data, raw artifacts and bounded generators retain suitable representations.
 The [TO execution record](../archive/test-organization-acceptance.md) proves only
 the earlier bounded parameterization/helper pass and its recorded gates, not the
-full suitability review. SF00–SF12 is planned, not yet implemented. Changes to JSON
-readers/evidence fingerprints are required only for justified source moves.
+full suitability review. The [SF execution record](../archive/test-input-organization-acceptance.md)
+records completed selective organization and its remaining gate limits. Changes to
+JSON readers/evidence fingerprints accompany only justified source moves.
 The plan also requires parser, semantic/compiler and real CLI language UI suites:
 reviewed source/output fixtures, preserved typed diagnostic contracts and exact
 CLI stdout/stderr/status comparisons. These are user-visible diagnostic tests,
-not Rust macro trybuild or graphical editor evidence; implementation is pending.
+not Rust macro trybuild or graphical editor evidence. All three are implemented;
+complete installed-editor acceptance remains separate.
 Use existing rstest/owner helpers and golden formats, not a new test framework.
 
 Do not delete tests just to obtain green gates. Move obsolete success expectations
