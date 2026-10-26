@@ -474,6 +474,21 @@ fn level_field() -> FieldId {
     FieldId::new(2)
 }
 
+fn run_standard_source(source: &str) -> VmResult<OwnedValue> {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program =
+        compile_test_program_with_registry(SourceId::new(1), source, registry.compile_view())
+            .expect("standard source should compile");
+    let mut linker = Linker::with_registry(&registry);
+    let vm = Vm::new().with_standard_natives();
+    vm.native_implementation_ids()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_test_program(&program)
+        .expect("standard source should link");
+    vm.run_linked_program(&linked, "main", &[])
+}
+
 fn compile_standard_program_source(
     source: SourceId,
     text: &str,

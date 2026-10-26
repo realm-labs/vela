@@ -91,3 +91,34 @@ all-feature unit passes (418 bytecode default), 2 integration and 4 doc passes;
 75 paired VM and 24 Engine tests pass in each mode. Four-owner all-feature Clippy,
 case discovery, two exact selections, changed-file format and whitespace checks
 pass. Owner snapshots isolate lock updates; final root gates are in TO09.
+
+## TO03 — VM, Reflection And Standard Values
+
+Four numeric conversion families retain their function-name prefixes, exposing
+5 widening, 2 mixed-expression, 6 successful narrowing and 6 out-of-range cases.
+Three bytes failures map to `bytes_reads_reject_out_of_bounds` with
+`case_1_negative_index`, `case_2_index_at_length`, `case_3_short_endian_buffer`.
+All 34 numeric/bytes/char source literals remain byte-identical. One existing-test
+support helper constructs fresh standard registries, natives and linked programs;
+no mutable execution state is shared across cases.
+
+`primitive_negative_fixtures_fail_in_expected_phase` becomes a module containing
+2 `compile_time` and 5 `runtime` cases. The existing fast-lane skip still matches
+all seven; compiler codes and runtime error payloads retain separate assertions.
+Reflection's absent-hint family exposes absent/empty/invalid-tuple cases. Two
+stdlib ID tests become five typed function/method/type/variant/field lookup
+families, retaining all positive, missing and removed-name assertions.
+
+GC/root/budget/cache/re-entry/permission and invocation-local borrowed-native
+scenarios remain explicit. Host's owned-carrier test, eight removal doctests and
+workspace unsafe audit remain unchanged. Stdlib/runtime manifest-wide coverage
+and uniqueness loops remain exhaustive rather than fixed representative lists.
+C10's compiled/linked convenience APIs stay distinct public-path tests; no
+redundancy was established from similar results. C12 needs no filename-only rename.
+
+Baseline numeric/bytes/char: 8/10/1 passed. After: 23/10/1; conformance 11,
+reflection metadata 4 and stdlib ID cases 17 passed. All five owners' default
+library tests: 914 passed. All-feature tests/docs in the owner snapshot: 980
+passed with its incomplete-root unsafe audit skipped; the real-root unsafe audit
+passed separately. Discovery, exact selections, conformance skip, scoped Clippy
+and formatting passed. Final root coverage runs the unsafe audit without exclusion.

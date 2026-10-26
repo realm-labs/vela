@@ -87,12 +87,14 @@ fn primitive_contract_fixture_executes() {
     );
 }
 
-#[test]
-fn primitive_negative_fixtures_fail_in_expected_phase() {
-    for source in [
-        PRIMITIVE_SUFFIX_MISMATCH_COMPILE,
-        PRIMITIVE_STRING_I64_COMPILE,
-    ] {
+// Keep the existing fast-lane filter selecting both failure phases.
+mod primitive_negative_fixtures_fail_in_expected_phase {
+    use super::*;
+
+    #[rstest::rstest]
+    #[case::suffix_mismatch(PRIMITIVE_SUFFIX_MISMATCH_COMPILE)]
+    #[case::string_i64(PRIMITIVE_STRING_I64_COMPILE)]
+    fn compile_time(#[case] source: &str) {
         let error = compile_standard_fixture(source)
             .expect_err("static primitive contract mismatch should be a compile error");
         assert!(
@@ -101,36 +103,36 @@ fn primitive_negative_fixtures_fail_in_expected_phase() {
         );
     }
 
-    for (source, expected) in [
-        (
-            PRIMITIVE_DYNAMIC_GUARD_RUNTIME,
-            VmErrorKind::TypeContractViolation {
-                expected: "i64".to_owned(),
-                actual: "String".to_owned(),
-                debug_name: "value".to_owned(),
-            },
-        ),
-        (
-            PRIMITIVE_FIELD_GUARD_RUNTIME,
-            VmErrorKind::TypeContractViolation {
-                expected: "i64".to_owned(),
-                actual: "String".to_owned(),
-                debug_name: "value".to_owned(),
-            },
-        ),
-        (
-            PRIMITIVE_BOUND_LITERAL_RUNTIME,
-            VmErrorKind::TypeMismatch { operation: "add" },
-        ),
-        (
-            PRIMITIVE_MIXED_NUMERIC_RUNTIME,
-            VmErrorKind::TypeMismatch { operation: "add" },
-        ),
-        (
-            PRIMITIVE_OVERFLOW_RUNTIME,
-            VmErrorKind::ArithmeticOverflow { operation: "add" },
-        ),
-    ] {
+    #[rstest::rstest]
+    #[case::dynamic_guard(
+        PRIMITIVE_DYNAMIC_GUARD_RUNTIME,
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    )]
+    #[case::field_guard(
+        PRIMITIVE_FIELD_GUARD_RUNTIME,
+        VmErrorKind::TypeContractViolation {
+            expected: "i64".to_owned(),
+            actual: "String".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    )]
+    #[case::bound_literal(
+        PRIMITIVE_BOUND_LITERAL_RUNTIME,
+        VmErrorKind::TypeMismatch { operation: "add" }
+    )]
+    #[case::mixed_numeric(
+        PRIMITIVE_MIXED_NUMERIC_RUNTIME,
+        VmErrorKind::TypeMismatch { operation: "add" }
+    )]
+    #[case::overflow(
+        PRIMITIVE_OVERFLOW_RUNTIME,
+        VmErrorKind::ArithmeticOverflow { operation: "add" }
+    )]
+    fn runtime(#[case] source: &str, #[case] expected: VmErrorKind) {
         let error = run_standard_fixture(source)
             .expect_err("dynamic primitive conformance fixture should fail at runtime");
         assert_eq!(error.kind(), expected);

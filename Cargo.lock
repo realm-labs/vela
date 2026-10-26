@@ -1420,6 +1420,7 @@ dependencies = [
 name = "vela_reflect"
 version = "0.1.0"
 dependencies = [
+ "rstest",
  "vela_common",
  "vela_def",
  "vela_hir",
@@ -1441,6 +1442,7 @@ dependencies = [
 name = "vela_stdlib"
 version = "0.1.0"
 dependencies = [
+ "rstest",
  "vela_common",
  "vela_def",
  "vela_registry",

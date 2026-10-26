@@ -62,6 +62,11 @@ TO02 shares nine more exact source inputs across 18 compiler/VM/Engine consumers
 and exposes homogeneous MIR/compiler cases. Raw verifier/artifact boundaries and
 separate lowering/runtime assertions remain intact; focused owner gates pass.
 
+TO03 completes VM numeric/bytes, reflection absence and typed stdlib lookup cases,
+plus fresh standard-runner reuse. Host/stdlib-runtime exhaustive audits and VM
+lifecycle/safety scenarios remain unchanged; conformance still distinguishes
+compile-time rejection from runtime failure and retains its fast-lane prefix.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits

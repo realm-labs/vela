@@ -47,28 +47,57 @@ mod tests {
     use super::*;
     use crate::{STD_FIELDS, STD_FUNCTIONS, STD_METHODS, STD_TYPES, STD_VARIANTS};
 
-    #[test]
-    fn id_lookups_return_manifest_ids() {
-        assert_eq!(std_function_id("math", "max"), Some(STD_FUNCTIONS[0].id()));
-        assert_eq!(std_method_id("String", "len"), Some(STD_METHODS[0].id()));
-        assert_eq!(std_type_id("Unit"), Some(STD_TYPES[0].id()));
-        assert_eq!(std_type_id("()"), Some(STD_TYPES[0].id()));
-        assert_eq!(std_type_id("i64"), Some(STD_TYPES[6].id()));
-        assert_eq!(std_type_id("f64"), Some(STD_TYPES[12].id()));
-        assert_eq!(std_type_id("Bytes"), Some(STD_TYPES[14].id()));
-        assert_eq!(std_type_id("bytes"), None);
-        assert_eq!(std_variant_id("Option", "Some"), Some(STD_VARIANTS[0].id()));
-        assert_eq!(std_field_id("Option::Some", "0"), Some(STD_FIELDS[0].id()));
+    #[rstest::rstest]
+    #[case::math_max("math", "max", Some(STD_FUNCTIONS[0].id()))]
+    #[case::missing_module("missing", "max", None)]
+    fn function_id_lookup(
+        #[case] module: &str,
+        #[case] name: &str,
+        #[case] expected: Option<FunctionId>,
+    ) {
+        assert_eq!(std_function_id(module, name), expected);
     }
 
-    #[test]
-    fn id_lookups_return_none_for_missing_defs() {
-        assert_eq!(std_function_id("missing", "max"), None);
-        assert_eq!(std_method_id("String", "missing"), None);
-        assert_eq!(std_type_id("Missing"), None);
-        assert_eq!(std_type_id("int"), None);
-        assert_eq!(std_type_id("float"), None);
-        assert_eq!(std_variant_id("Option", "Missing"), None);
-        assert_eq!(std_field_id("Option::Some", "missing"), None);
+    #[rstest::rstest]
+    #[case::string_len("String", "len", Some(STD_METHODS[0].id()))]
+    #[case::missing_method("String", "missing", None)]
+    fn method_id_lookup(
+        #[case] owner: &str,
+        #[case] name: &str,
+        #[case] expected: Option<MethodId>,
+    ) {
+        assert_eq!(std_method_id(owner, name), expected);
+    }
+
+    #[rstest::rstest]
+    #[case::unit("Unit", Some(STD_TYPES[0].id()))]
+    #[case::unit_source_name("()", Some(STD_TYPES[0].id()))]
+    #[case::i64("i64", Some(STD_TYPES[6].id()))]
+    #[case::f64("f64", Some(STD_TYPES[12].id()))]
+    #[case::bytes("Bytes", Some(STD_TYPES[14].id()))]
+    #[case::lowercase_bytes("bytes", None)]
+    #[case::missing_type("Missing", None)]
+    #[case::removed_int("int", None)]
+    #[case::removed_float("float", None)]
+    fn type_id_lookup(#[case] name: &str, #[case] expected: Option<TypeId>) {
+        assert_eq!(std_type_id(name), expected);
+    }
+
+    #[rstest::rstest]
+    #[case::option_some("Option", "Some", Some(STD_VARIANTS[0].id()))]
+    #[case::missing_variant("Option", "Missing", None)]
+    fn variant_id_lookup(
+        #[case] owner: &str,
+        #[case] name: &str,
+        #[case] expected: Option<VariantId>,
+    ) {
+        assert_eq!(std_variant_id(owner, name), expected);
+    }
+
+    #[rstest::rstest]
+    #[case::option_some_payload("Option::Some", "0", Some(STD_FIELDS[0].id()))]
+    #[case::missing_field("Option::Some", "missing", None)]
+    fn field_id_lookup(#[case] owner: &str, #[case] name: &str, #[case] expected: Option<FieldId>) {
+        assert_eq!(std_field_id(owner, name), expected);
     }
 }

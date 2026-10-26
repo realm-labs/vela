@@ -9,5 +9,8 @@ vela_common.workspace = true
 vela_def.workspace = true
 vela_registry.workspace = true
 
+[dev-dependencies]
+rstest.workspace = true
+
 [lints]
 workspace = true

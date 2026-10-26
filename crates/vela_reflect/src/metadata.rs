@@ -219,10 +219,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn type_hint_descriptors_keep_absence_as_option_none() {
-        assert_eq!(optional_type_hint_desc(None), option_none());
-        assert_eq!(optional_type_hint_desc(Some("")), option_none());
-        assert_eq!(optional_type_hint_desc(Some("(i64,)")), option_none());
+    #[rstest::rstest]
+    #[case::absent(None)]
+    #[case::empty(Some(""))]
+    #[case::invalid_tuple(Some("(i64,)"))]
+    fn type_hint_descriptors_keep_absence_as_option_none(#[case] hint: Option<&str>) {
+        assert_eq!(optional_type_hint_desc(hint), option_none());
     }
 }
