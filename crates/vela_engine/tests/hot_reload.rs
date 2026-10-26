@@ -165,13 +165,9 @@ fn active_sync_call_keeps_old_generation_until_completion_safe_point() {
 fn retained_closure_pins_old_generation_across_handle_layout_reload() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
-            r#"
-fn helper(value: i64) -> i64 { let total = 0; for item in 0..2 { total += item + 1 - 1; } return value + 1 + total; }
-fn make() { return |value: i64| helper(value) + 10; }
-fn invoke(callback, value: i64) -> i64 { return callback(value); }
-"#,
-        )
+        .compile_hot_reload_initial(include_str!(
+            "../../../tests/fixtures/reload/retained_closure_layout/v1.vela"
+        ))
         .expect("initial closure generation should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -189,14 +185,9 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .expect("old closure should be retained");
 
     runtime
-        .stage_reload(
-            r#"
-fn alpha_private(value: i64) -> i64 { return value * 1000; }
-fn helper(value: i64) -> i64 { let total = 0; for item in 0..4 { total += item + 1 - 1; } return value + 100 + total; }
-fn make() { return |value: i64| helper(value) + 20; }
-fn invoke(callback, value: i64) -> i64 { return callback(value); }
-"#,
-        )
+        .stage_reload(include_str!(
+            "../../../tests/fixtures/reload/retained_closure_layout/v2.vela"
+        ))
         .expect("closure reload should stage");
     runtime
         .activate_reload()

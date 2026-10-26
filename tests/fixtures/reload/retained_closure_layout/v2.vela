@@ -1,0 +1,5 @@
+
+fn alpha_private(value: i64) -> i64 { return value * 1000; }
+fn helper(value: i64) -> i64 { let total = 0; for item in 0..4 { total += item + 1 - 1; } return value + 100 + total; }
+fn make() { return |value: i64| helper(value) + 20; }
+fn invoke(callback, value: i64) -> i64 { return callback(value); }

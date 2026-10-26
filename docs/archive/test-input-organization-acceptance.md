@@ -10,7 +10,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | Stage | State | Evidence |
 |---|---|---|
 | SF00 | Complete | Census and baseline inspection below. |
-| SF01–SF12 | Pending | No acceptance claimed. |
+| SF01 | Complete | Byte-preserving formatter/reload extraction and discovery proof below. |
+| SF02–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 
@@ -33,3 +34,33 @@ included in this authorized plan/census checkpoint, preserving TO history.
 The query census corrects an earlier count: six shipped query files comprise four
 behavioral queries plus highlights and syntax-region overrides; SF11 accounts for
 all six. Real-browser Playground smoke remains separately scoped, not an SF gate.
+
+## SF01 — Representative Extraction And Inline Retention
+
+Extracted two formatter input/expected pairs under the syntax crate and the
+retained-closure layout v1/v2 under root reload fixtures. Compiled temporary Rust
+assertions compared evaluated original literals against all six files before
+removal: 269/381, 302/346 and 240/303 bytes respectively, unchanged afterward.
+All three Engine string rows, short formatter rows and tiny removed-state reload
+versions remain inline for locality/escape clarity. Lifecycle assertions remain
+unchanged (old/new results 17/131, exact generations, scalar plans and budget 1).
+
+Formatter pairs use ordinary rstest file discovery and an owner-local inventory.
+A minimal directory build watch was necessary: without it a new pair was absent
+from discovery; with it `--list` changed 2 → 3 → 2 without a clean build. Missing
+and orphan pairs failed as intended. Temporary inputs/proof binaries were removed.
+Scoped attributes preserve LF; authored absence/presence of terminal LF is retained.
+
+Validation (all Cargo commands locked, bounded; no timeout):
+
+- `cargo test -p vela_syntax --lib formatting::tests`: baseline 14, final 15 pass.
+- `cargo test -p vela_syntax --lib`: 129 pass, default and all features.
+- `cargo test -p vela_engine --lib tests::strings::executes_string_literals`:
+  3 pass, baseline and final; final default/all features.
+- `cargo test -p vela_engine --test integration hot_reload::`: 7 pass,
+  default/all features; initial retained-only baseline 3 pass.
+- Scoped Syntax/Engine Clippy, all features, `-D warnings`; scoped rustfmt,
+  whitespace and Git attributes checks pass.
+
+Two formatter cases now have glob-generated identities; remaining named declaration
+rows retain labels with shifted ordinal suffixes. No other target was moved.

@@ -1,0 +1,4 @@
+
+fn helper(value: i64) -> i64 { let total = 0; for item in 0..2 { total += item + 1 - 1; } return value + 1 + total; }
+fn make() { return |value: i64| helper(value) + 10; }
+fn invoke(callback, value: i64) -> i64 { return callback(value); }

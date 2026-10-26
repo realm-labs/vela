@@ -647,6 +647,9 @@ fn is_assignment_or_binary_symbol(symbol: SyntaxKind) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+    use std::path::{Path, PathBuf};
+
     use super::*;
 
     fn source_id() -> SourceId {
@@ -753,35 +756,6 @@ pub fn main() {
     }
 
     #[rstest::rstest]
-    #[case::item_declarations(
-        "pub struct Player{level:i64 name:String}pub enum Reward{None Coins(amount:i64) Item{id:String}}pub trait Damageable{fn damage(amount:i64)->bool;}impl Damageable for Player{fn damage(amount:i64)->bool{return amount>0}}impl Player{fn heal(amount:i64)->i64{return amount}}",
-        "\
-pub struct Player {
-    level: i64
-    name: String
-}
-pub enum Reward {
-    None
-    Coins(amount: i64)
-    Item {
-        id: String
-    }
-}
-pub trait Damageable {
-    fn damage(amount: i64) -> bool;
-}
-impl Damageable for Player {
-    fn damage(amount: i64) -> bool {
-        return amount > 0
-    }
-}
-impl Player {
-    fn heal(amount: i64) -> i64 {
-        return amount
-    }
-}
-"
-    )]
     #[case::state_identifiers(
         "state counter:i64=0;pub state world:World=World{};fn state(state:i64){let state=state;}",
         "\
@@ -832,36 +806,53 @@ fn load(input: Result<Map<String, i64>, String>) -> Option<Array<Set<String>>> {
         assert_eq!(formatted.text(), source);
     }
 
-    #[test]
-    fn formatting_formats_container_type_hint_example() {
-        let source = "\
-fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
+    #[rstest::rstest]
+    fn formatting_fixture_pairs(#[files("tests/fixtures/formatting/*.input.vela")] input: PathBuf) {
+        let stem = input
+            .file_name()
+            .and_then(|name| name.to_str())
+            .and_then(|name| name.strip_suffix(".input.vela"))
+            .expect("formatter input filename");
+        let expected_path = input.with_file_name(format!("{stem}.expected.vela"));
+        let source = std::fs::read_to_string(&input).expect("read UTF-8 formatter input");
+        let expected =
+            std::fs::read_to_string(&expected_path).expect("read UTF-8 formatter expectation");
+        let formatted = format_source(source_id(), &source);
 
-fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"xp\":5};let tags:Set < String > = set::from_array([\"daily\",\"vip\"]);return score(scores,rewards,tags).unwrap_or(0)}
-";
-        let formatted = format_source(source_id(), source);
-
-        assert!(formatted.diagnostics().is_empty());
-        assert_eq!(
-            formatted.text(),
-            "\
-fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
-    return result::ok(rewards)
-}
-
-fn main() {
-    let scores: Array<i64> = [1, 2, 3];
-    let rewards: Map<String, i64> = {
-        \"xp\": 5
-    };
-    let tags: Set<String> = set::from_array([\"daily\", \"vip\"]);
-    return score(scores, rewards, tags).unwrap_or(0)
-}
-"
-        );
+        assert!(formatted.diagnostics().is_empty(), "{}", input.display());
+        assert_eq!(formatted.text(), expected, "{}", input.display());
 
         let reformatted = format_source(source_id(), formatted.text());
-        assert_eq!(reformatted.text(), formatted.text());
+        assert_eq!(reformatted.text(), formatted.text(), "{}", input.display());
+    }
+
+    #[test]
+    fn formatting_fixture_pair_inventory() {
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/formatting");
+        let mut inputs = BTreeSet::new();
+        let mut expectations = BTreeSet::new();
+        for entry in std::fs::read_dir(directory).expect("read formatter fixture directory") {
+            let entry = entry.expect("read formatter fixture entry");
+            assert!(entry.file_type().expect("fixture file type").is_file());
+            let name = entry.file_name().into_string().expect("UTF-8 fixture name");
+            if name == ".gitattributes" {
+                continue;
+            }
+            if let Some(stem) = name.strip_suffix(".input.vela") {
+                assert!(!stem.is_empty(), "empty formatter input stem");
+                inputs.insert(stem.to_owned());
+            } else if let Some(stem) = name.strip_suffix(".expected.vela") {
+                assert!(!stem.is_empty(), "empty formatter expectation stem");
+                expectations.insert(stem.to_owned());
+            } else {
+                panic!("unexpected formatter fixture: {name}");
+            }
+        }
+        assert!(!inputs.is_empty(), "no formatter fixture pairs discovered");
+        assert_eq!(
+            inputs, expectations,
+            "missing/orphan formatter fixture pairs"
+        );
     }
 
     #[test]

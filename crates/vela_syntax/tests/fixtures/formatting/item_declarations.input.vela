@@ -1,0 +1,1 @@
+pub struct Player{level:i64 name:String}pub enum Reward{None Coins(amount:i64) Item{id:String}}pub trait Damageable{fn damage(amount:i64)->bool;}impl Damageable for Player{fn damage(amount:i64)->bool{return amount>0}}impl Player{fn heal(amount:i64)->i64{return amount}}
