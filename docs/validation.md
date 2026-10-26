@@ -24,6 +24,25 @@ cargo test --manifest-path examples/Cargo.toml --all-features --no-fail-fast
 cargo doc --workspace --all-features --no-deps
 ```
 
+## Parameterized Test Selection
+
+Use the existing owner target and named rstest family; list actual generated
+names before an exact selection (ordinal suffixes can change when cases move):
+
+```bash
+cargo test -p vela_bytecode --lib compiler_lowers_record_writeback --all-features --locked -- --list
+cargo test -p vela_bytecode --lib compiler::tests::expressions::assignments_and_access::compiler_lowers_record_writeback::case_1_nested --all-features --locked -- --exact
+cargo test -p vela_vm --test conformance primitive_negative_fixtures_fail_in_expected_phase --all-features --locked
+cargo test --manifest-path examples/Cargo.toml --test runnable_examples --all-features --locked
+```
+
+Require a nonempty intended selection. Keep default and relevant feature lanes,
+trybuild, audits and lifecycle scenarios; rstest is not a substitute runner for
+Node/editor/grammar/fuzz/benchmark owners. The
+[execution record](archive/test-organization-acceptance.md) records the completed
+organization pass and its aggregate timeout/partition limitations. These focused
+commands do not replace the full workspace gates above.
+
 ## Retained Baseline And Removal Boundaries
 
 Run the focused retained slice before broad gates:

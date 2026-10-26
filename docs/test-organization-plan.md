@@ -1,9 +1,10 @@
 # Repository Test Organization Plan
 
-Status: staged execution authorized, with one commit per TO00–TO09 stage.
-TO00 accepts the existing pilot and corrects the fast-lane filter. Later stages
-are recorded as they are validated and committed; see
-[progress.md](progress.md) for the current checkpoint.
+Status: TO00–TO09 execution complete, one commit per stage, including reviewed
+no-change dispositions. [Execution evidence](archive/test-organization-acceptance.md)
+records bounded test coverage and validation limitations: aggregate Rust/editor
+commands timed out; native Input/Render and Windows acceptance remain incomplete.
+This is not a claim that every test was converted or every possible duplicate removed.
 
 ## Objective And Authority
 
@@ -439,15 +440,25 @@ inputs, preparation/compilation counts, execution counts and repeated timing
 samples separately from the organization change. No promised speedup or test-
 count target is part of this plan.
 
-## Next Executable Step
+## Execution Outcome
 
-Finalize TO00 using the current pilot and C01; then begin TO01 with bounded pure
-case families. TO01–TO05 can be split by disjoint owner files; shared source
-extraction requires one designated fixture owner. TO06–TO08 must coordinate
-shared JSON/oracle/test-name consumers before landing changes. TO09 follows all
-owners' completed dispositions, not merely dependency adoption.
+The inventory and stage checklists above preserve the pre-migration baseline and
+review criteria. All stages have owner-scoped implementation or explicit no-change
+outcomes in the [execution record](archive/test-organization-acceptance.md).
 
-The original inventory above records the pre-migration snapshot. Execution
-preserves the existing pilot, performs owner-scoped conversions and records
-actual validation separately from historical acceptance. No stage authorizes
-a new runtime feature or a custom test framework.
+| Backlog | Outcome |
+|---|---|
+| C01 | Current macro UI skip repaired and discovery checked; full UI gates retained. |
+| C02 | Both example registration macros replaced; all 14 actual bins covered. |
+| C03–C04 | Eleven shared exact-byte fixtures including the pilot; lowering and execution assertions remain independent. |
+| C05 | One narrow fresh HIR/analysis source-graph helper; no shared result oracle. |
+| C06–C07 | Existing fresh setup consolidated and homogeneous typed cases named across owners. |
+| C08–C09 | Existing marker/schema/fixture materialization reused, with collision/symlink regression checks and fresh installed provenance. |
+| C10 | Compiled/linked convenience APIs retained: equal results do not establish duplicate public-path coverage. |
+| C11–C12 | Historical filenames retained where they still own rejection or invocation-local safety proof; no cosmetic rename required. |
+| C13 | Existing diagnostic normalization and exact formatter/recovery bytes preserved; no policy spreading or golden regeneration. |
+
+The completed bounded pass does not impose a conversion quota or a new discovery
+framework. Future test additions should follow the ownership/naming rules here;
+aggregate CI gates and separate native-input evidence remain required, not replaced
+by this refactor's partition records.

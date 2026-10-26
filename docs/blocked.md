@@ -7,6 +7,23 @@ software gates. See the [acceptance report](archive/runtime-simplification-accep
 Full workspace tests/Clippy, browser compilation, retained examples and the
 installed-provider partitions have current proof.
 
+## Test Organization Validation Limits
+
+TO00–TO09 implementation is complete; see the
+[execution record](archive/test-organization-acceptance.md). Default/all-feature
+Rust aggregate commands hit their 240-second bounds; bounded per-owner/module and
+individual runs reconcile all discovered test identities with no failures or
+missing cases. They do not establish exit-zero aggregate runs or identical
+whole-workspace feature unification. Full aggregate gates remain in owning CI.
+
+The test-organization installed-editor aggregate hit 300 seconds. Fresh final-input
+partitions subsequently passed all 27 declared checks with identical provenance;
+stale intermediate results were not reused. Native-input execution failed before
+interaction when the observer extension artifact `observer.vsix` was missing.
+The packaging/environment prerequisite must be resolved before a fresh physical
+Input/Render run; provider partitions do not cover it. No unrelated packaging fix
+or evidence promotion was included in test organization.
+
 ## Strict And Native Editor Evidence
 
 Full strict/native LSP coverage is still incomplete. The reviewed removal

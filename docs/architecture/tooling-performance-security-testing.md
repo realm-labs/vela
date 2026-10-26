@@ -103,7 +103,11 @@ fixtures and compatible setup, but retain each semantic owner's assertions and
 keep stateful lifecycle scenarios explicit. Each parameterized case must remain
 independently selectable; do not hide a directory in one serial test loop.
 The [repository test organization plan](../test-organization-plan.md) records
-current owners, concrete cleanup candidates and TO00–TO09 execution stages.
+current owners, cleanup dispositions and TO00–TO09 execution stages. The
+[execution record](../archive/test-organization-acceptance.md) distinguishes
+completed test organization and bounded coverage from aggregate-command timeouts
+and unresolved native-input evidence. Existing audit loops and lifecycle tests
+are intentional no-change outcomes, not missed rstest conversions.
 
 Do not delete tests just to obtain green gates. Move obsolete success expectations
 with their removal while retaining safety/rejection coverage. Run commands from

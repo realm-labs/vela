@@ -41,56 +41,34 @@ Current formats are **portable program 8 / Rust-binding schema 7 / tooling
 schema 4**. Incompatible formats reject before use/link/activation. Package
 metadata remains unsupported by the portable codec; no new encoding was added.
 
-## Current Task: Test Organization
+## Test Organization: TO00–TO09 Complete With Validation Limits
 
-The [repository test organization plan](test-organization-plan.md) inventories
-all 23 root-workspace crates and the separate example/fuzz/editor/site owners.
-Execution is authorized in TO00–TO09 order, with one commit per stage.
+The [plan](test-organization-plan.md) has been executed in ten stage commits.
+All 23 root-workspace owners and separate repository owners have reviewed
+conversion/no-change dispositions. Eighteen crates use dev-only `rstest`;
+examples retain their separate manifest. Eleven canonical source fixtures serve
+compiler/VM/Engine consumers, and HIR/analysis share fresh conformance graph setup.
+Homogeneous rows are independently selectable; safety/lifecycle scenarios,
+whole-manifest audits and specialized runners remain explicit. No framework or
+runtime feature was added, and no unrelated locked package was upgraded.
 
-TO00 accepts the compiler/VM record-writeback pilot: two byte-preserved shared
-sources, four independently named cases, unchanged lowering/result assertions.
-The fast-lane filter now names `removed_macros_and_borrow_apis_are_unavailable`;
-full validation retains both trybuild runners. Focused pilot tests passed again.
-TO01 completes bounded foundational/front-end families and shares the HIR/analysis
-conformance graph without sharing assertions. All seven owners passed 545 tests
-in both feature modes; package lifecycle/audits intentionally remain unchanged.
-[Execution evidence](archive/test-organization-acceptance.md) records dispositions
-and validation. Later stages preserve stateful/safety scenarios, specialized
-runners and LSP evidence obligations; final acceptance remains pending.
+[Execution evidence](archive/test-organization-acceptance.md) records changes,
+assertion preservation and actual commands. Final results:
 
-TO02 shares nine more exact source inputs across 18 compiler/VM/Engine consumers
-and exposes homogeneous MIR/compiler cases. Raw verifier/artifact boundaries and
-separate lowering/runtime assertions remain intact; focused owner gates pass.
+- Rust discovery reconciled against bounded passes: **4,532 all-feature / 4,517
+  default**, zero failed or missing identities, two existing ignored. These are
+  partition totals, not exit-zero aggregate workspace commands; aggregate and
+  several group runs timed out. Per-owner feature resolution may differ from
+  aggregate feature unification; owning CI still retains the aggregate gates.
+- Workspace all-feature Clippy/docs/formatting; examples tests/Clippy (all 14 bins);
+  wasm32 release check; benchmark/fuzz compilation; site docs/syntax/145-page build
+  and package validators pass. These build checks are not performance/browser proof.
+- **335 Node tests** pass. Fresh installed VS Code partitions pass **27/27** with
+  identical final-input/server/platform provenance. The aggregate timeout remains
+  recorded. Native-input failed before interaction due to missing `observer.vsix`;
+  strict/native/Windows evidence remains incomplete and is not promoted.
 
-TO03 completes VM numeric/bytes, reflection absence and typed stdlib lookup cases,
-plus fresh standard-runner reuse. Host/stdlib-runtime exhaustive audits and VM
-lifecycle/safety scenarios remain unchanged; conformance still distinguishes
-compile-time rejection from runtime failure and retains its fast-lane prefix.
-
-TO04 completes Engine string/conversion and bindgen keyword/diagnostic families.
-Reload, generated-call, affinity and authorization scenarios retain their original
-observations; generated reload now guards the source replacement count. Both
-feature modes and scoped Clippy pass.
-
-TO05 completes ordinary macro signature/classification cases with exact diagnostics.
-Trybuild and stderr expectations are unchanged; both feature modes pass all 27 UI
-fixtures and the native/value execution suites.
-
-TO06 completes unlinked cursor/Unicode/protocol cases. Existing LSP evidence IDs,
-linked test identities, stateful sessions and Rust support remain unchanged;
-focused protocol, lifecycle, cancellation and real stdio validation pass.
-
-TO07 replaces both example registration macros with rstest families covering all
-14 real bins, and organizes CLI/WASM route-specific cases. Exact/substring output
-contracts remain distinct; both feature modes, Clippy and wasm32 checking pass.
-
-TO08 consolidates existing fixture/schema transformations without changing matrix
-obligations or specialized runners. Final Node suites pass 335 checks; fresh
-installed VS Code partitions pass 27/27 with matching final-input provenance.
-The aggregate timeout and separate missing-observer native-input blocker remain
-recorded; provider proof is not physical Input/Render acceptance.
-
-## Final Validation
+## Runtime Removal Validation (Historical Baseline)
 
 Detailed commands, failures resolved during validation, evidence paths and limits
 are in the [acceptance report](archive/runtime-simplification-acceptance.md).
