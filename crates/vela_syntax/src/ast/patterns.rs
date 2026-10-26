@@ -647,19 +647,9 @@ mod tests {
 
     #[test]
     fn ast_pattern_classifies_owned_pattern_surface() {
-        let parse = parse_source(
-            r#"fn update(state) {
-    let value = match state {
-        _ => 0,
-        "ready" => 1,
-        binding => 2,
-        Option::None => 3,
-        Option::Some(payload, fallback) => 4,
-        Result::Err { error, code } => 5,
-    };
-}
-"#,
-        );
+        let parse = parse_source(include_str!(
+            "../../tests/fixtures/ast/pattern_variants.vela"
+        ));
         let tree = parse.tree();
         let match_expr = tree
             .syntax()

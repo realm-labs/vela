@@ -1,0 +1,13 @@
+fn update(items) {
+    let total: i64 = 0;
+    total;
+    for index, item in items {
+        if item.ready {
+            return item;
+        } else if item.skipped {
+            continue;
+        } else {
+            break;
+        }
+    }
+}

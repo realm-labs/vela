@@ -1,0 +1,5 @@
+fn update(rewards) {
+    for index, Reward::Grant { amount: value, item } in rewards.filter(|reward| reward.active) {
+        total += index + value;
+    }
+}

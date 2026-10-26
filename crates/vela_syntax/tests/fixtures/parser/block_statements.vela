@@ -1,0 +1,19 @@
+fn update(ctx: Context) {
+    let score: i64 = 1;
+    return score;
+    for item in items {
+        let nested: String = "gold";
+        continue;
+    }
+    if score > 1 {
+        break;
+    } else if score == 1 {
+        return score;
+    } else {
+        score += 1;
+    }
+    match score {
+        _ => score,
+    }
+    score += 1;
+}

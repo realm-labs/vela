@@ -1,0 +1,11 @@
+fn build(items, index, count) {
+    let path = game::reward;
+    let call = grant(count, reason = "xp");
+    let indexed = items[index + 1];
+    let attempted = grant()?;
+    let array = [count, index + 1];
+    let map = { "count": count, index: index };
+    let record = Reward { amount: count, bonus };
+    let lambda = |item: i64, extra| item + extra;
+    let block_lambda = |item| { return item; };
+}

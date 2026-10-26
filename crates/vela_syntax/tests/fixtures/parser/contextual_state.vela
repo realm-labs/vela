@@ -1,0 +1,10 @@
+use game::state as state;
+state state: State = State { state: 0 };
+fn state(state: State) {
+    let state = state.state;
+}
+fn global(global: State) {
+    let global = global.state;
+}
+struct State { state: i64 }
+impl State { fn state(self) {} }

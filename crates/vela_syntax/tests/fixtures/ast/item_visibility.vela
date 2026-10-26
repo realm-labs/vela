@@ -1,0 +1,10 @@
+pub use game::reward::grant;
+pub const MAX: i64 = 10;
+pub state state: ServerState = ServerState::default();
+#[event("tick")]
+pub fn update() {}
+pub struct Reward {}
+pub enum Status {}
+pub trait Award {}
+pub impl Reward {}
+fn private() {}

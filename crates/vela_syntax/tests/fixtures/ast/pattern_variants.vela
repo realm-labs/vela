@@ -1,0 +1,10 @@
+fn update(state) {
+    let value = match state {
+        _ => 0,
+        "ready" => 1,
+        binding => 2,
+        Option::None => 3,
+        Option::Some(payload, fallback) => 4,
+        Result::Err { error, code } => 5,
+    };
+}

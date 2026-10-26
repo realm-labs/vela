@@ -1,0 +1,20 @@
+use game::reward::grant as grant_reward;
+const MAX: i64 = 10;
+state state: ServerState = ServerState::default();
+fn update(ctx, amount: i64) {}
+struct Reward {
+    #[doc("amount")]
+    amount: i64,
+    item,
+}
+enum Status {
+    Pending,
+    Active(count: i64),
+    Done { reward: String, xp: i64 },
+}
+trait Award {
+    fn award(self, amount: i64);
+}
+impl Reward {
+    fn grant(self) {}
+}

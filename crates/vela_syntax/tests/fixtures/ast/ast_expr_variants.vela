@@ -1,0 +1,21 @@
+fn variants(value, account, items, ready, state) {
+    let literal = 1;
+    let path = value;
+    let paren = (value);
+    let unit = ();
+    let tuple = (value, 1);
+    let unary = -value;
+    let binary = value + 1;
+    let assign = value = 1;
+    let field = account.balance;
+    let call = grant();
+    let index = items[0];
+    let tried = grant()?;
+    let array = [value];
+    let map = { key: value };
+    let record = Reward { amount: value };
+    let lambda = |item| item;
+    let block = { value; };
+    let branch = if ready { 1 } else { 0 };
+    let matched = match state { Ready => 1, _ => 0 };
+}

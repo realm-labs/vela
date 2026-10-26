@@ -1,0 +1,7 @@
+fn update(ctx: Context) {
+    let values = [1, score + 2, player.level];
+    let table = { "score": score, player: player.level };
+    let reward = Reward { item_id: item, count, tags: [item] };
+    let doubled = |value: i64| value * 2;
+    let from_block = |value| { return value; };
+}

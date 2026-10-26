@@ -55,28 +55,7 @@ fn ast_block_expression_exposes_statement_children() {
 
 #[test]
 fn ast_expression_exposes_typed_variant_helpers() {
-    let source = r#"fn variants(value, account, items, ready, state) {
-    let literal = 1;
-    let path = value;
-    let paren = (value);
-    let unit = ();
-    let tuple = (value, 1);
-    let unary = -value;
-    let binary = value + 1;
-    let assign = value = 1;
-    let field = account.balance;
-    let call = grant();
-    let index = items[0];
-    let tried = grant()?;
-    let array = [value];
-    let map = { key: value };
-    let record = Reward { amount: value };
-    let lambda = |item| item;
-    let block = { value; };
-    let branch = if ready { 1 } else { 0 };
-    let matched = match state { Ready => 1, _ => 0 };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/ast_expr_variants.vela");
     let parse = parse_source(source);
     let body = parse
         .tree()
@@ -182,26 +161,7 @@ fn ast_parenthesized_expression_exposes_parens_and_inner_expression() {
 
 #[test]
 fn ast_binary_expression_exposes_operator_and_operands() {
-    let source = r#"fn update(start, end) {
-    let or_expr = start || end;
-    let and_expr = start && end;
-    let equal = start == end;
-    let not_equal = start != end;
-    let identity_equal = start === end;
-    let identity_not_equal = start !== end;
-    let less = start < end;
-    let less_equal = start <= end;
-    let greater = start > end;
-    let greater_equal = start >= end;
-    let exclusive = start..end;
-    let inclusive = start..=end;
-    let sum = start + end;
-    let diff = start - end;
-    let product = start * end;
-    let quotient = start / end;
-    let remainder = start % end;
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/ast_binary_operators.vela");
     let parse = parse_source(source);
     let body = parse
         .tree()
@@ -346,15 +306,7 @@ fn ast_binary_expression_reports_operator_between_direct_operands() {
 
 #[test]
 fn ast_assignment_expression_exposes_operator_target_and_value() {
-    let source = r#"fn update(score) {
-    score = 1;
-    score += 2;
-    score -= 3;
-    score *= 4;
-    score /= 5;
-    score %= 6;
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/ast_update_operators.vela");
     let parse = parse_source(source);
     let body = parse
         .tree()
@@ -557,18 +509,7 @@ fn ast_call_arguments_expose_names_and_values() {
 
 #[test]
 fn ast_path_and_delimited_expressions_expose_source_tokens() {
-    let source = r#"fn build(items, index, count) {
-    let path = game::reward;
-    let call = grant(count, reason = "xp");
-    let indexed = items[index + 1];
-    let attempted = grant()?;
-    let array = [count, index + 1];
-    let map = { "count": count, index: index };
-    let record = Reward { amount: count, bonus };
-    let lambda = |item: i64, extra| item + extra;
-    let block_lambda = |item| { return item; };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/ast_path_delimiters.vela");
     let parse = parse_source(source);
     let body = parse
         .tree()

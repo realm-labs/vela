@@ -29,17 +29,7 @@ fn ast_source_file_iterates_item_children() {
 
 #[test]
 fn ast_items_expose_visibility_tokens() {
-    let source = r#"pub use game::reward::grant;
-pub const MAX: i64 = 10;
-pub state state: ServerState = ServerState::default();
-#[event("tick")]
-pub fn update() {}
-pub struct Reward {}
-pub enum Status {}
-pub trait Award {}
-pub impl Reward {}
-fn private() {}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/item_visibility.vela");
     let parse = parse_source(source);
     let tree = parse.tree();
     let items = tree.items().collect::<Vec<_>>();
@@ -76,27 +66,7 @@ fn private() {}
 
 #[test]
 fn ast_items_expose_declaration_name_tokens() {
-    let source = r#"use game::reward::grant as grant_reward;
-const MAX: i64 = 10;
-state state: ServerState = ServerState::default();
-fn update(ctx, amount: i64) {}
-struct Reward {
-    #[doc("amount")]
-    amount: i64,
-    item,
-}
-enum Status {
-    Pending,
-    Active(count: i64),
-    Done { reward: String, xp: i64 },
-}
-trait Award {
-    fn award(self, amount: i64);
-}
-impl Reward {
-    fn grant(self) {}
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/declaration_names.vela");
     let parse = parse_source(source);
     let tree = parse.tree();
 
@@ -387,16 +357,9 @@ fn ast_function_signature_exposes_type_hint_children() {
 
 #[test]
 fn ast_type_hints_expose_path_and_argument_delimiters() {
-    let parse = parse_source(
-        r#"fn typed(items: Map<String, Result<i64, String>>) -> game::Reward {
-    return ();
-}
-
-struct Bag {
-    entries: Map<String, i64>,
-}
-"#,
-    );
+    let parse = parse_source(include_str!(
+        "../../tests/fixtures/ast/type_hint_delimiters.vela"
+    ));
     let tree = parse.tree();
     let function = tree.functions().next().expect("function item");
 
@@ -554,21 +517,7 @@ fn ast_type_hints_expose_unit_and_tuple_elements() {
 
 #[test]
 fn ast_items_expose_default_value_expressions() {
-    let source = r#"
-fn defaults(amount: i64 = bonus(1), label = "gold") -> i64 {
-    return amount
-}
-
-struct Reward {
-    amount: i64 = 10 + 5,
-    label = "gold",
-}
-
-enum Status {
-    Active(count: i64 = 1),
-    Finished { reward: String = "gold" },
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/default_values.vela");
     let parse = parse_source(source);
     let tree = parse.tree();
 
@@ -928,16 +877,7 @@ fn ast_trait_and_impl_items_expose_method_children() {
 
 #[test]
 fn ast_impl_item_exposes_header_paths() {
-    let source = r#"trait Rewardable {}
-
-impl Reward {
-    fn grant(self) {}
-}
-
-impl game::reward::Rewardable for game::player::Player {
-    fn reward(self) {}
-}
-"#;
+    let source = include_str!("../../tests/fixtures/ast/impl_headers.vela");
     let parse = parse_source(source);
     let tree = parse.tree();
     let impls = tree.impls().collect::<Vec<_>>();

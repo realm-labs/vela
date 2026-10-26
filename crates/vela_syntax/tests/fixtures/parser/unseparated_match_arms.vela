@@ -1,0 +1,7 @@
+fn update(state) {
+    let reward = match state {
+        Quest::Done => 1
+        Quest::Active { count } => count;
+        Quest::Pending(value) => value
+    };
+}

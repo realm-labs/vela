@@ -1,0 +1,9 @@
+fn collect(rewards) {
+    #[audit]
+    for reward in rewards {
+        continue;
+    }
+    for index, Reward::Item { item_id } in rewards {
+        continue;
+    }
+}

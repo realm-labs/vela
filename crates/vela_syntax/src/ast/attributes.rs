@@ -542,10 +542,7 @@ mod tests {
 
     #[test]
     fn ast_attribute_exposes_argument_children() {
-        let source = r#"
-#[rule(kind = game::reward::Rule, tags = ["daily", "quest"], config = { enabled: true, target: game::reward::Rule, limit: 10 })]
-fn main() {}
-"#;
+        let source = include_str!("../../tests/fixtures/ast/attribute_arguments.vela");
         let parse = parse_source(source);
         let tree = parse.tree();
         let function = tree.functions().next().expect("function item");

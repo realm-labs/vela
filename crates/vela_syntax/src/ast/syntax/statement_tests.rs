@@ -275,29 +275,9 @@ fn main() {
 
 #[test]
 fn ast_statement_exposes_typed_variant_helpers() {
-    let parse = parse_source(
-        r#"fn variants(items, ready, state) {
-    let value = 1;
-    return value;
-    break;
-    continue;
-    for item in items {
-        item;
-    }
-    if ready {
-        value;
-    }
-    #[audit]
-    match state {
-        Ready => value,
-    }
-    {
-        value;
-    }
-    value;
-}
-"#,
-    );
+    let parse = parse_source(include_str!(
+        "../../../tests/fixtures/ast/statement_variants.vela"
+    ));
     let body = parse
         .tree()
         .functions()
@@ -347,18 +327,9 @@ fn ast_statement_exposes_typed_variant_helpers() {
 
 #[test]
 fn ast_for_statement_exposes_index_and_value_patterns() {
-    let parse = parse_source(
-        r#"fn collect(rewards) {
-    #[audit]
-    for reward in rewards {
-        continue;
-    }
-    for index, Reward::Item { item_id } in rewards {
-        continue;
-    }
-}
-"#,
-    );
+    let parse = parse_source(include_str!(
+        "../../../tests/fixtures/ast/for_patterns.vela"
+    ));
     let body = parse
         .tree()
         .functions()
@@ -548,22 +519,9 @@ fn ast_if_condition_preserves_multiline_logical_chain() {
 
 #[test]
 fn ast_statements_expose_keyword_and_binding_tokens() {
-    let parse = parse_source(
-        r#"fn update(items) {
-    let total: i64 = 0;
-    total;
-    for index, item in items {
-        if item.ready {
-            return item;
-        } else if item.skipped {
-            continue;
-        } else {
-            break;
-        }
-    }
-}
-"#,
-    );
+    let parse = parse_source(include_str!(
+        "../../../tests/fixtures/ast/statement_tokens.vela"
+    ));
     let body = parse
         .tree()
         .functions()
@@ -820,17 +778,9 @@ fn ast_let_statement_exposes_tuple_pattern_binding() {
 
 #[test]
 fn let_path_patterns_preserve_nested_bindings_and_simple_names() {
-    let parsed = parse_source(
-        "fn inspect(input) {\n\
-         let Cell { value: (nested, _) } = input;\n\
-         let defs::Choice::Tuple(value) = input;\n\
-         let ordinary: i64 = 1;\n\
-         let callback = |value: i64| { value };\n\
-         let pending;\n\
-         let deferred\n\
-         let typed_pending: i64;\n\
-         }\n",
-    );
+    let parsed = parse_source(include_str!(
+        "../../../tests/fixtures/ast/let_path_patterns.vela"
+    ));
     assert!(
         parsed.diagnostics().is_empty(),
         "{:?}",

@@ -1,0 +1,6 @@
+struct Reward {
+    #[doc("Reward item")]
+    item_id: String = "gold",
+    count: i64 = 1
+    tags: Array<String>
+}

@@ -1,0 +1,3 @@
+
+#[rule(kind = game::reward::Rule, tags = ["daily", "quest"], config = { enabled: true, target: game::reward::Rule, limit: 10 })]
+fn main() {}

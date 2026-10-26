@@ -1,0 +1,4 @@
+use game::state::Player as PlayerState;
+const DEFAULT_LEVEL: i64 = base_level + 1;
+state current_player: Player = Player::default();
+pub extern state world: World;

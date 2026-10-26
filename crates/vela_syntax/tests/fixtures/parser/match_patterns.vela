@@ -1,0 +1,10 @@
+fn update(state) {
+    let reward = match state {
+        Option::Some(value) if value > 1 => Reward { count: value },
+        Quest::Active { quest_id: id, count } => {
+            id
+        },
+        Option::None => "empty",
+        _ => "none",
+    };
+}

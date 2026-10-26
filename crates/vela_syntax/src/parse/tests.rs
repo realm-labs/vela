@@ -107,7 +107,7 @@ fn task_rejection_does_not_reserve_unrelated_qualified_names() {
 
 #[test]
 fn parser_parse_source_reports_missing_function_name() {
-    let source = "fn () {}\nfn grant(amount: i64) -> i64 { return amount; }\n";
+    let source = include_str!("../../tests/fixtures/ui/parser/missing_function_name.vela");
     let parse = parse_source_with_id(SourceId::new(12), source);
     let tree = parse.tree();
 
@@ -129,11 +129,7 @@ fn parser_parse_source_reports_missing_function_name() {
 
 #[test]
 fn parser_parse_source_structures_use_const_and_state_items() {
-    let source = r#"use game::state::Player as PlayerState;
-const DEFAULT_LEVEL: i64 = base_level + 1;
-state current_player: Player = Player::default();
-pub extern state world: World;
-"#;
+    let source = include_str!("../../tests/fixtures/parser/use_const_state.vela");
     let parse = parse_source_with_id(SourceId::new(22), source);
     let tree = parse.tree();
     let use_item = tree.uses().next().expect("use item");
@@ -236,17 +232,7 @@ fn parser_rejects_host_release_aliases() {
 
 #[test]
 fn parser_keeps_state_contextual_in_identifier_positions() {
-    let source = r#"use game::state as state;
-state state: State = State { state: 0 };
-fn state(state: State) {
-    let state = state.state;
-}
-fn global(global: State) {
-    let global = global.state;
-}
-struct State { state: i64 }
-impl State { fn state(self) {} }
-"#;
+    let source = include_str!("../../tests/fixtures/parser/contextual_state.vela");
     let parse = parse_source_with_id(SourceId::new(23), source);
     let tree = parse.tree();
     let state_item = tree.states().next().expect("state item");
@@ -319,7 +305,7 @@ fn parser_rejects_invalid_state_declaration_forms() {
 
 #[test]
 fn parser_parse_source_structures_function_signature_and_body_nodes() {
-    let source = "fn award(ctx: Context, items: Array<String>, amount = bonus(1, 2)) -> Result<Map<String, i64>, String> { return amount; }\n";
+    let source = include_str!("../../tests/fixtures/parser/function_signature.vela");
     let parse = parse_source_with_id(SourceId::new(12), source);
     let tree = parse.tree();
     let function = tree.functions().next().expect("function item");
@@ -395,13 +381,7 @@ fn parser_parse_source_structures_function_signature_and_body_nodes() {
 
 #[test]
 fn parser_parse_source_structures_struct_field_nodes() {
-    let source = r#"struct Reward {
-    #[doc("Reward item")]
-    item_id: String = "gold",
-    count: i64 = 1
-    tags: Array<String>
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/struct_fields.vela");
     let parse = parse_source_with_id(SourceId::new(13), source);
     let tree = parse.tree();
     let record = tree.structs().next().expect("struct item");
@@ -483,13 +463,7 @@ fn parser_parse_source_recovers_same_line_struct_fields_without_comma() {
 
 #[test]
 fn parser_parse_source_structures_enum_variant_nodes() {
-    let source = r#"enum QuestProgress {
-    #[empty]
-    None
-    Active { quest_id: String, count: i64 = 0 }
-    Finished(quest_id: String, reward: Option<String>)
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/enum_variants.vela");
     let parse = parse_source_with_id(SourceId::new(14), source);
     let tree = parse.tree();
     let enumeration = tree.enums().next().expect("enum item");
@@ -562,17 +536,7 @@ fn parser_parse_source_structures_enum_variant_nodes() {
 
 #[test]
 fn parser_parse_source_structures_trait_and_impl_method_nodes() {
-    let source = r#"trait Rewardable {
-    #[doc("Reward method")]
-    fn reward(ctx: Context, amount: i64) -> Result<String, String>;
-    fn fallback(ctx: Context) { return "fallback"; }
-}
-
-impl Rewardable for Player {
-    #[trace]
-    fn reward(ctx: Context, amount: i64) -> Result<String, String> { return "gold"; }
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/trait_impl_methods.vela");
     let parse = parse_source_with_id(SourceId::new(15), source);
     let tree = parse.tree();
     let trait_item = tree.traits().next().expect("trait item");
@@ -663,26 +627,7 @@ impl Rewardable for Player {
 
 #[test]
 fn parser_parse_source_structures_block_statement_nodes() {
-    let source = r#"fn update(ctx: Context) {
-    let score: i64 = 1;
-    return score;
-    for item in items {
-        let nested: String = "gold";
-        continue;
-    }
-    if score > 1 {
-        break;
-    } else if score == 1 {
-        return score;
-    } else {
-        score += 1;
-    }
-    match score {
-        _ => score,
-    }
-    score += 1;
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/block_statements.vela");
     let parse = parse_source_with_id(SourceId::new(16), source);
     let tree = parse.tree();
     let function = tree.functions().next().expect("function item");
@@ -807,15 +752,7 @@ fn parser_parse_source_structures_block_statement_nodes() {
 
 #[test]
 fn parser_parse_source_structures_statement_expression_nodes() {
-    let source = r#"fn update(ctx: Context) {
-    let score = award(player.level, amount = 1);
-    let penalty = -score;
-    let ready = !done;
-    return score;
-    #[trace]
-    player.level += award(score, 1);
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/statement_expressions.vela");
     let parse = parse_source_with_id(SourceId::new(17), source);
     let tree = parse.tree();
     let body = tree
@@ -920,11 +857,7 @@ fn parser_parse_source_structures_statement_expression_nodes() {
 
 #[test]
 fn parser_parse_source_structures_postfix_expression_nodes() {
-    let source = r#"fn update(ctx: Context) {
-    let item = player.inventory[find_slot(score)]?;
-    player.reward(item);
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/postfix_expressions.vela");
     let parse = parse_source_with_id(SourceId::new(18), source);
     let tree = parse.tree();
     let body = tree
@@ -981,14 +914,7 @@ fn parser_parse_source_structures_postfix_expression_nodes() {
 
 #[test]
 fn parser_parse_source_structures_container_and_lambda_expression_nodes() {
-    let source = r#"fn update(ctx: Context) {
-    let values = [1, score + 2, player.level];
-    let table = { "score": score, player: player.level };
-    let reward = Reward { item_id: item, count, tags: [item] };
-    let doubled = |value: i64| value * 2;
-    let from_block = |value| { return value; };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/containers_lambdas.vela");
     let parse = parse_source_with_id(SourceId::new(19), source);
     let tree = parse.tree();
     let body = tree
@@ -1106,17 +1032,7 @@ fn parser_parse_source_structures_container_and_lambda_expression_nodes() {
 
 #[test]
 fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
-    let source = r#"fn update(state) {
-    let reward = match state {
-        Option::Some(value) if value > 1 => Reward { count: value },
-        Quest::Active { quest_id: id, count } => {
-            id
-        },
-        Option::None => "empty",
-        _ => "none",
-    };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/match_patterns.vela");
     let parse = parse_source_with_id(SourceId::new(20), source);
     let tree = parse.tree();
     let body = tree
@@ -1246,14 +1162,7 @@ fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
 
 #[test]
 fn parser_parse_source_splits_unseparated_match_arms() {
-    let source = r#"fn update(state) {
-    let reward = match state {
-        Quest::Done => 1
-        Quest::Active { count } => count;
-        Quest::Pending(value) => value
-    };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/unseparated_match_arms.vela");
     let parse = parse_source_with_id(SourceId::new(25), source);
     let tree = parse.tree();
     let body = tree
@@ -1314,12 +1223,7 @@ fn parser_parse_source_splits_unseparated_match_arms() {
 
 #[test]
 fn parser_parse_source_structures_for_statement_pattern_and_iterable_nodes() {
-    let source = r#"fn update(rewards) {
-    for index, Reward::Grant { amount: value, item } in rewards.filter(|reward| reward.active) {
-        total += index + value;
-    }
-}
-"#;
+    let source = include_str!("../../tests/fixtures/parser/for_patterns.vela");
     let parse = parse_source_with_id(SourceId::new(21), source);
     let tree = parse.tree();
     let body = tree

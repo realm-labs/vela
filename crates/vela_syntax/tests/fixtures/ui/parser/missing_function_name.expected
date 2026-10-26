@@ -1,0 +1,5 @@
+error[E_PARSE]: expected function name
+  --> missing_function_name.vela:1:4
+    |
+  1 | fn () {}
+    |    ^ expected function name

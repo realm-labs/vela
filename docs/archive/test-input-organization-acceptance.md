@@ -11,7 +11,8 @@ or portable format change is authorized. Pending stages are not accepted.
 |---|---|---|
 | SF00 | Complete | Census and baseline inspection below. |
 | SF01 | Complete | Byte-preserving formatter/reload extraction and discovery proof below. |
-| SF02–SF12 | Pending | No acceptance claimed. |
+| SF02 | Complete | [Syntax/UI-P evidence](test-input-sf02.md): 29 preserved inputs, parser goldens, typed/recovery controls and formatter subset. |
+| SF03–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 

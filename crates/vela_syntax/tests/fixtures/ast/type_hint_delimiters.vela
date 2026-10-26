@@ -1,0 +1,7 @@
+fn typed(items: Map<String, Result<i64, String>>) -> game::Reward {
+    return ();
+}
+
+struct Bag {
+    entries: Map<String, i64>,
+}

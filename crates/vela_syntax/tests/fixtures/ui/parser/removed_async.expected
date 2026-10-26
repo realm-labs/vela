@@ -1,0 +1,10 @@
+error[syntax::removed_async]: script async and await are no longer supported
+  --> removed_async.vela:1:5
+    |
+  1 | pub async fn run() { load().await; }
+    |     ^^^^^ script async and await are no longer supported
+error[syntax::removed_async]: script async and await are no longer supported
+  --> removed_async.vela:1:29
+    |
+  1 | pub async fn run() { load().await; }
+    |                             ^^^^^ script async and await are no longer supported

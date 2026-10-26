@@ -1,0 +1,14 @@
+
+fn defaults(amount: i64 = bonus(1), label = "gold") -> i64 {
+    return amount
+}
+
+struct Reward {
+    amount: i64 = 10 + 5,
+    label = "gold",
+}
+
+enum Status {
+    Active(count: i64 = 1),
+    Finished { reward: String = "gold" },
+}

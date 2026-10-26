@@ -1,0 +1,8 @@
+fn update(score) {
+    score = 1;
+    score += 2;
+    score -= 3;
+    score *= 4;
+    score /= 5;
+    score %= 6;
+}

@@ -1,0 +1,19 @@
+fn update(start, end) {
+    let or_expr = start || end;
+    let and_expr = start && end;
+    let equal = start == end;
+    let not_equal = start != end;
+    let identity_equal = start === end;
+    let identity_not_equal = start !== end;
+    let less = start < end;
+    let less_equal = start <= end;
+    let greater = start > end;
+    let greater_equal = start >= end;
+    let exclusive = start..end;
+    let inclusive = start..=end;
+    let sum = start + end;
+    let diff = start - end;
+    let product = start * end;
+    let quotient = start / end;
+    let remainder = start % end;
+}

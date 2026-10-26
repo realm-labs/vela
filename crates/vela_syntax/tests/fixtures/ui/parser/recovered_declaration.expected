@@ -1,0 +1,5 @@
+error[E_PARSE]: expected const initializer
+  --> recovered_declaration.vela:1:1
+    |
+  1 | const Broken: i64 = ;
+    | ^^^^^^^^^^^^^^^^^^^^^ expected const initializer

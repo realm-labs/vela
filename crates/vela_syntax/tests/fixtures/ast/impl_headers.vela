@@ -1,0 +1,9 @@
+trait Rewardable {}
+
+impl Reward {
+    fn grant(self) {}
+}
+
+impl game::reward::Rewardable for game::player::Player {
+    fn reward(self) {}
+}

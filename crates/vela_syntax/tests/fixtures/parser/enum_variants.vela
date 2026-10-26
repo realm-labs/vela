@@ -1,0 +1,6 @@
+enum QuestProgress {
+    #[empty]
+    None
+    Active { quest_id: String, count: i64 = 0 }
+    Finished(quest_id: String, reward: Option<String>)
+}

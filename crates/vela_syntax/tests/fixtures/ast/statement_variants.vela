@@ -1,0 +1,20 @@
+fn variants(items, ready, state) {
+    let value = 1;
+    return value;
+    break;
+    continue;
+    for item in items {
+        item;
+    }
+    if ready {
+        value;
+    }
+    #[audit]
+    match state {
+        Ready => value,
+    }
+    {
+        value;
+    }
+    value;
+}

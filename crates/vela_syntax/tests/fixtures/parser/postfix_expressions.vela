@@ -1,0 +1,4 @@
+fn update(ctx: Context) {
+    let item = player.inventory[find_slot(score)]?;
+    player.reward(item);
+}

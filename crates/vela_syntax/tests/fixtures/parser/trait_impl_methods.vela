@@ -1,0 +1,10 @@
+trait Rewardable {
+    #[doc("Reward method")]
+    fn reward(ctx: Context, amount: i64) -> Result<String, String>;
+    fn fallback(ctx: Context) { return "fallback"; }
+}
+
+impl Rewardable for Player {
+    #[trace]
+    fn reward(ctx: Context, amount: i64) -> Result<String, String> { return "gold"; }
+}

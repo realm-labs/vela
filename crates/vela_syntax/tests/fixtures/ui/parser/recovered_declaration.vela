@@ -1,0 +1,2 @@
+const Broken: i64 = ;
+fn after() { return 1; }

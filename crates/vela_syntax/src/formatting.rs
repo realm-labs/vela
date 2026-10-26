@@ -826,6 +826,43 @@ fn load(input: Result<Map<String, i64>, String>) -> Option<Array<Set<String>>> {
         assert_eq!(reformatted.text(), formatted.text(), "{}", input.display());
     }
 
+    #[rstest::rstest]
+    #[case::local_operators(include_str!(
+        "../../../tests/fixtures/conformance/assignments/local_operators.vela"
+    ))]
+    #[case::index_reads(include_str!(
+        "../../../tests/fixtures/conformance/assignments/index_reads.vela"
+    ))]
+    #[case::block_tail(include_str!(
+        "../../../tests/fixtures/conformance/control_flow/block_tail.vela"
+    ))]
+    #[case::break_continue(include_str!(
+        "../../../tests/fixtures/conformance/control_flow/break_continue.vela"
+    ))]
+    fn formatting_retained_valid_conformance(#[case] source: &str) {
+        let parsed = parse_source_with_id(source_id(), source);
+        assert!(
+            parsed.diagnostics().is_empty(),
+            "{:?}",
+            parsed.diagnostics()
+        );
+        assert_eq!(parsed.syntax_node().to_string(), source);
+
+        let formatted = format_source(source_id(), source);
+        assert!(formatted.diagnostics().is_empty());
+        let reparsed = parse_source_with_id(source_id(), formatted.text());
+        assert!(
+            reparsed.diagnostics().is_empty(),
+            "{:?}",
+            reparsed.diagnostics()
+        );
+        assert_eq!(reparsed.syntax_node().to_string(), formatted.text());
+
+        let reformatted = format_source(source_id(), formatted.text());
+        assert!(reformatted.diagnostics().is_empty());
+        assert_eq!(reformatted.text(), formatted.text());
+    }
+
     #[test]
     fn formatting_fixture_pair_inventory() {
         let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/formatting");

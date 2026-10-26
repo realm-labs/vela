@@ -1,0 +1,9 @@
+fn inspect(input) {
+let Cell { value: (nested, _) } = input;
+let defs::Choice::Tuple(value) = input;
+let ordinary: i64 = 1;
+let callback = |value: i64| { value };
+let pending;
+let deferred
+let typed_pending: i64;
+}
