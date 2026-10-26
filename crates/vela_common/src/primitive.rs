@@ -251,61 +251,60 @@ impl_scalar_from!(
 mod tests {
     use super::*;
 
-    const PRIMITIVE_NAMES: &[(PrimitiveTag, &str)] = &[
-        (PrimitiveTag::Unit, "()"),
-        (PrimitiveTag::Bool, "bool"),
-        (PrimitiveTag::I8, "i8"),
-        (PrimitiveTag::I16, "i16"),
-        (PrimitiveTag::I32, "i32"),
-        (PrimitiveTag::I64, "i64"),
-        (PrimitiveTag::U8, "u8"),
-        (PrimitiveTag::U16, "u16"),
-        (PrimitiveTag::U32, "u32"),
-        (PrimitiveTag::U64, "u64"),
-        (PrimitiveTag::F32, "f32"),
-        (PrimitiveTag::F64, "f64"),
-        (PrimitiveTag::String, "string"),
-        (PrimitiveTag::Bytes, "bytes"),
-    ];
-
-    const NUMERIC_NAMES: &[(NumericTag, &str)] = &[
-        (NumericTag::I8, "i8"),
-        (NumericTag::I16, "i16"),
-        (NumericTag::I32, "i32"),
-        (NumericTag::I64, "i64"),
-        (NumericTag::U8, "u8"),
-        (NumericTag::U16, "u16"),
-        (NumericTag::U32, "u32"),
-        (NumericTag::U64, "u64"),
-        (NumericTag::F32, "f32"),
-        (NumericTag::F64, "f64"),
-    ];
-
-    #[test]
-    fn primitive_tags_have_canonical_names() {
-        for (tag, name) in PRIMITIVE_NAMES {
-            assert_eq!(tag.name(), *name);
-            assert_eq!(tag.to_string(), *name);
-            assert_eq!(PrimitiveTag::from_name(name), Some(*tag));
-        }
-        assert_eq!(PrimitiveTag::from_name("int"), None);
-        assert_eq!(PrimitiveTag::from_name("float"), None);
-        assert_eq!(PrimitiveTag::from_name("null"), None);
+    #[rstest::rstest]
+    #[case::unit(PrimitiveTag::Unit, "()")]
+    #[case::bool(PrimitiveTag::Bool, "bool")]
+    #[case::i8(PrimitiveTag::I8, "i8")]
+    #[case::i16(PrimitiveTag::I16, "i16")]
+    #[case::i32(PrimitiveTag::I32, "i32")]
+    #[case::i64(PrimitiveTag::I64, "i64")]
+    #[case::u8(PrimitiveTag::U8, "u8")]
+    #[case::u16(PrimitiveTag::U16, "u16")]
+    #[case::u32(PrimitiveTag::U32, "u32")]
+    #[case::u64(PrimitiveTag::U64, "u64")]
+    #[case::f32(PrimitiveTag::F32, "f32")]
+    #[case::f64(PrimitiveTag::F64, "f64")]
+    #[case::string(PrimitiveTag::String, "string")]
+    #[case::bytes(PrimitiveTag::Bytes, "bytes")]
+    fn primitive_tags_have_canonical_names(#[case] tag: PrimitiveTag, #[case] name: &str) {
+        assert_eq!(tag.name(), name);
+        assert_eq!(tag.to_string(), name);
+        assert_eq!(PrimitiveTag::from_name(name), Some(tag));
     }
 
-    #[test]
-    fn numeric_tags_map_to_primitive_tags() {
-        for (tag, name) in NUMERIC_NAMES {
-            assert_eq!(tag.name(), *name);
-            assert_eq!(tag.to_string(), *name);
-            assert_eq!(tag.primitive_tag().name(), *name);
-            assert_eq!(tag.primitive_tag().numeric_tag(), Some(*tag));
-        }
+    #[rstest::rstest]
+    #[case::int("int")]
+    #[case::float("float")]
+    #[case::null("null")]
+    fn primitive_tags_reject_noncanonical_names(#[case] name: &str) {
+        assert_eq!(PrimitiveTag::from_name(name), None);
+    }
 
-        assert_eq!(PrimitiveTag::Unit.numeric_tag(), None);
-        assert_eq!(PrimitiveTag::Bool.numeric_tag(), None);
-        assert_eq!(PrimitiveTag::String.numeric_tag(), None);
-        assert_eq!(PrimitiveTag::Bytes.numeric_tag(), None);
+    #[rstest::rstest]
+    #[case::i8(NumericTag::I8, "i8")]
+    #[case::i16(NumericTag::I16, "i16")]
+    #[case::i32(NumericTag::I32, "i32")]
+    #[case::i64(NumericTag::I64, "i64")]
+    #[case::u8(NumericTag::U8, "u8")]
+    #[case::u16(NumericTag::U16, "u16")]
+    #[case::u32(NumericTag::U32, "u32")]
+    #[case::u64(NumericTag::U64, "u64")]
+    #[case::f32(NumericTag::F32, "f32")]
+    #[case::f64(NumericTag::F64, "f64")]
+    fn numeric_tags_map_to_primitive_tags(#[case] tag: NumericTag, #[case] name: &str) {
+        assert_eq!(tag.name(), name);
+        assert_eq!(tag.to_string(), name);
+        assert_eq!(tag.primitive_tag().name(), name);
+        assert_eq!(tag.primitive_tag().numeric_tag(), Some(tag));
+    }
+
+    #[rstest::rstest]
+    #[case::unit(PrimitiveTag::Unit)]
+    #[case::bool(PrimitiveTag::Bool)]
+    #[case::string(PrimitiveTag::String)]
+    #[case::bytes(PrimitiveTag::Bytes)]
+    fn nonnumeric_primitives_have_no_numeric_tag(#[case] tag: PrimitiveTag) {
+        assert_eq!(tag.numeric_tag(), None);
     }
 
     #[test]
@@ -322,26 +321,26 @@ mod tests {
         assert!(!NumericTag::U8.is_signed_integer());
     }
 
-    #[test]
-    fn scalar_values_report_tags_and_type_names() {
-        let values = [
-            (ScalarValue::I8(-1), NumericTag::I8, "i8", "-1i8"),
-            (ScalarValue::I16(-2), NumericTag::I16, "i16", "-2i16"),
-            (ScalarValue::I32(-3), NumericTag::I32, "i32", "-3i32"),
-            (ScalarValue::I64(-4), NumericTag::I64, "i64", "-4i64"),
-            (ScalarValue::U8(1), NumericTag::U8, "u8", "1u8"),
-            (ScalarValue::U16(2), NumericTag::U16, "u16", "2u16"),
-            (ScalarValue::U32(3), NumericTag::U32, "u32", "3u32"),
-            (ScalarValue::U64(4), NumericTag::U64, "u64", "4u64"),
-            (ScalarValue::F32(1.5), NumericTag::F32, "f32", "1.5f32"),
-            (ScalarValue::F64(2.5), NumericTag::F64, "f64", "2.5f64"),
-        ];
-
-        for (value, numeric_tag, type_name, display) in values {
-            assert_eq!(value.numeric_tag(), numeric_tag);
-            assert_eq!(value.primitive_tag(), numeric_tag.primitive_tag());
-            assert_eq!(value.type_name(), type_name);
-            assert_eq!(value.to_string(), display);
-        }
+    #[rstest::rstest]
+    #[case::i8(ScalarValue::I8(-1), NumericTag::I8, "i8", "-1i8")]
+    #[case::i16(ScalarValue::I16(-2), NumericTag::I16, "i16", "-2i16")]
+    #[case::i32(ScalarValue::I32(-3), NumericTag::I32, "i32", "-3i32")]
+    #[case::i64(ScalarValue::I64(-4), NumericTag::I64, "i64", "-4i64")]
+    #[case::u8(ScalarValue::U8(1), NumericTag::U8, "u8", "1u8")]
+    #[case::u16(ScalarValue::U16(2), NumericTag::U16, "u16", "2u16")]
+    #[case::u32(ScalarValue::U32(3), NumericTag::U32, "u32", "3u32")]
+    #[case::u64(ScalarValue::U64(4), NumericTag::U64, "u64", "4u64")]
+    #[case::f32(ScalarValue::F32(1.5), NumericTag::F32, "f32", "1.5f32")]
+    #[case::f64(ScalarValue::F64(2.5), NumericTag::F64, "f64", "2.5f64")]
+    fn scalar_values_report_tags_and_type_names(
+        #[case] value: ScalarValue,
+        #[case] numeric_tag: NumericTag,
+        #[case] type_name: &str,
+        #[case] display: &str,
+    ) {
+        assert_eq!(value.numeric_tag(), numeric_tag);
+        assert_eq!(value.primitive_tag(), numeric_tag.primitive_tag());
+        assert_eq!(value.type_name(), type_name);
+        assert_eq!(value.to_string(), display);
     }
 }

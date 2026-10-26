@@ -168,20 +168,17 @@ mod type_hint_tests {
         assert!(TypeHintDef::parse("(i64,)").is_none());
     }
 
-    #[test]
-    fn type_hint_parser_rejects_removed_borrowed_collections() {
-        for name in [
-            "ArrayView",
-            "ArrayMut",
-            "MapView",
-            "MapMut",
-            "SetView",
-            "SetMut",
-            "ScopedIterator",
-        ] {
-            assert!(TypeHintDef::parse(name).is_none());
-            assert!(TypeHintDef::parse(&format!("{name}<i64>")).is_none());
-        }
+    #[rstest::rstest]
+    #[case::array_view("ArrayView")]
+    #[case::array_mut("ArrayMut")]
+    #[case::map_view("MapView")]
+    #[case::map_mut("MapMut")]
+    #[case::set_view("SetView")]
+    #[case::set_mut("SetMut")]
+    #[case::scoped_iterator("ScopedIterator")]
+    fn type_hint_parser_rejects_removed_borrowed_collections(#[case] name: &str) {
+        assert!(TypeHintDef::parse(name).is_none());
+        assert!(TypeHintDef::parse(&format!("{name}<i64>")).is_none());
     }
 }
 

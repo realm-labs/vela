@@ -1,30 +1,10 @@
-use vela_common::SourceId;
-use vela_hir::module_graph::{
-    Declaration, DeclarationKind, ImportResolution, ModuleGraph, ModuleSource,
-};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_package::ModulePath;
 
-const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.vela");
-const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.vela");
-
-fn conformance_graph() -> ModuleGraph {
-    let mut graph = ModuleGraph::new();
-    graph.add_source(ModuleSource::new(
-        SourceId::new(1),
-        vela_package::PackageId::anonymous(),
-        ModulePath::from_qualified("conformance::core"),
-        CORE_LANGUAGE,
-    ));
-    graph.add_source(ModuleSource::new(
-        SourceId::new(2),
-        vela_package::PackageId::anonymous(),
-        ModulePath::from_qualified("conformance::reward"),
-        REWARD_MODULE,
-    ));
-    graph.resolve_imports();
-    graph
-}
+// The same source graph feeds HIR resolution and analysis, but not their assertions.
+#[path = "../../../tests/fixtures/conformance/source_graph.rs"]
+mod source_graph;
+use source_graph::conformance_graph;
 
 fn declaration<'graph>(graph: &'graph ModuleGraph, name: &str) -> &'graph Declaration {
     graph

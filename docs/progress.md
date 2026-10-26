@@ -51,8 +51,12 @@ TO00 accepts the compiler/VM record-writeback pilot: two byte-preserved shared
 sources, four independently named cases, unchanged lowering/result assertions.
 The fast-lane filter now names `removed_macros_and_borrow_apis_are_unavailable`;
 full validation retains both trybuild runners. Focused pilot tests passed again.
-Later stages preserve stateful/safety scenarios, specialized runners and existing
-LSP evidence obligations; no full-migration acceptance is claimed yet.
+TO01 completes bounded foundational/front-end families and shares the HIR/analysis
+conformance graph without sharing assertions. All seven owners passed 545 tests
+in both feature modes; package lifecycle/audits intentionally remain unchanged.
+[Execution evidence](archive/test-organization-acceptance.md) records dispositions
+and validation. Later stages preserve stateful/safety scenarios, specialized
+runners and LSP evidence obligations; final acceptance remains pending.
 
 ## Final Validation
 

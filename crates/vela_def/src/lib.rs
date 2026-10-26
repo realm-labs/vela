@@ -315,19 +315,14 @@ mod tests {
         assert_ne!(string_len.id(), array_len.id());
     }
 
-    #[test]
-    fn canonical_path_formatting_is_stable() {
-        let function = DefPath::function("std", ["math"], "max");
-        let method = DefPath::method("std", std::iter::empty::<&str>(), "String", "len");
-        let ty = DefPath::ty("std", std::iter::empty::<&str>(), "String");
-        let variant = DefPath::variant("std", std::iter::empty::<&str>(), "Option", "Some");
-        let field = DefPath::field("std", std::iter::empty::<&str>(), "Option::Some", "0");
-
-        assert_eq!(function.to_string(), "function std::math::max");
-        assert_eq!(method.to_string(), "method std::String::len");
-        assert_eq!(ty.to_string(), "type std::String");
-        assert_eq!(variant.to_string(), "variant std::Option::Some");
-        assert_eq!(field.to_string(), "field std::Option::Some::0");
+    #[rstest::rstest]
+    #[case::function(DefPath::function("std", ["math"], "max"), "function std::math::max")]
+    #[case::method(DefPath::method("std", std::iter::empty::<&str>(), "String", "len"), "method std::String::len")]
+    #[case::ty(DefPath::ty("std", std::iter::empty::<&str>(), "String"), "type std::String")]
+    #[case::variant(DefPath::variant("std", std::iter::empty::<&str>(), "Option", "Some"), "variant std::Option::Some")]
+    #[case::field(DefPath::field("std", std::iter::empty::<&str>(), "Option::Some", "0"), "field std::Option::Some::0")]
+    fn canonical_path_formatting_is_stable(#[case] path: DefPath, #[case] expected: &str) {
+        assert_eq!(path.to_string(), expected);
     }
 
     #[test]
@@ -341,30 +336,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn blake3_128_fixture_outputs_are_stable() {
-        let fixtures = [
-            (
-                DefPath::function("std", ["math"], "max"),
-                0xc6ac_3d50_8a8f_690e_3b98_5285_b625_0f8c_u128,
-            ),
-            (
-                DefPath::method("std", std::iter::empty::<&str>(), "String", "len"),
-                0x2f1e_04cc_e9ba_9207_77d9_cb96_0411_39ce_u128,
-            ),
-            (
-                DefPath::variant("std", std::iter::empty::<&str>(), "Option", "Some"),
-                0xb0aa_d415_2d15_dd2b_2479_0cc5_378f_d2fc_u128,
-            ),
-            (
-                DefPath::field("std", std::iter::empty::<&str>(), "Option::Some", "0"),
-                0x2863_5079_24a3_8385_d163_4874_7f26_3595_u128,
-            ),
-        ];
-
-        for (path, expected) in fixtures {
-            assert_eq!(path.id().get(), expected, "{path}");
-        }
+    #[rstest::rstest]
+    #[case::function(DefPath::function("std", ["math"], "max"), 0xc6ac_3d50_8a8f_690e_3b98_5285_b625_0f8c_u128)]
+    #[case::method(DefPath::method("std", std::iter::empty::<&str>(), "String", "len"), 0x2f1e_04cc_e9ba_9207_77d9_cb96_0411_39ce_u128)]
+    #[case::variant(DefPath::variant("std", std::iter::empty::<&str>(), "Option", "Some"), 0xb0aa_d415_2d15_dd2b_2479_0cc5_378f_d2fc_u128)]
+    #[case::field(DefPath::field("std", std::iter::empty::<&str>(), "Option::Some", "0"), 0x2863_5079_24a3_8385_d163_4874_7f26_3595_u128)]
+    fn blake3_128_fixture_outputs_are_stable(#[case] path: DefPath, #[case] expected: u128) {
+        assert_eq!(path.id().get(), expected, "{path}");
     }
 
     #[test]

@@ -752,15 +752,10 @@ pub fn main() {
         );
     }
 
-    #[test]
-    fn formatting_formats_item_declarations() {
-        let source = "pub struct Player{level:i64 name:String}pub enum Reward{None Coins(amount:i64) Item{id:String}}pub trait Damageable{fn damage(amount:i64)->bool;}impl Damageable for Player{fn damage(amount:i64)->bool{return amount>0}}impl Player{fn heal(amount:i64)->i64{return amount}}";
-        let formatted = format_source(source_id(), source);
-
-        assert!(formatted.diagnostics().is_empty());
-        assert_eq!(
-            formatted.text(),
-            "\
+    #[rstest::rstest]
+    #[case::item_declarations(
+        "pub struct Player{level:i64 name:String}pub enum Reward{None Coins(amount:i64) Item{id:String}}pub trait Damageable{fn damage(amount:i64)->bool;}impl Damageable for Player{fn damage(amount:i64)->bool{return amount>0}}impl Player{fn heal(amount:i64)->i64{return amount}}",
+        "\
 pub struct Player {
     level: i64
     name: String
@@ -786,18 +781,10 @@ impl Player {
     }
 }
 "
-        );
-    }
-
-    #[test]
-    fn formatting_formats_state_forms_without_reserving_state_identifiers() {
-        let source = "state counter:i64=0;pub state world:World=World{};fn state(state:i64){let state=state;}";
-        let formatted = format_source(source_id(), source);
-
-        assert!(formatted.diagnostics().is_empty());
-        assert_eq!(
-            formatted.text(),
-            "\
+    )]
+    #[case::state_identifiers(
+        "state counter:i64=0;pub state world:World=World{};fn state(state:i64){let state=state;}",
+        "\
 state counter: i64 = 0;
 pub state world: World = World {
 };
@@ -805,40 +792,31 @@ fn state(state: i64) {
     let state = state;
 }
 "
-        );
-    }
-
-    #[test]
-    fn formatting_compacts_builtin_container_type_arguments() {
-        let source = "fn score(scores:Array < i64 >, rewards:Map< String,i64 >, tags:Set <String>)->Result < Map < String , i64 > , String >{return result::ok(rewards)}";
-        let formatted = format_source(source_id(), source);
-
-        assert!(formatted.diagnostics().is_empty());
-        assert_eq!(
-            formatted.text(),
+    )]
+    #[case::builtin_container_type_arguments(
+        "fn score(scores:Array < i64 >, rewards:Map< String,i64 >, tags:Set <String>)->Result < Map < String , i64 > , String >{return result::ok(rewards)}",
             "\
 fn score(scores: Array<i64>, rewards: Map<String, i64>, tags: Set<String>) -> Result<Map<String, i64>, String> {
     return result::ok(rewards)
 }
 "
-        );
-    }
-
-    #[test]
-    fn formatting_compacts_nested_result_container_type_arguments() {
-        let source =
-            "struct Loader{cache:Option < Result < Array < Map < String , i64 > > , String > >}";
-        let formatted = format_source(source_id(), source);
-
-        assert!(formatted.diagnostics().is_empty());
-        assert_eq!(
-            formatted.text(),
-            "\
+    )]
+    #[case::nested_result_container_type_arguments(
+        "struct Loader{cache:Option < Result < Array < Map < String , i64 > > , String > >}",
+        "\
 struct Loader {
     cache: Option<Result<Array<Map<String, i64>>, String>>
 }
 "
-        );
+    )]
+    fn formatting_formats_declarations_and_type_hints(
+        #[case] source: &str,
+        #[case] expected: &str,
+    ) {
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(formatted.text(), expected);
     }
 
     #[test]

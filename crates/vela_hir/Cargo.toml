@@ -24,5 +24,8 @@ serde = [
 name = "integration"
 path = "tests/integration.rs"
 
+[dev-dependencies]
+rstest.workspace = true
+
 [lints]
 workspace = true

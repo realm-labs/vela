@@ -28,19 +28,16 @@ const fn stable_hash_bytes(hash: &mut u64, bytes: &[u8]) {
 mod tests {
     use super::stable_id;
 
-    #[test]
-    fn fnv64_fixture_outputs_are_stable() {
-        assert_eq!(
-            stable_id("inherent_method", "main::Player", "bonus"),
-            0xe0dc_50cc_b2ea_1381
-        );
-        assert_eq!(
-            stable_id("trait_method", "main::BonusSource", "bonus"),
-            0xbc3f_86dc_30f1_b48f
-        );
-        assert_eq!(
-            stable_id("trait_method", "PartialEq", "eq"),
-            0xafff_db83_17bd_1f5c
-        );
+    #[rstest::rstest]
+    #[case::inherent_method("inherent_method", "main::Player", "bonus", 0xe0dc_50cc_b2ea_1381)]
+    #[case::trait_method("trait_method", "main::BonusSource", "bonus", 0xbc3f_86dc_30f1_b48f)]
+    #[case::builtin_trait_method("trait_method", "PartialEq", "eq", 0xafff_db83_17bd_1f5c)]
+    fn fnv64_fixture_outputs_are_stable(
+        #[case] namespace: &str,
+        #[case] owner: &str,
+        #[case] name: &str,
+        #[case] expected: u64,
+    ) {
+        assert_eq!(stable_id(namespace, owner, name), expected);
     }
 }

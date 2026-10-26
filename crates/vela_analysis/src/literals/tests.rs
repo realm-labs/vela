@@ -29,50 +29,55 @@ fn scalar(result: LiteralResult) -> ScalarValue {
         .expect("literal should be a scalar")
 }
 
-#[test]
-fn resolves_every_integer_suffix_and_stable_spelling() {
-    let cases = [
-        (HirIntegerSuffix::I8, ScalarValue::I8(12)),
-        (HirIntegerSuffix::I16, ScalarValue::I16(12)),
-        (HirIntegerSuffix::I32, ScalarValue::I32(12)),
-        (HirIntegerSuffix::I64, ScalarValue::I64(12)),
-        (HirIntegerSuffix::U8, ScalarValue::U8(12)),
-        (HirIntegerSuffix::U16, ScalarValue::U16(12)),
-        (HirIntegerSuffix::U32, ScalarValue::U32(12)),
-        (HirIntegerSuffix::U64, ScalarValue::U64(12)),
-    ];
-    for (suffix, expected) in cases {
-        let literal = integer("12", HirIntRadix::Decimal, Some(suffix));
-        assert_eq!(
-            scalar(resolve_integer_literal(
-                &literal,
-                LiteralPrimitiveContext::Default,
-                LiteralSign::Positive,
-            )),
-            expected
-        );
-        assert!(integer_literal_spelling(&literal).ends_with(expected.type_name()));
-    }
-
-    let binary = integer("0b1010", HirIntRadix::Binary, Some(HirIntegerSuffix::U8));
-    let hex = integer("0xff", HirIntRadix::Hex, Some(HirIntegerSuffix::U16));
-    assert_eq!(integer_literal_spelling(&binary), "0b1010u8");
-    assert_eq!(integer_literal_spelling(&hex), "0xffu16");
+#[rstest::rstest]
+#[case::i8(HirIntegerSuffix::I8, ScalarValue::I8(12))]
+#[case::i16(HirIntegerSuffix::I16, ScalarValue::I16(12))]
+#[case::i32(HirIntegerSuffix::I32, ScalarValue::I32(12))]
+#[case::i64(HirIntegerSuffix::I64, ScalarValue::I64(12))]
+#[case::u8(HirIntegerSuffix::U8, ScalarValue::U8(12))]
+#[case::u16(HirIntegerSuffix::U16, ScalarValue::U16(12))]
+#[case::u32(HirIntegerSuffix::U32, ScalarValue::U32(12))]
+#[case::u64(HirIntegerSuffix::U64, ScalarValue::U64(12))]
+fn resolves_every_integer_suffix_and_stable_spelling(
+    #[case] suffix: HirIntegerSuffix,
+    #[case] expected: ScalarValue,
+) {
+    let literal = integer("12", HirIntRadix::Decimal, Some(suffix));
     assert_eq!(
         scalar(resolve_integer_literal(
-            &binary,
+            &literal,
             LiteralPrimitiveContext::Default,
-            LiteralSign::Positive
+            LiteralSign::Positive,
         )),
-        ScalarValue::U8(10)
+        expected
     );
+    assert!(integer_literal_spelling(&literal).ends_with(expected.type_name()));
+}
+
+#[rstest::rstest]
+#[case::binary(
+    integer("0b1010", HirIntRadix::Binary, Some(HirIntegerSuffix::U8)),
+    "0b1010u8",
+    ScalarValue::U8(10)
+)]
+#[case::hex(
+    integer("0xff", HirIntRadix::Hex, Some(HirIntegerSuffix::U16)),
+    "0xffu16",
+    ScalarValue::U16(255)
+)]
+fn resolves_binary_and_hex_integer_spellings(
+    #[case] literal: HirIntegerLiteral,
+    #[case] spelling: &str,
+    #[case] expected: ScalarValue,
+) {
+    assert_eq!(integer_literal_spelling(&literal), spelling);
     assert_eq!(
         scalar(resolve_integer_literal(
-            &hex,
+            &literal,
             LiteralPrimitiveContext::Default,
             LiteralSign::Positive
         )),
-        ScalarValue::U16(255)
+        expected
     );
 }
 
@@ -114,77 +119,73 @@ fn resolves_defaults_and_contextual_primitives() {
     );
 }
 
-#[test]
-fn accepts_signed_minima_and_classifies_both_overflow_directions() {
-    let minima = [
-        ("128", HirIntegerSuffix::I8, ScalarValue::I8(i8::MIN)),
-        ("32768", HirIntegerSuffix::I16, ScalarValue::I16(i16::MIN)),
-        (
-            "2147483648",
-            HirIntegerSuffix::I32,
-            ScalarValue::I32(i32::MIN),
-        ),
-        (
-            "9223372036854775808",
-            HirIntegerSuffix::I64,
-            ScalarValue::I64(i64::MIN),
-        ),
-    ];
-    for (text, suffix, expected) in minima {
-        let literal = integer(text, HirIntRadix::Decimal, Some(suffix));
-        assert_eq!(
-            scalar(resolve_integer_literal(
-                &literal,
-                LiteralPrimitiveContext::Default,
-                LiteralSign::Negated
-            )),
-            expected
-        );
-    }
-
-    for sign in [LiteralSign::Positive, LiteralSign::Negated] {
-        let literal = integer("129", HirIntRadix::Decimal, Some(HirIntegerSuffix::I8));
-        let error = resolve_integer_literal(&literal, LiteralPrimitiveContext::Default, sign)
-            .expect_err("129i8 cannot be positive or negated i8");
-        assert_eq!(error.class(), LiteralErrorClass::OutOfRange);
-        assert_eq!(error.detail(), "integer literal out of range");
-    }
-}
-
-#[test]
-fn validates_float_widths_and_overflow() {
-    for (suffix, expected) in [
-        (HirFloatSuffix::F32, ScalarValue::F32(1.25)),
-        (HirFloatSuffix::F64, ScalarValue::F64(1.25)),
-    ] {
-        let literal = float("1.25", Some(suffix));
-        assert_eq!(
-            scalar(resolve_float_literal(
-                &literal,
-                LiteralPrimitiveContext::Default,
-                LiteralSign::Positive
-            )),
-            expected
-        );
-        assert_eq!(
-            float_literal_spelling(&literal),
-            format!("1.25{}", expected.type_name())
-        );
-    }
-
-    for literal in [
-        float("3.5e38", Some(HirFloatSuffix::F32)),
-        float("1.8e308", Some(HirFloatSuffix::F64)),
-    ] {
-        let error = resolve_float_literal(
+#[rstest::rstest]
+#[case::i8("128", HirIntegerSuffix::I8, ScalarValue::I8(i8::MIN))]
+#[case::i16("32768", HirIntegerSuffix::I16, ScalarValue::I16(i16::MIN))]
+#[case::i32("2147483648", HirIntegerSuffix::I32, ScalarValue::I32(i32::MIN))]
+#[case::i64(
+    "9223372036854775808",
+    HirIntegerSuffix::I64,
+    ScalarValue::I64(i64::MIN)
+)]
+fn accepts_signed_minima(
+    #[case] text: &str,
+    #[case] suffix: HirIntegerSuffix,
+    #[case] expected: ScalarValue,
+) {
+    let literal = integer(text, HirIntRadix::Decimal, Some(suffix));
+    assert_eq!(
+        scalar(resolve_integer_literal(
             &literal,
             LiteralPrimitiveContext::Default,
-            LiteralSign::Positive,
-        )
-        .expect_err("non-finite float should be rejected");
-        assert_eq!(error.class(), LiteralErrorClass::OutOfRange);
-        assert_eq!(error.detail(), "float literal out of range");
-    }
+            LiteralSign::Negated
+        )),
+        expected
+    );
+}
+
+#[rstest::rstest]
+#[case::positive(LiteralSign::Positive)]
+#[case::negated(LiteralSign::Negated)]
+fn classifies_both_integer_overflow_directions(#[case] sign: LiteralSign) {
+    let literal = integer("129", HirIntRadix::Decimal, Some(HirIntegerSuffix::I8));
+    let error = resolve_integer_literal(&literal, LiteralPrimitiveContext::Default, sign)
+        .expect_err("129i8 cannot be positive or negated i8");
+    assert_eq!(error.class(), LiteralErrorClass::OutOfRange);
+    assert_eq!(error.detail(), "integer literal out of range");
+}
+
+#[rstest::rstest]
+#[case::f32(HirFloatSuffix::F32, ScalarValue::F32(1.25))]
+#[case::f64(HirFloatSuffix::F64, ScalarValue::F64(1.25))]
+fn validates_float_widths(#[case] suffix: HirFloatSuffix, #[case] expected: ScalarValue) {
+    let literal = float("1.25", Some(suffix));
+    assert_eq!(
+        scalar(resolve_float_literal(
+            &literal,
+            LiteralPrimitiveContext::Default,
+            LiteralSign::Positive
+        )),
+        expected
+    );
+    assert_eq!(
+        float_literal_spelling(&literal),
+        format!("1.25{}", expected.type_name())
+    );
+}
+
+#[rstest::rstest]
+#[case::f32(float("3.5e38", Some(HirFloatSuffix::F32)))]
+#[case::f64(float("1.8e308", Some(HirFloatSuffix::F64)))]
+fn rejects_float_overflow(#[case] literal: HirFloatLiteral) {
+    let error = resolve_float_literal(
+        &literal,
+        LiteralPrimitiveContext::Default,
+        LiteralSign::Positive,
+    )
+    .expect_err("non-finite float should be rejected");
+    assert_eq!(error.class(), LiteralErrorClass::OutOfRange);
+    assert_eq!(error.detail(), "float literal out of range");
 }
 
 #[test]

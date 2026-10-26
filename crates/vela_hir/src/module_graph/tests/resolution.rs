@@ -1,68 +1,67 @@
 use super::*;
 
-#[test]
-fn qualified_bindings_keep_package_identity_across_source_insertion_order() {
+#[rstest::rstest]
+#[case::hidden_caller_api([0, 1, 2])]
+#[case::hidden_api_caller([0, 2, 1])]
+#[case::caller_hidden_api([1, 0, 2])]
+#[case::caller_api_hidden([1, 2, 0])]
+#[case::api_hidden_caller([2, 0, 1])]
+#[case::api_caller_hidden([2, 1, 0])]
+fn qualified_bindings_keep_package_identity_across_source_insertion_order(
+    #[case] order: [usize; 3],
+) {
     let app = PackageId::new("com.example.app").expect("app package");
     let hidden = PackageId::new("com.example.hidden").expect("hidden package");
-    for order in [
-        [0, 1, 2],
-        [0, 2, 1],
-        [1, 0, 2],
-        [1, 2, 0],
-        [2, 0, 1],
-        [2, 1, 0],
-    ] {
-        let mut graph = ModuleGraph::new();
-        let mut caller = None;
-        let mut api = None;
-        for index in order {
-            match index {
-                0 => {
-                    graph.add_source(package_source(
-                        1,
-                        &hidden,
-                        "api",
-                        "pub fn produce() -> bool { true }",
-                    ));
-                }
-                1 => {
-                    caller = Some(graph.add_source(package_source(
-                        2,
-                        &app,
-                        "main",
-                        "fn run() { api::produce(); }",
-                    )));
-                }
-                2 => {
-                    api = Some(graph.add_source(package_source(
-                        3,
-                        &app,
-                        "api",
-                        "pub fn produce() -> i64 { 1 }",
-                    )));
-                }
-                _ => unreachable!(),
+    let mut graph = ModuleGraph::new();
+    let mut caller = None;
+    let mut api = None;
+    for index in order {
+        match index {
+            0 => {
+                graph.add_source(package_source(
+                    1,
+                    &hidden,
+                    "api",
+                    "pub fn produce() -> bool { true }",
+                ));
             }
+            1 => {
+                caller = Some(graph.add_source(package_source(
+                    2,
+                    &app,
+                    "main",
+                    "fn run() { api::produce(); }",
+                )));
+            }
+            2 => {
+                api = Some(graph.add_source(package_source(
+                    3,
+                    &app,
+                    "api",
+                    "pub fn produce() -> i64 { 1 }",
+                )));
+            }
+            _ => unreachable!(),
         }
-        graph.resolve_imports();
-        let run = graph
-            .module(caller.expect("caller module"))
-            .expect("caller declarations")
-            .get("run")
-            .expect("run");
-        let expected = graph
-            .module(api.expect("api module"))
-            .expect("api declarations")
-            .get("produce")
-            .expect("produce");
-        let bindings = graph.bindings(run).expect("run bindings");
-        assert!(
-            bindings
-                .resolutions()
-                .any(|(_, resolution)| resolution == &BindingResolution::Declaration(expected)),
-            "{order:?}"
-        );
     }
+    graph.resolve_imports();
+    let run = graph
+        .module(caller.expect("caller module"))
+        .expect("caller declarations")
+        .get("run")
+        .expect("run");
+    let expected = graph
+        .module(api.expect("api module"))
+        .expect("api declarations")
+        .get("produce")
+        .expect("produce");
+    let bindings = graph.bindings(run).expect("run bindings");
+    assert!(
+        bindings
+            .resolutions()
+            .any(|(_, resolution)| resolution == &BindingResolution::Declaration(expected)),
+        "{order:?}"
+    );
 }
 
 #[test]
