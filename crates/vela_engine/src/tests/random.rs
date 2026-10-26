@@ -64,16 +64,7 @@ fn main() {
 
 #[test]
 fn engine_controlled_random_is_seeded_and_bounded() {
-    let source = r#"
-fn main() {
-    let first = math::random(1, 6);
-    let second = math::random(10, 12);
-    if first >= 1 && first <= 6 && second >= 10 && second <= 12 {
-        return first * 100 + second;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../tests/fixtures/random/seeded_bounds.vela");
     let first_engine = Engine::builder()
         .capability(Capability::Random)
         .with_controlled_random(42)
@@ -174,25 +165,7 @@ fn engine_controlled_random_extends_standard_math_metadata() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(2),
-            r#"
-fn main() {
-    let math_exports = reflect::exports("math");
-    let random = reflect::function("math::random");
-    let max = reflect::function("math::max");
-    let required = reflect::required_permissions(random);
-    let effects = reflect::effects(random);
-    return math_exports.len() == 15
-        && math_exports.contains("math::max")
-        && math_exports.contains("math::random")
-        && reflect::docs(max).unwrap_or("") == "Returns the larger numeric value."
-        && reflect::docs(random).unwrap_or("") == "Returns a deterministic seeded integer in the inclusive range."
-        && required.len() == 0
-        && !effects.reads_host
-        && !effects.writes_host
-        && !effects.emits_events
-        && effects.uses_random;
-}
-"#,
+            include_str!("../../tests/fixtures/random/standard_metadata.vela"),
         )
         .expect("program should compile");
 
@@ -206,17 +179,7 @@ fn main() {
 
 #[test]
 fn engine_controlled_random_reflect_call_is_seeded_and_bounded() {
-    let source = r#"
-fn main() {
-    let random = reflect::function("math::random");
-    let first = reflect::call(random, 1, 6);
-    let second = reflect::call(random, 10, 12);
-    if first >= 1 && first <= 6 && second >= 10 && second <= 12 {
-        return first * 100 + second;
-    }
-    return 0;
-}
-"#;
+    let source = include_str!("../../tests/fixtures/random/reflected_seeded_bounds.vela");
     let first_engine = Engine::builder()
         .capability(Capability::Random)
         .reflection_permissions(ReflectPermissionSet::all())

@@ -20,20 +20,7 @@ mod native_capabilities;
 #[test]
 fn ordinary_package_imports_public_dependency_function() {
     let root = package_fixture("public_function");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::answer\npub fn main() { return answer(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
-        "pub fn answer() { return 42; }\n",
-    );
+    copy_package_fixture("public_function", &root);
 
     let engine = Engine::builder().build().expect("engine");
     let snapshot = engine
@@ -55,20 +42,7 @@ fn ordinary_package_imports_public_dependency_function() {
 #[test]
 fn ordinary_package_imports_dependency_type_and_method() {
     let root = package_fixture("public_type");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::Counter\npub fn main() { let value = Counter { value: 21 }; return value.doubled(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
-        "pub struct Counter { value: i64 }\nimpl Counter { fn doubled(self) { return self.value * 2; } }\n",
-    );
+    copy_package_fixture("public_type", &root);
 
     let engine = Engine::builder().build().expect("engine");
     let snapshot = engine
@@ -93,20 +67,12 @@ fn ordinary_package_imports_dependency_type_and_method() {
 #[test]
 fn ordinary_package_rejects_private_dependency_declaration() {
     let root = package_fixture("private_function");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::answer\npub fn main() { return answer(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
+    copy_package_fixture("public_function", &root);
+    fs::write(
+        root.join("util/src/api.vela"),
         "fn answer() { return 42; }\n",
-    );
+    )
+    .expect("make dependency private");
 
     let engine = Engine::builder().build().expect("engine");
     let error = engine
@@ -120,27 +86,7 @@ fn ordinary_package_rejects_private_dependency_declaration() {
 #[test]
 fn ordinary_package_includes_transitive_dependencies_but_not_their_aliases() {
     let root = package_fixture("transitive");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nmiddle = { path = \"middle\" }\n",
-        "use middle::api::answer\npub fn main() { return answer(); }\n",
-    );
-    write_package(
-        &root.join("middle"),
-        "dev.vela.middle",
-        "middle",
-        "[dependencies]\nleaf = { path = \"../leaf\" }\n",
-        "use leaf::api::value\npub fn answer() { return value(); }\n",
-    );
-    write_package(
-        &root.join("leaf"),
-        "dev.vela.leaf",
-        "leaf",
-        "",
-        "pub fn value() { return 7; }\n",
-    );
+    copy_package_fixture("transitive", &root);
 
     let engine = Engine::builder().build().expect("engine");
     let snapshot = engine
@@ -160,7 +106,7 @@ fn ordinary_package_includes_transitive_dependencies_but_not_their_aliases() {
 
     fs::write(
         root.join("src/main.vela"),
-        "use leaf::api::value\npub fn main() { return value(); }\n",
+        include_str!("../../../tests/fixtures/packages/updates/transitive_alias_rejected.vela"),
     )
     .expect("replace app source");
     let error = engine
@@ -264,20 +210,7 @@ fn ordinary_package_reload_rejects_a_different_root_request() {
 #[test]
 fn ordinary_dependency_body_reload_updates_root_package_calls() {
     let root = package_fixture("reload_body");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::value\npub fn main() { return value(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
-        "pub fn value() -> i64 { return 1; }\n",
-    );
+    copy_package_fixture("dependency_reload", &root);
     let engine = Engine::builder().build().expect("engine");
     let first = engine
         .load_package_workspace(root.join("vela.toml"))
@@ -289,7 +222,7 @@ fn ordinary_dependency_body_reload_updates_root_package_calls() {
 
     fs::write(
         root.join("util/src/api.vela"),
-        "pub fn value() -> i64 { return 2; }\n",
+        include_str!("../../../tests/fixtures/packages/updates/dependency_v2.vela"),
     )
     .expect("change dependency body");
     let second = engine
@@ -399,20 +332,7 @@ fn ordinary_package_capability_use_must_be_declared_and_granted() {
 #[test]
 fn ordinary_dependency_abi_change_is_rejected_without_image_advance() {
     let root = package_fixture("reload_abi");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::value\npub fn main() { return value(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
-        "pub fn value() -> i64 { return 1; }\n",
-    );
+    copy_package_fixture("dependency_reload", &root);
     let engine = Engine::builder().build().expect("engine");
     let first = engine
         .load_package_workspace(root.join("vela.toml"))
@@ -424,7 +344,7 @@ fn ordinary_dependency_abi_change_is_rejected_without_image_advance() {
 
     fs::write(
         root.join("util/src/api.vela"),
-        "pub fn value() -> String { return \"changed\"; }\n",
+        include_str!("../../../tests/fixtures/packages/updates/dependency_rejected.vela"),
     )
     .expect("change dependency ABI");
     let second = engine
@@ -450,6 +370,26 @@ fn package_fixture(name: &str) -> PathBuf {
     ));
     fs::create_dir_all(&root).expect("create fixture root");
     root
+}
+
+fn copy_package_fixture(name: &str, root: &Path) {
+    fn copy_tree(source: &Path, destination: &Path) {
+        fs::create_dir_all(destination).expect("create package fixture directory");
+        for entry in fs::read_dir(source).expect("read package fixture") {
+            let entry = entry.expect("fixture entry");
+            let target = destination.join(entry.file_name());
+            if entry.file_type().expect("fixture file type").is_dir() {
+                copy_tree(&entry.path(), &target);
+            } else {
+                fs::copy(entry.path(), target).expect("copy package fixture file");
+            }
+        }
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/packages")
+        .join(name);
+    copy_tree(&source, root);
 }
 
 fn write_package(root: &Path, id: &str, name: &str, extra_manifest: &str, source: &str) {
@@ -525,20 +465,12 @@ fn ordinary_package_reload_reapplies_previous_root_set() {
 #[test]
 fn dependency_change_reports_impacted_packages() {
     let root = package_fixture("package_impact_report");
-    write_package(
-        &root,
-        "dev.vela.app",
-        "app",
-        "[dependencies]\nutil = { path = \"util\" }\n",
-        "use util::api::answer\npub fn main() { return answer(); }\n",
-    );
-    write_package(
-        &root.join("util"),
-        "dev.vela.util",
-        "util",
-        "",
+    copy_package_fixture("public_function", &root);
+    fs::write(
+        root.join("util/src/api.vela"),
         "pub fn answer() { return 1; }\n",
-    );
+    )
+    .expect("write initial dependency value");
     let engine = Engine::builder().build().expect("engine");
     let first = engine
         .load_package_workspace(root.join("vela.toml"))

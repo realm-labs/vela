@@ -15,7 +15,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF03 | Complete | [Semantic/package evidence](test-input-sf03.md): 75 extracted inputs, 11 UI-S cases and fresh package trees; 329 tests per feature lane. Archive packaging remains limited by existing versionless path dependencies. |
 | SF04 | Complete | [MIR/compiler evidence](test-input-sf04.md): 48 source inputs, 12 MIR expectations, eight UI-S cases; 650 default / 666 all-feature tests. |
 | SF05 | Complete | [VM/reflection evidence](test-input-sf05.md): 106 sites into 104 owner fixtures plus shared set input; VM 872/882 and reflection 57/57, unchanged test discovery. |
-| SF06–SF12 | Pending | No acceptance claimed. |
+| SF06 | Complete | [Engine/reload evidence](test-input-sf06.md): 101 fixtures, four formatter and portable route comparisons; 620 default / 632 all-feature tests. |
+| SF07–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 
@@ -82,4 +83,11 @@ trailing whitespace/blank EOF in eight analysis fixtures. These bytes came from
 original evaluated literals; they are not normalized to silence Git. Earlier
 scoped whitespace checks covered changed tracked files, not all new fixture bytes.
 Final acceptance must distinguish these byte-preservation exceptions from accidental
-whitespace in Rust or docs.
+whitespace in Rust or docs. SF05 likewise preserves original blank EOF bytes in
+`reflection/reward_module.vela` and `reflection/signature.vela`.
+
+A second independent review checked SF06–SF09, verified 83 full-file include/token
+expansions and ran 110 focused tests successfully. It identified missing LF rules
+in Engine/reload and tooling fixtures; scoped rules were added, all source hashes
+rechecked, and package/rename LF+CRLF tests passed. No reader normalization or
+lifecycle/assertion removal was used.

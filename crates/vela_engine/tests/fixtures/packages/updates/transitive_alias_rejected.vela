@@ -1,0 +1,2 @@
+use leaf::api::value
+pub fn main() { return value(); }

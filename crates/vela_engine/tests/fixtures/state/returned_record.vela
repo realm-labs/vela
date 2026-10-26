@@ -1,0 +1,13 @@
+
+struct Reward {
+    gold: i64,
+    xp: i64,
+}
+
+fn make_reward() {
+    return Reward { gold: 7, xp: 3 };
+}
+
+fn reward_score(reward: Reward, bonus) {
+    return reward.gold + reward.xp + bonus;
+}

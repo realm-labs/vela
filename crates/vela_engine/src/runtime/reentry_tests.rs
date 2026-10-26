@@ -36,25 +36,9 @@ fn context_native_reenters_same_session_across_nested_native_boundary() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
-            r#"
-struct Counter { value: i64 }
-
-fn counter() { return Counter { value: 40 }; }
-
-impl Counter {
-    fn add(self, amount: i64) { return self.value + amount; }
-}
-
-fn child(value: i64) {
-    return test::nested(value);
-}
-
-fn main() {
-    return test::outer();
-}
-"#,
-        )
+        .compile_source(include_str!(
+            "../../tests/fixtures/reentry/nested_native.vela"
+        ))
         .expect("reentry fixture should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
@@ -80,22 +64,9 @@ fn parent_heap_roots_survive_gc_during_nested_reentry() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
-            r#"
-struct Keep { text: String }
-
-fn collect_garbage() {
-    let garbage = ["one", "two", "three", "four"];
-    return garbage.len();
-}
-
-fn main() {
-    let keep = Keep { text: "alive" };
-    test::nested_gc();
-    return keep.text;
-}
-"#,
-        )
+        .compile_source(include_str!(
+            "../../tests/fixtures/reentry/parent_roots.vela"
+        ))
         .expect("nested GC fixture should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     runtime
@@ -138,24 +109,9 @@ fn reentry_returned_value_survives_nested_incremental_gc() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
-            r#"
-struct Held { text: String }
-
-fn make_held() { return Held { text: "alive" }; }
-fn collect_garbage() {
-    let garbage = ["one", "two", "three", "four", "five"];
-    return garbage.len();
-}
-fn consume_held(value: Held) { return value.text.len(); }
-
-impl Held {
-    fn read(self) { return self.text; }
-}
-
-fn main() { return test::hold_reentry_value(); }
-"#,
-        )
+        .compile_source(include_str!(
+            "../../tests/fixtures/reentry/retained_result.vela"
+        ))
         .expect("dynamic reentry root fixture should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     runtime
@@ -189,17 +145,9 @@ fn reentry_call_depth_error_unwinds_child_and_runtime_remains_reusable() {
         .build()
         .expect("engine should build");
     let program = engine
-        .compile_source(
-            r#"
-fn deep(remaining: i64) {
-    if remaining == 0 { return 0; }
-    return deep(remaining - 1);
-}
-
-fn main() { return test::enter_deep(); }
-fn reusable() { return 9; }
-"#,
-        )
+        .compile_source(include_str!(
+            "../../tests/fixtures/reentry/depth_unwind.vela"
+        ))
         .expect("depth fixture should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 

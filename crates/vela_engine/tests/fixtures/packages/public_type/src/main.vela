@@ -1,0 +1,2 @@
+use util::api::Counter
+pub fn main() { let value = Counter { value: 21 }; return value.doubled(); }

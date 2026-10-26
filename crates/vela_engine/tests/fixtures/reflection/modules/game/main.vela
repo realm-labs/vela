@@ -1,0 +1,23 @@
+
+use game::reward::grant
+
+fn main() {
+    let module = reflect::module("game::reward");
+    let function = reflect::function("game::reward::grant");
+    let exports = reflect::exports(module);
+
+    if reflect::name(module) == "game::reward"
+        && reflect::origin(module) == "script"
+        && reflect::has_module("game::reward")
+        && exports[0] == "game::reward::grant"
+        && reflect::name(function) == "game::reward::grant"
+        && reflect::origin(function) == "script"
+        && reflect::docs(function).unwrap_or("") == "Grant reward."
+        && reflect::attr(function, "event").unwrap_or("") == "reward"
+        && reflect::returns(function).unwrap_or("") == "bool"
+        && reflect::has_function("game::reward::grant") {
+        return 1;
+    }
+
+    return 0;
+}

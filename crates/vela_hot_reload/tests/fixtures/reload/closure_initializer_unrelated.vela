@@ -1,0 +1,6 @@
+
+fn helper() -> i64 { return 1; }
+fn unrelated() -> i64 { return 20; }
+fn unrelated_factory() { return || unrelated(); }
+state callback: Closure = || helper();
+fn main() { return 0; }

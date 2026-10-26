@@ -1,0 +1,9 @@
+
+fn main() {
+    let label = " Reward ";
+    return label.to_upper() == " REWARD "
+        && label.to_lower() == " reward "
+        && label.trim() == "Reward"
+        && label.trim_start() == "Reward "
+        && label.trim_end() == " Reward";
+}

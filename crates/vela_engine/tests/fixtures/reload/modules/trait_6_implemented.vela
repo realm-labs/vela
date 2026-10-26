@@ -1,0 +1,14 @@
+
+trait Damageable {
+    fn damage(self) -> i64 { return self.level; }
+}
+
+struct Player {
+    level: i64
+}
+
+impl Damageable for Player {}
+
+pub fn grant() {
+    return 6;
+}

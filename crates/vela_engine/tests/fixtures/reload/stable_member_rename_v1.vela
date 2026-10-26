@@ -1,0 +1,16 @@
+
+struct Reward {
+    #[id(101)]
+    item_id: String
+    #[id(102)]
+    count: i64
+}
+
+enum QuestProgress {
+    #[id(201)]
+    Active
+}
+
+fn main() {
+    return 1;
+}

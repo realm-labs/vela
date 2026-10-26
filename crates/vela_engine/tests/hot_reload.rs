@@ -295,13 +295,7 @@ fn invoke(callback) -> i64 { return callback(); }
 fn retained_old_closure_keeps_native_dispatch_and_rejected_reload_owner() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
-            r#"
-fn make() { return |value: String| value.starts_with("old"); }
-fn invoke(callback, value: String) -> bool { return callback(value); }
-fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
-"#,
-        )
+        .compile_hot_reload_initial(include_str!("fixtures/reload/native_closure_v1.vela"))
         .expect("initial native closure generation should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -323,13 +317,7 @@ fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total +
         .expect("old closure should be retained");
 
     runtime
-        .stage_reload(
-            r#"
-fn make(extra) { return |value: String| value.ends_with("new"); }
-fn invoke(callback, value: String) -> bool { return callback(value); }
-fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
-"#,
-        )
+        .stage_reload(include_str!("fixtures/reload/native_closure_rejected.vela"))
         .expect("ABI rejection should stage for a safe-point report");
     let rejected = runtime
         .activate_reload()
@@ -366,27 +354,7 @@ fn hot_reload_runtime_reflection_tracks_script_metadata_after_reload() {
         .build()
         .expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
-            r#"
-enum QuestProgress {
-    Active { count }
-}
-
-fn main() {
-    let quest_type = reflect::type_info("QuestProgress");
-    let quest = QuestProgress::Active { count: 1 };
-
-    if reflect::kind(quest_type) == "script_enum"
-        && reflect::has_function("main")
-        && reflect::has_variant(quest_type, "Active")
-        && reflect::variant_is(quest, "Active") {
-        return 1;
-    }
-
-    return 0;
-}
-"#,
-        )
+        .compile_hot_reload_initial(include_str!("fixtures/reload/reflection_v1.vela"))
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -397,28 +365,7 @@ fn main() {
     );
 
     runtime
-        .stage_reload(
-            r#"
-enum QuestProgress {
-    Active { count }
-    Finished { count }
-}
-
-fn main() {
-    let quest_type = reflect::type_info("QuestProgress");
-    let quest = QuestProgress::Finished { count: 2 };
-
-    if reflect::kind(quest_type) == "script_enum"
-        && reflect::has_function("main")
-        && reflect::has_variant(quest_type, "Finished")
-        && reflect::variant_is(quest, "Finished") {
-        return 2;
-    }
-
-    return 0;
-}
-"#,
-        )
+        .stage_reload(include_str!("fixtures/reload/reflection_v2.vela"))
         .expect("compatible update should stage");
 
     assert_eq!(
@@ -442,27 +389,7 @@ fn main() {
 fn hot_reload_runtime_preserves_script_method_dispatch_tables() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial(
-            r#"
-trait BonusSource {
-    fn bonus(self, amount) -> i64;
-}
-
-struct Player {
-    level: i64
-}
-
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-
-fn main() {
-    return Player { level: 7 }.bonus(5);
-}
-"#,
-        )
+        .compile_hot_reload_initial(include_str!("fixtures/reload/trait_dispatch_v1.vela"))
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -473,27 +400,7 @@ fn main() {
     );
 
     runtime
-        .stage_reload(
-            r#"
-trait BonusSource {
-    fn bonus(self, amount) -> i64;
-}
-
-struct Player {
-    level: i64
-}
-
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount * 2;
-    }
-}
-
-fn main() {
-    return Player { level: 7 }.bonus(5);
-}
-"#,
-        )
+        .stage_reload(include_str!("fixtures/reload/trait_dispatch_v2.vela"))
         .expect("compatible update should stage");
 
     assert_eq!(

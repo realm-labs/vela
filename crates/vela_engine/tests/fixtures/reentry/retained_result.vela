@@ -1,0 +1,15 @@
+
+struct Held { text: String }
+
+fn make_held() { return Held { text: "alive" }; }
+fn collect_garbage() {
+    let garbage = ["one", "two", "three", "four", "five"];
+    return garbage.len();
+}
+fn consume_held(value: Held) { return value.text.len(); }
+
+impl Held {
+    fn read(self) { return self.text; }
+}
+
+fn main() { return test::hold_reentry_value(); }

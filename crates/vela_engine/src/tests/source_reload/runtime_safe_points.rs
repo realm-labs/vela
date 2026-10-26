@@ -214,23 +214,7 @@ fn runtime_rebinds_vm_states_after_reload_image_swap() {
     let initial = engine
         .compile_hot_reload_initial_with_id(
             SourceId::new(1),
-            r#"
-struct ServerState {
-    level: i64,
-    name: String,
-}
-
-state state: ServerState = ServerState { level: 0, name: "" };
-
-fn make_state() {
-    return ServerState { level: 5, name: "boot" };
-}
-
-fn bump(amount) {
-    state.level += amount;
-    return state.level;
-}
-"#,
+            include_str!("../../../tests/fixtures/reload/state_record_v1.vela"),
         )
         .expect("initial hot reload compile");
     let mut runtime =
@@ -243,25 +227,9 @@ fn bump(amount) {
         .expect("script global should insert");
 
     runtime
-        .stage_reload(
-            r#"
-struct ServerState {
-    level: i64,
-    name: String,
-}
-
-state state: ServerState = ServerState { level: 0, name: "" };
-
-fn make_state() {
-    return ServerState { level: 0, name: "reload" };
-}
-
-fn bump(amount) {
-    state.level += amount;
-    return state.level + 100;
-}
-"#,
-        )
+        .stage_reload(include_str!(
+            "../../../tests/fixtures/reload/state_record_v2.vela"
+        ))
         .expect("stage source text update");
     let report = runtime
         .activate_reload()

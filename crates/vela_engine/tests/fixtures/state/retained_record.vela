@@ -1,0 +1,15 @@
+
+struct Reward {
+    gold: i64,
+    label: String,
+}
+
+state scratch: Reward = Reward { gold: 0, label: "" };
+
+fn make_reward(gold, label) {
+    return Reward { gold: gold, label: label };
+}
+
+fn reward_score(reward: Reward) {
+    return reward.gold;
+}

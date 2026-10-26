@@ -20,19 +20,7 @@ fn linked_script_method_uses_immutable_dispatch_without_mutable_cache() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-fn read_bonus() {
-    return Counter { amount: 3 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_method.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -71,19 +59,7 @@ fn linked_script_method_ignores_mutable_entry_with_wrong_dispatch() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-fn read_bonus() {
-    return Counter { amount: 3 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_method.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -127,19 +103,7 @@ fn linked_script_method_ignores_mutable_entry_with_wrong_target() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-fn read_bonus() {
-    return Counter { amount: 3 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_method.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -192,19 +156,7 @@ fn accepted_hot_reload_publishes_new_immutable_script_method_dispatch() {
     let initial = engine
         .compile_hot_reload_initial_with_id(
             SourceId::new(1),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-fn read_bonus() {
-    return Counter { amount: 3 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_method.vela"),
         )
         .expect("initial source should compile");
     let mut runtime =
@@ -230,19 +182,7 @@ fn read_bonus() {
     let update = runtime
         .compile_reload_with_id(
             SourceId::new(2),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-fn read_bonus() {
-    return Counter { amount: 5 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_method_updated.vela"),
         )
         .expect("runtime should compile method hot reload update")
         .expect("method body update should be accepted");
@@ -284,19 +224,7 @@ fn rejected_hot_reload_preserves_immutable_script_method_dispatch_generation() {
     let initial = engine
         .compile_hot_reload_initial_with_id(
             SourceId::new(1),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-pub fn read_bonus() -> i64 {
-    return Counter { amount: 3 }.add(4);
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_public.vela"),
         )
         .expect("initial source should compile");
     let mut runtime =
@@ -323,19 +251,7 @@ pub fn read_bonus() -> i64 {
     let update = runtime
         .compile_reload_with_id(
             SourceId::new(2),
-            r#"
-struct Counter { amount: i64 }
-
-impl Counter {
-    fn add(self, bonus) -> i64 {
-        return self.amount + bonus;
-    }
-}
-
-pub fn read_bonus() -> f64 {
-    return 9.0;
-}
-"#,
+            include_str!("../../tests/fixtures/cache/counter_rejected.vela"),
         )
         .expect("runtime should compile rejected method hot reload update");
     let update = match update {

@@ -1,0 +1,9 @@
+
+fn main() {
+    return "42".parse_i64().unwrap_or(0) == 42
+        && "255".parse_u8().unwrap_or(0u8) == 255u8
+        && "1.5".parse_f32().unwrap_or(0.0f32) == 1.5f32
+        && "1.5".parse_f64().unwrap_or(0.0) == 1.5
+        && "true".parse_bool().unwrap_or(false)
+        && "x".parse_char().unwrap_or(' ') == 'x';
+}

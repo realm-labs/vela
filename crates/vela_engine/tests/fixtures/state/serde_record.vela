@@ -1,0 +1,16 @@
+
+struct SerdeServerState {
+    level: i64,
+    name: String,
+}
+
+state state: SerdeServerState = SerdeServerState { level: 0, name: "" };
+
+fn bump(amount) {
+    state.level += amount;
+    return state.level;
+}
+
+fn read_name() {
+    return state.name;
+}

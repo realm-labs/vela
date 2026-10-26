@@ -1,0 +1,19 @@
+
+#[id(101)]
+struct Reward {
+    #[id(102)]
+    count: i64,
+}
+
+enum Outcome {
+    #[id(201)]
+    Granted {
+        #[id(202)]
+        value: i64,
+    },
+}
+
+fn main() {
+    let reward = Reward { count: 1 };
+    return Outcome::Granted { value: reward.count };
+}

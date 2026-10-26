@@ -1,0 +1,19 @@
+
+struct Snapshot {
+    tuple: (i64, String),
+    array: Array<i64>,
+    map: Map<String, i64>,
+    set: Set<i64>,
+    maybe: Option<i64>,
+    outcome: Result<i64, String>,
+    bytes: Bytes,
+}
+state snapshot: Snapshot = Snapshot {
+    tuple: (1, "tuple"),
+    array: [2, 3],
+    map: {"score": 4},
+    set: set::from_array([5, 6]),
+    maybe: Option::Some(7),
+    outcome: Result::Ok(8),
+    bytes: b"bytes",
+};

@@ -1,0 +1,13 @@
+
+struct Player { level: i64 }
+
+impl Player {
+    fn bonus(self, amount) -> i64 {
+        return self.level + amount + 1;
+    }
+}
+
+fn main() {
+    let player = Player { level: 7 };
+    return player.bonus(5);
+}

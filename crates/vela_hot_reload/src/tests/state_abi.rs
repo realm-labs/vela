@@ -185,23 +185,13 @@ fn main() { return value; }
 fn state_abi_initializer_call_graph_comparison_terminates_on_recursion() {
     let initial = compile_initial(
         SourceId::new(217),
-        r#"
-fn recurse() -> i64 { return recurse(); }
-fn unrelated() -> i64 { return 10; }
-state value: i64 = recurse();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/recursive_initializer_v1.vela"),
     )
     .expect("recursive pure initializer graph");
     let update = compile_update(
         &initial,
         SourceId::new(218),
-        r#"
-fn recurse() -> i64 { return recurse(); }
-fn unrelated() -> i64 { return 20; }
-state value: i64 = recurse();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/recursive_initializer_v2.vela"),
     )
     .expect("unrelated update across recursive graph");
     let mut runtime = HotReloadRuntime::new(initial);
@@ -215,25 +205,13 @@ fn main() { return 0; }
 fn state_abi_reports_helper_changes_called_from_nested_initializer_closures() {
     let initial = compile_initial(
         SourceId::new(219),
-        r#"
-fn helper() -> i64 { return 1; }
-fn unrelated() -> i64 { return 10; }
-fn unrelated_factory() { return || unrelated(); }
-state callback: Closure = || helper();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/closure_initializer_v1.vela"),
     )
     .expect("nested initializer closure graph");
     let update = compile_update(
         &initial,
         SourceId::new(220),
-        r#"
-fn helper() -> i64 { return 2; }
-fn unrelated() -> i64 { return 20; }
-fn unrelated_factory() { return || unrelated(); }
-state callback: Closure = || helper();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/closure_initializer_v2.vela"),
     )
     .expect("nested initializer closure helper update");
     let mut runtime = HotReloadRuntime::new(initial);
@@ -247,25 +225,13 @@ fn main() { return 0; }
 fn state_abi_ignores_unrelated_nested_helper_changes() {
     let initial = compile_initial(
         SourceId::new(221),
-        r#"
-fn helper() -> i64 { return 1; }
-fn unrelated() -> i64 { return 10; }
-fn unrelated_factory() { return || unrelated(); }
-state callback: Closure = || helper();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/closure_initializer_v1.vela"),
     )
     .expect("nested initializer closure graph");
     let update = compile_update(
         &initial,
         SourceId::new(222),
-        r#"
-fn helper() -> i64 { return 1; }
-fn unrelated() -> i64 { return 20; }
-fn unrelated_factory() { return || unrelated(); }
-state callback: Closure = || helper();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/closure_initializer_unrelated.vela"),
     )
     .expect("unrelated nested helper update");
     let mut runtime = HotReloadRuntime::new(initial);
@@ -279,23 +245,13 @@ fn main() { return 0; }
 fn state_abi_nested_recursive_initializer_call_graph_terminates() {
     let initial = compile_initial(
         SourceId::new(223),
-        r#"
-fn recurse() -> i64 { return recurse(); }
-fn unrelated() -> i64 { return 10; }
-state callback: Closure = || recurse();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/recursive_closure_v1.vela"),
     )
     .expect("nested recursive initializer graph");
     let update = compile_update(
         &initial,
         SourceId::new(224),
-        r#"
-fn recurse() -> i64 { return recurse(); }
-fn unrelated() -> i64 { return 20; }
-state callback: Closure = || recurse();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/recursive_closure_v2.vela"),
     )
     .expect("unrelated update across nested recursive graph");
     let mut runtime = HotReloadRuntime::new(initial);
@@ -309,23 +265,13 @@ fn main() { return 0; }
 fn state_abi_reports_calls_from_nested_parameter_default_bodies() {
     let initial = compile_initial(
         SourceId::new(225),
-        r#"
-fn helper() -> i64 { return 1; }
-fn build(callback = || helper()) -> Closure { return callback; }
-state callback: Closure = build();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/default_closure_v1.vela"),
     )
     .expect("nested parameter-default initializer graph");
     let update = compile_update(
         &initial,
         SourceId::new(226),
-        r#"
-fn helper() -> i64 { return 2; }
-fn build(callback = || helper()) -> Closure { return callback; }
-state callback: Closure = build();
-fn main() { return 0; }
-"#,
+        include_str!("../../tests/fixtures/reload/default_closure_v2.vela"),
     )
     .expect("nested parameter-default helper update");
     let mut runtime = HotReloadRuntime::new(initial);

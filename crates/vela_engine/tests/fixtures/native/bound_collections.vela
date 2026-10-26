@@ -1,0 +1,12 @@
+
+fn array_total(values: Array<i64>) -> i64 {
+    return values.filter(|value| value >= 3).sum();
+}
+
+fn set_total(values: Set<i64>) -> i64 {
+    return values
+        .filter(|value| value >= 3)
+        .values()
+        .collect_array()
+        .sum();
+}

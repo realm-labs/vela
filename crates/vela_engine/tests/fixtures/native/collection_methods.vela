@@ -1,0 +1,28 @@
+
+fn main() {
+    let names: Array = ["gold", "xp"];
+    let rewards: Map = {"gold": 4};
+    let tags: Set = set::from_array(["daily"]);
+    let other: Set = set::from_array(["raid"]);
+    names.push("bonus");
+    names.pop();
+    rewards.set("xp", 6);
+    rewards.remove("xp");
+    tags.add("bonus");
+    tags.remove("bonus");
+    tags.insert("inserted");
+    tags.remove("inserted");
+    if names.contains("gold")
+        && rewards.has("gold")
+        && tags.has("daily")
+        && tags.is_subset(tags)
+        && tags.is_superset(tags)
+        && tags.is_disjoint(other)
+    {
+        names.clear();
+        rewards.clear();
+        tags.clear();
+        return names.len() + rewards.len() + tags.len();
+    }
+    return 0;
+}

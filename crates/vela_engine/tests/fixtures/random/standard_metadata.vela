@@ -1,0 +1,18 @@
+
+fn main() {
+    let math_exports = reflect::exports("math");
+    let random = reflect::function("math::random");
+    let max = reflect::function("math::max");
+    let required = reflect::required_permissions(random);
+    let effects = reflect::effects(random);
+    return math_exports.len() == 15
+        && math_exports.contains("math::max")
+        && math_exports.contains("math::random")
+        && reflect::docs(max).unwrap_or("") == "Returns the larger numeric value."
+        && reflect::docs(random).unwrap_or("") == "Returns a deterministic seeded integer in the inclusive range."
+        && required.len() == 0
+        && !effects.reads_host
+        && !effects.writes_host
+        && !effects.emits_events
+        && effects.uses_random;
+}

@@ -52,33 +52,7 @@ fn unique_test_dir(name: &str) -> TestDir {
 
 #[test]
 fn runtime_reflection_includes_compiled_script_metadata() {
-    let source = r#"
-enum QuestProgress {
-    Active { count }
-    Finished { count }
-}
-
-fn main() {
-    let quest_type = reflect::type_info("QuestProgress");
-    let main_function = reflect::function("main");
-    let quest = QuestProgress::Active { count: 2 };
-
-    if reflect::kind(quest_type) == "script_enum"
-        && reflect::name(main_function) == "main"
-        && reflect::kind(main_function) == "function"
-        && reflect::origin(main_function) == "script"
-        && reflect::has_function("main")
-        && reflect::has_variant(quest_type, "Active")
-        && reflect::has_variant(quest_type, "Finished")
-        && reflect::variant(quest) == "Active"
-        && reflect::variant_is(quest, "Active") {
-        return 1;
-    }
-
-    return 0;
-}
-
-"#;
+    let source = include_str!("fixtures/reflection/script_metadata.vela");
 
     let engine = Engine::builder()
         .reflection_policy(ReflectPolicy::all())
@@ -100,41 +74,12 @@ fn runtime_reflection_includes_compiled_script_modules_and_exports() {
     fs::create_dir_all(&game_dir).expect("create module dir");
     fs::write(
         game_dir.join("reward.vela"),
-        r#"
-#[doc("Grant reward.")]
-#[event("reward")]
-pub fn grant(player, amount: i64 = 1) -> bool {
-    return true;
-}
-"#,
+        include_str!("fixtures/reflection/modules/game/reward.vela"),
     )
     .expect("write reward module");
     fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    let module = reflect::module("game::reward");
-    let function = reflect::function("game::reward::grant");
-    let exports = reflect::exports(module);
-
-    if reflect::name(module) == "game::reward"
-        && reflect::origin(module) == "script"
-        && reflect::has_module("game::reward")
-        && exports[0] == "game::reward::grant"
-        && reflect::name(function) == "game::reward::grant"
-        && reflect::origin(function) == "script"
-        && reflect::docs(function).unwrap_or("") == "Grant reward."
-        && reflect::attr(function, "event").unwrap_or("") == "reward"
-        && reflect::returns(function).unwrap_or("") == "bool"
-        && reflect::has_function("game::reward::grant") {
-        return 1;
-    }
-
-    return 0;
-}
-"#,
+        include_str!("fixtures/reflection/modules/game/main.vela"),
     )
     .expect("write main module");
 

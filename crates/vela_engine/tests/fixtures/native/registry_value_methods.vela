@@ -1,0 +1,16 @@
+
+fn main() {
+    let names: Array = ["gold", "xp"];
+    let rewards: Map = {"gold": 4};
+    let tags: Set = set::from_array(["daily"]);
+    let some: Option = option::some(1);
+    let err: Result = result::err("bad");
+    if some.is_some() && err.is_err() {
+        return "gold".len()
+            + names.len()
+            + rewards.len()
+            + tags.len()
+            + (1..4).len();
+    }
+    return 0;
+}

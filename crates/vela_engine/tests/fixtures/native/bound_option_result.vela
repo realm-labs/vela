@@ -1,0 +1,16 @@
+
+fn option_total(value: Option<i64>) -> i64 {
+    return value.unwrap_or(0) + 1;
+}
+
+fn result_total(value: Result<i64, String>) -> i64 {
+    return value.unwrap_or(0) + 2;
+}
+
+fn echo_option(value: Option<i64>) -> Option<i64> {
+    return value;
+}
+
+fn echo_result(value: Result<i64, String>) -> Result<i64, String> {
+    return value;
+}

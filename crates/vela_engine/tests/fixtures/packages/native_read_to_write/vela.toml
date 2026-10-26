@@ -1,0 +1,8 @@
+[package]
+id = "dev.vela.app"
+name = "app"
+version = "0.1.0"
+[source]
+roots = ["src"]
+[capabilities]
+requires = ["host_read", "host_write"]

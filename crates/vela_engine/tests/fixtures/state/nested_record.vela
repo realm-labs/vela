@@ -1,0 +1,29 @@
+
+struct ServerStats {
+    handled_ticks: i64,
+}
+
+struct ServerState {
+    level: i64,
+    name: String,
+    total_gold: i64,
+    stats: ServerStats,
+}
+
+state state: ServerState = ServerState {
+    level: 0,
+    name: "",
+    total_gold: 0,
+    stats: ServerStats { handled_ticks: 0 },
+};
+
+fn handle_tick(level_gain, gold_gain) {
+    state.level += level_gain;
+    state.total_gold += gold_gain;
+    state.stats.handled_ticks += 1;
+    return state.level + state.total_gold + state.stats.handled_ticks;
+}
+
+fn projected_score(snapshot: ServerState, bonus) {
+    return snapshot.level + snapshot.total_gold + snapshot.stats.handled_ticks + bonus;
+}

@@ -271,16 +271,7 @@ fn engine_compiler_options_emit_standard_string_transform_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let label = " Reward ";
-    return label.to_upper() == " REWARD "
-        && label.to_lower() == " reward "
-        && label.trim() == "Reward"
-        && label.trim_start() == "Reward "
-        && label.trim_end() == " Reward";
-}
-"#,
+            include_str!("../../../tests/fixtures/native/string_transforms.vela"),
         )
         .expect("standard string transform methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -349,14 +340,7 @@ fn engine_compiler_options_emit_standard_string_option_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let label = "reward:gold";
-    return label.find(":").unwrap_or(-1) == 6
-        && label.strip_prefix("reward:").unwrap_or("") == "gold"
-        && label.strip_suffix(":gold").unwrap_or("") == "reward";
-}
-"#,
+            include_str!("../../../tests/fixtures/native/string_options.vela"),
         )
         .expect("standard string option methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -392,15 +376,7 @@ fn engine_compiler_options_emit_standard_string_split_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let (_, item) = "reward:gold".split_once(":").unwrap_or(("", ""));
-    return "reward:gold".split(":").len() == 2
-        && item == "gold"
-        && "reward\ngold".split_lines().len() == 2
-        && "reward gold".split_whitespace().len() == 2;
-}
-"#,
+            include_str!("../../../tests/fixtures/native/string_splits.vela"),
         )
         .expect("standard string split methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -435,22 +411,7 @@ fn engine_links_standard_methods_after_indexed_collection_shapes() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let words = "reward gold".split_whitespace();
-    let first = words[0].strip_prefix("reward").unwrap_or("");
-    let random = reflect::function("math::random");
-    let params = reflect::params(random);
-    let parameter_type = params[0].type.unwrap_or("");
-    let functions = reflect::functions();
-    return first.len() + parameter_type.len()
-        + if functions.any(|function| reflect::name(function) == "math::random") {
-            1
-        } else {
-            0
-        };
-}
-"#,
+            include_str!("../../../tests/fixtures/native/indexed_collection_shapes.vela"),
         )
         .expect("indexed collection method chains should compile");
 
@@ -468,16 +429,7 @@ fn engine_compiler_options_emit_standard_string_parse_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    return "42".parse_i64().unwrap_or(0) == 42
-        && "255".parse_u8().unwrap_or(0u8) == 255u8
-        && "1.5".parse_f32().unwrap_or(0.0f32) == 1.5f32
-        && "1.5".parse_f64().unwrap_or(0.0) == 1.5
-        && "true".parse_bool().unwrap_or(false)
-        && "x".parse_char().unwrap_or(' ') == 'x';
-}
-"#,
+            include_str!("../../../tests/fixtures/native/string_parsing.vela"),
         )
         .expect("standard string parse methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -576,23 +528,7 @@ fn engine_compile_source_emits_standard_value_method_ids_from_registry() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let names: Array = ["gold", "xp"];
-    let rewards: Map = {"gold": 4};
-    let tags: Set = set::from_array(["daily"]);
-    let some: Option = option::some(1);
-    let err: Result = result::err("bad");
-    if some.is_some() && err.is_err() {
-        return "gold".len()
-            + names.len()
-            + rewards.len()
-            + tags.len()
-            + (1..4).len();
-    }
-    return 0;
-}
-"#,
+            include_str!("../../../tests/fixtures/native/registry_value_methods.vela"),
         )
         .expect("standard value methods should compile from registry");
     let main = program.function("main").expect("main should compile");
@@ -626,35 +562,7 @@ fn engine_compiler_options_emit_standard_collection_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let names: Array = ["gold", "xp"];
-    let rewards: Map = {"gold": 4};
-    let tags: Set = set::from_array(["daily"]);
-    let other: Set = set::from_array(["raid"]);
-    names.push("bonus");
-    names.pop();
-    rewards.set("xp", 6);
-    rewards.remove("xp");
-    tags.add("bonus");
-    tags.remove("bonus");
-    tags.insert("inserted");
-    tags.remove("inserted");
-    if names.contains("gold")
-        && rewards.has("gold")
-        && tags.has("daily")
-        && tags.is_subset(tags)
-        && tags.is_superset(tags)
-        && tags.is_disjoint(other)
-    {
-        names.clear();
-        rewards.clear();
-        tags.clear();
-        return names.len() + rewards.len() + tags.len();
-    }
-    return 0;
-}
-"#,
+            include_str!("../../../tests/fixtures/native/collection_methods.vela"),
         )
         .expect("standard collection methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -700,15 +608,7 @@ fn engine_compiler_options_emit_standard_array_lookup_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let names: Array = ["gold", "xp"];
-    return names.first().unwrap_or("") == "gold"
-        && names.last().unwrap_or("") == "xp"
-        && names.get(1).unwrap_or("") == "xp"
-        && names.index_of("xp").unwrap_or(-1) == 1;
-}
-"#,
+            include_str!("../../../tests/fixtures/native/array_lookup.vela"),
         )
         .expect("standard array lookup methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -739,15 +639,7 @@ fn engine_compiler_options_emit_standard_array_transform_method_ids() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let names: Array = ["gold", "xp", "gold"];
-    return names.join(":") == "gold:xp:gold"
-        && names.distinct().len() == 2
-        && names.reverse()[0] == "gold"
-        && names.slice(1, 3).len() == 2;
-}
-"#,
+            include_str!("../../../tests/fixtures/native/array_transforms.vela"),
         )
         .expect("standard array transform methods should compile");
     let main = program.function("main").expect("main should compile");
@@ -872,21 +764,11 @@ fn engine_builder_installs_standard_natives_into_runtime() {
         .build()
         .expect("engine should build with standard natives");
     let program = engine
-        .compile_source_with_id(SourceId::new(1),
-        r#"
-fn main() {
-    set::from_array(["fire", "ice", "fire"]);
-    let midpoint = math::floor(math::lerp(10, 20, 0.5));
-    let range = math::round(math::distance3d(0, 0, 0, 2, 3, 6));
-    let score = math::pow(2, 3);
-    let root = math::round(math::sqrt(81));
-    let direction = math::sign(-3);
-    let approach = math::move_towards(0, 10, 4);
-    return option::unwrap_or(option::some(midpoint), 0) + math::round(1.5) + range + score + root + direction + approach;
-}
-"#,
+        .compile_source_with_id(
+            SourceId::new(1),
+            include_str!("../../../tests/fixtures/native/standard_natives.vela"),
         )
-    .expect("program should compile");
+        .expect("program should compile");
     engine
         .link_test_program(&program)
         .expect("engine-compiled standard native program should link");

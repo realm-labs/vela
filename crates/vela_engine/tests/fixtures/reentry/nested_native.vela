@@ -1,0 +1,16 @@
+
+struct Counter { value: i64 }
+
+fn counter() { return Counter { value: 40 }; }
+
+impl Counter {
+    fn add(self, amount: i64) { return self.value + amount; }
+}
+
+fn child(value: i64) {
+    return test::nested(value);
+}
+
+fn main() {
+    return test::outer();
+}

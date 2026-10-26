@@ -1,0 +1,12 @@
+
+struct Counter { amount: i64 }
+
+impl Counter {
+    fn add(self, bonus) -> i64 {
+        return self.amount + bonus;
+    }
+}
+
+pub fn read_bonus() -> i64 {
+    return Counter { amount: 3 }.add(4);
+}

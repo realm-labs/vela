@@ -84,16 +84,7 @@ fn engine_reflect_call_preserves_native_iterator_returns() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let scores = reflect::function("game::scores");
-    let total = 0;
-    for score in reflect::call(scores) {
-        total += score;
-    }
-    return reflect::returns(scores).unwrap_or("") == "Iterator" && total == 10;
-}
-"#,
+            include_str!("../../../tests/fixtures/reflection/native_iterator.vela"),
         )
         .expect("program should compile");
 

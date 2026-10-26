@@ -1,0 +1,2 @@
+pub struct Counter { value: i64 }
+impl Counter { fn doubled(self) { return self.value * 2; } }

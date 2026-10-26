@@ -1,0 +1,15 @@
+
+struct ServerState {
+    level: i64,
+    name: String,
+}
+
+state state: ServerState = ServerState { level: 0, name: "" };
+
+fn make_state() {
+    return ServerState { level: 11, name: "runtime" };
+}
+
+fn read_level() {
+    return state.level;
+}

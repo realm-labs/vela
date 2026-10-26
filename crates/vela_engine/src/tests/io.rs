@@ -97,15 +97,7 @@ fn runtime_new_links_stdio_and_fs_io_programs() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-fn main() {
-    let input = result::unwrap_or(fs::read_to_string("input.txt"), "missing");
-    io::print("hello");
-    io::println(" from fs");
-    fs::write_string("output.txt", "done");
-    return input.len();
-}
-"#,
+            include_str!("../../tests/fixtures/io/stdio_and_files.vela"),
         )
         .expect("program should compile");
     engine

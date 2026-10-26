@@ -1,0 +1,8 @@
+
+fn main() {
+    let names: Array = ["gold", "xp", "gold"];
+    return names.join(":") == "gold:xp:gold"
+        && names.distinct().len() == 2
+        && names.reverse()[0] == "gold"
+        && names.slice(1, 3).len() == 2;
+}

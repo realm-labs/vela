@@ -1,0 +1,28 @@
+
+struct Player {
+    level: i64,
+}
+
+enum Status {
+    Ready,
+    Waiting { code: i64 },
+}
+
+state array: Array<i64> = [1];
+state map: Map<String, i64> = { "score": 1 };
+state tuple: (i64, String) = (1, "ready");
+state option: Option<i64> = Option::Some(1);
+state result: Result<i64, String> = Result::Ok(1);
+state player: Player = Player { level: 1 };
+state status: Status = Status::Ready {};
+
+fn player_level() {
+    return player.level;
+}
+
+fn status_code() {
+    return match status {
+        Status::Ready {} => 1,
+        Status::Waiting { code } => code,
+    };
+}

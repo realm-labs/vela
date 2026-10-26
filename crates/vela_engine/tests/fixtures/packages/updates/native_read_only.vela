@@ -1,0 +1,8 @@
+
+state calls: i64 = 0;
+pub fn main() -> i64 {
+    calls += 1;
+    return test::read() + calls;
+}
+pub fn make() { return || main(); }
+pub fn invoke(callback) -> i64 { return callback(); }

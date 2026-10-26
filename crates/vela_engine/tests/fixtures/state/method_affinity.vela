@@ -1,0 +1,18 @@
+
+trait BonusSource {
+    fn score(self, amount) -> i64;
+}
+
+struct Reward {
+    gold: i64,
+}
+
+impl BonusSource for Reward {
+    fn score(self, amount) -> i64 {
+        return self.gold + amount;
+    }
+}
+
+fn make_reward(gold) {
+    return Reward { gold: gold };
+}

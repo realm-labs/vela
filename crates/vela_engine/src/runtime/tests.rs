@@ -227,28 +227,9 @@ state value: i64 = recurse();
 fn runtime_state_initializers_construct_managed_aggregate_categories() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_source(
-            r#"
-struct Snapshot {
-    tuple: (i64, String),
-    array: Array<i64>,
-    map: Map<String, i64>,
-    set: Set<i64>,
-    maybe: Option<i64>,
-    outcome: Result<i64, String>,
-    bytes: Bytes,
-}
-state snapshot: Snapshot = Snapshot {
-    tuple: (1, "tuple"),
-    array: [2, 3],
-    map: {"score": 4},
-    set: set::from_array([5, 6]),
-    maybe: Option::Some(7),
-    outcome: Result::Ok(8),
-    bytes: b"bytes",
-};
-"#,
-        )
+        .compile_source(include_str!(
+            "../../tests/fixtures/initialization/aggregate_categories.vela"
+        ))
         .expect("aggregate initializer compiles");
     let mut runtime = Runtime::new(engine, program).expect("aggregate initializer runs");
     let value = runtime
@@ -426,23 +407,7 @@ fn reload_staging_preserves_initializer_aliases_and_cycles() {
         .compile_reload_with_id(
             &initial,
             SourceId::new(804),
-            r#"
-fn build_graph() -> Array {
-    let shared = [7];
-    let root = [];
-    root.push(shared);
-    root.push(shared);
-    root.push(root);
-    return root;
-}
-
-state existing: i64 = 3;
-state graph: Array = build_graph();
-
-fn graph_ok() {
-    return graph[0] === graph[1] && graph[2] === graph;
-}
-"#,
+            include_str!("../../tests/fixtures/initialization/aliases_and_cycles.vela"),
         )
         .expect("cyclic state update compiles");
     let mut runtime =

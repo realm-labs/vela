@@ -1,0 +1,4 @@
+
+fn make() { return |value: String| value.starts_with("old"); }
+fn invoke(callback, value: String) -> bool { return callback(value); }
+fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }

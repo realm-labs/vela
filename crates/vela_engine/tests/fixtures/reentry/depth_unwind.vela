@@ -1,0 +1,8 @@
+
+fn deep(remaining: i64) {
+    if remaining == 0 { return 0; }
+    return deep(remaining - 1);
+}
+
+fn main() { return test::enter_deep(); }
+fn reusable() { return 9; }

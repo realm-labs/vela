@@ -1,6 +1,7 @@
 #![allow(dead_code)] // Public fixture APIs are private once grouped under test modules.
 
 mod args;
+mod formatting_execution;
 mod hot_reload;
 mod owned_export;
 mod portable_artifact;

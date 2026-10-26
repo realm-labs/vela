@@ -1,0 +1,11 @@
+
+fn main() {
+    set::from_array(["fire", "ice", "fire"]);
+    let midpoint = math::floor(math::lerp(10, 20, 0.5));
+    let range = math::round(math::distance3d(0, 0, 0, 2, 3, 6));
+    let score = math::pow(2, 3);
+    let root = math::round(math::sqrt(81));
+    let direction = math::sign(-3);
+    let approach = math::move_towards(0, 10, 4);
+    return option::unwrap_or(option::some(midpoint), 0) + math::round(1.5) + range + score + root + direction + approach;
+}

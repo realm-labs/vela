@@ -124,13 +124,7 @@ pub(super) fn write_schema_reward_modules(
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    return grant();
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/modules/main.vela"),
     )
     .expect("write main module");
     let reward_file = game_dir.join("reward.vela");
@@ -189,13 +183,7 @@ pub(super) fn write_stable_schema_rename_modules(
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    return grant();
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/modules/main.vela"),
     )
     .expect("write main module");
     let reward_file = game_dir.join("reward.vela");
@@ -208,39 +196,12 @@ pub(super) fn write_stable_schema_rename_module(
     reward: i64,
     renamed: bool,
 ) {
-    let (item_field, count_field, active_variant, finished_variant) = if renamed {
-        (
-            "item",
-            "quantity",
-            "Started",
-            "    #[id(202)]\n    Finished\n",
-        )
-    } else {
-        ("item_id", "count", "Active", "")
+    let source = match (reward, renamed) {
+        (2, false) => include_str!("../../../tests/fixtures/reload/modules/stable_rename_v1.vela"),
+        (6, true) => include_str!("../../../tests/fixtures/reload/modules/stable_rename_v2.vela"),
+        _ => panic!("unreviewed stable-rename fixture: {reward}, {renamed}"),
     };
-    std::fs::write(
-        path,
-        format!(
-            r#"
-struct Reward {{
-    #[id(101)]
-    {item_field}: String
-    #[id(102)]
-    {count_field}: i64
-}}
-
-enum QuestProgress {{
-    #[id(201)]
-    {active_variant}
-{finished_variant}}}
-
-pub fn grant() {{
-    return {reward};
-}}
-"#
-        ),
-    )
-    .expect("write stable schema rename module");
+    std::fs::write(path, source).expect("write stable schema rename module");
 }
 
 pub(super) fn write_enum_reward_modules(
@@ -252,13 +213,7 @@ pub(super) fn write_enum_reward_modules(
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    return grant();
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/modules/main.vela"),
     )
     .expect("write main module");
     let reward_file = game_dir.join("reward.vela");
@@ -319,13 +274,7 @@ pub(super) fn write_trait_impl_modules(
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    return grant();
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/modules/main.vela"),
     )
     .expect("write main module");
     let reward_file = game_dir.join("reward.vela");
@@ -334,31 +283,18 @@ fn main() {
 }
 
 pub(super) fn write_trait_impl_module(path: &std::path::Path, reward: i64, implemented: bool) {
-    let impl_block = if implemented {
-        "impl Damageable for Player {}\n"
-    } else {
-        ""
+    let source = match (reward, implemented) {
+        (2, false) => include_str!("../../../tests/fixtures/reload/modules/trait_2_absent.vela"),
+        (2, true) => {
+            include_str!("../../../tests/fixtures/reload/modules/trait_2_implemented.vela")
+        }
+        (6, false) => include_str!("../../../tests/fixtures/reload/modules/trait_6_absent.vela"),
+        (6, true) => {
+            include_str!("../../../tests/fixtures/reload/modules/trait_6_implemented.vela")
+        }
+        _ => panic!("unreviewed trait-implementation fixture: {reward}, {implemented}"),
     };
-    std::fs::write(
-        path,
-        format!(
-            r#"
-trait Damageable {{
-    fn damage(self) -> i64 {{ return self.level; }}
-}}
-
-struct Player {{
-    level: i64
-}}
-
-{impl_block}
-pub fn grant() {{
-    return {reward};
-}}
-"#
-        ),
-    )
-    .expect("write trait impl reward module");
+    std::fs::write(path, source).expect("write trait impl reward module");
 }
 
 pub(super) fn write_trait_abi_modules(
@@ -370,13 +306,7 @@ pub(super) fn write_trait_abi_modules(
     std::fs::create_dir_all(&game_dir).expect("create module dir");
     std::fs::write(
         game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main() {
-    return grant();
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/modules/main.vela"),
     )
     .expect("write main module");
     let reward_file = game_dir.join("reward.vela");

@@ -1,0 +1,2 @@
+use util::api::answer
+pub fn main() { return answer(); }

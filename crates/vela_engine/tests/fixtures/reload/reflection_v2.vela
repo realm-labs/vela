@@ -1,0 +1,19 @@
+
+enum QuestProgress {
+    Active { count }
+    Finished { count }
+}
+
+fn main() {
+    let quest_type = reflect::type_info("QuestProgress");
+    let quest = QuestProgress::Finished { count: 2 };
+
+    if reflect::kind(quest_type) == "script_enum"
+        && reflect::has_function("main")
+        && reflect::has_variant(quest_type, "Finished")
+        && reflect::variant_is(quest, "Finished") {
+        return 2;
+    }
+
+    return 0;
+}

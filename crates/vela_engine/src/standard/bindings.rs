@@ -671,23 +671,7 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         let program = engine
             .compile_source_with_id(
                 SourceId::new(3),
-                r#"
-fn option_total(value: Option<i64>) -> i64 {
-    return value.unwrap_or(0) + 1;
-}
-
-fn result_total(value: Result<i64, String>) -> i64 {
-    return value.unwrap_or(0) + 2;
-}
-
-fn echo_option(value: Option<i64>) -> Option<i64> {
-    return value;
-}
-
-fn echo_result(value: Result<i64, String>) -> Result<i64, String> {
-    return value;
-}
-"#,
+                include_str!("../../tests/fixtures/native/bound_option_result.vela"),
             )
             .expect("shared Vela Option and Result behavior should compile");
         drop(bindings);
@@ -881,19 +865,7 @@ fn retained_total(scores: Map<String, i64>) -> i64 {
         let program = engine
             .compile_source_with_id(
                 SourceId::new(2),
-                r#"
-fn array_total(values: Array<i64>) -> i64 {
-    return values.filter(|value| value >= 3).sum();
-}
-
-fn set_total(values: Set<i64>) -> i64 {
-    return values
-        .filter(|value| value >= 3)
-        .values()
-        .collect_array()
-        .sum();
-}
-"#,
+                include_str!("../../tests/fixtures/native/bound_collections.vela"),
             )
             .expect("shared collection protocols should compile");
         drop(bindings);

@@ -1,0 +1,2 @@
+use leaf::api::value
+pub fn answer() { return value(); }

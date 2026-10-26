@@ -1,0 +1,16 @@
+
+fn build_graph() -> Array {
+    let shared = [7];
+    let root = [];
+    root.push(shared);
+    root.push(shared);
+    root.push(root);
+    return root;
+}
+
+state existing: i64 = 3;
+state graph: Array = build_graph();
+
+fn graph_ok() {
+    return graph[0] === graph[1] && graph[2] === graph;
+}

@@ -1,0 +1,7 @@
+
+fn main() {
+    let label = "reward:gold";
+    return label.find(":").unwrap_or(-1) == 6
+        && label.strip_prefix("reward:").unwrap_or("") == "gold"
+        && label.strip_suffix(":gold").unwrap_or("") == "reward";
+}

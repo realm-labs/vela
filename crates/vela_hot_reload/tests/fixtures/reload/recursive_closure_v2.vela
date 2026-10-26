@@ -1,0 +1,5 @@
+
+fn recurse() -> i64 { return recurse(); }
+fn unrelated() -> i64 { return 20; }
+state callback: Closure = || recurse();
+fn main() { return 0; }

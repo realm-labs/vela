@@ -1,0 +1,8 @@
+
+fn main() {
+    let (_, item) = "reward:gold".split_once(":").unwrap_or(("", ""));
+    return "reward:gold".split(":").len() == 2
+        && item == "gold"
+        && "reward\ngold".split_lines().len() == 2
+        && "reward gold".split_whitespace().len() == 2;
+}

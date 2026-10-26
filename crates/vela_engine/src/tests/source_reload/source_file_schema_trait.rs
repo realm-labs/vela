@@ -58,46 +58,12 @@ fn runtime_stages_source_file_stable_id_schema_renames_until_safe_point() {
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(
         engine,
-        r#"
-struct Reward {
-    #[id(101)]
-    item_id: String
-    #[id(102)]
-    count: i64
-}
-
-enum QuestProgress {
-    #[id(201)]
-    Active
-}
-
-fn main() {
-    return 1;
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/stable_member_rename_v1.vela"),
     );
 
     stage_source_update(
         &mut runtime,
-        r#"
-struct Reward {
-    #[id(101)]
-    item: String
-    #[id(102)]
-    quantity: i64
-}
-
-enum QuestProgress {
-    #[id(201)]
-    Started
-    #[id(202)]
-    Finished
-}
-
-fn main() {
-    return 2;
-}
-"#,
+        include_str!("../../../tests/fixtures/reload/stable_member_rename_v2.vela"),
     );
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded()),

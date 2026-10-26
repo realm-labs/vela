@@ -14,7 +14,9 @@ use crate::permission::Capability;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 use crate::source::package::{EnginePackageErrorKind, PackageCompileRequest};
 
-use super::{call_i64, package, package_fixture, remove_fixture, write_package};
+use super::{
+    call_i64, copy_package_fixture, package, package_fixture, remove_fixture, write_package,
+};
 
 const VALUE_SOURCE: &str = "fn invoke_native() -> i64 { return test::value(); } pub fn main() -> i64 { return invoke_native(); }";
 
@@ -210,8 +212,6 @@ fn reload_rejects_new_observed_value_native_host_write_even_when_declared() {
     assert_reload_rejects_new_native_effect(EffectSet::host_write(), Capability::HostWrite, true);
 }
 
-const READ_WRITE_MANIFEST: &str = "[capabilities]\nrequires = [\"host_read\", \"host_write\"]\n";
-
 fn read_write_engine(reads: &Arc<AtomicUsize>, writes: &Arc<AtomicUsize>) -> Engine {
     let reads = Arc::clone(reads);
     let writes = Arc::clone(writes);
@@ -242,21 +242,12 @@ fn read_write_engine(reads: &Arc<AtomicUsize>, writes: &Arc<AtomicUsize>) -> Eng
 
 #[test]
 fn reload_accepts_native_write_to_read_reduction_and_preserves_old_closure_owner() {
-    const SOURCE: &str = r#"
-state calls: i64 = 0;
-pub fn main() -> i64 {
-    calls += 1;
-    return test::read() + test::write() + calls;
-}
-pub fn make() { return || main(); }
-pub fn invoke(callback) -> i64 { return callback(); }
-"#;
     let root = package_fixture("native_write_to_read_reload");
     let reads = Arc::new(AtomicUsize::new(0));
     let writes = Arc::new(AtomicUsize::new(0));
     let engine = read_write_engine(&reads, &writes);
     let id = package("dev.vela.app");
-    write_package(&root, id.as_str(), "app", READ_WRITE_MANIFEST, SOURCE);
+    copy_package_fixture("native_write_to_read", &root);
     let first = engine
         .load_package_workspace(root.join("vela.toml"))
         .expect("initial snapshot");
@@ -287,8 +278,11 @@ pub fn invoke(callback) -> i64 { return callback(); }
         )
         .expect("old closure");
 
-    let reduced = SOURCE.replace("test::read() + test::write()", "test::read()");
-    write_package(&root, id.as_str(), "app", READ_WRITE_MANIFEST, &reduced);
+    std::fs::write(
+        root.join("src/main.vela"),
+        include_str!("../../../../tests/fixtures/packages/updates/native_read_only.vela"),
+    )
+    .expect("write read-only update");
     let next = engine
         .load_package_workspace(root.join("vela.toml"))
         .expect("updated snapshot");
@@ -358,13 +352,7 @@ fn reload_rejects_native_read_to_write_expansion_with_unchanged_declarations() {
     let writes = Arc::new(AtomicUsize::new(0));
     let engine = read_write_engine(&reads, &writes);
     let id = package("dev.vela.app");
-    write_package(
-        &root,
-        id.as_str(),
-        "app",
-        READ_WRITE_MANIFEST,
-        "pub fn main() -> i64 { return test::read(); }",
-    );
+    copy_package_fixture("native_read_to_write", &root);
     let first = engine
         .load_package_workspace(root.join("vela.toml"))
         .expect("initial snapshot");
@@ -376,13 +364,11 @@ fn reload_rejects_native_read_to_write_expansion_with_unchanged_declarations() {
     let mut runtime =
         Runtime::from_hot_reload_version(engine.clone(), initial.clone()).expect("runtime");
     assert_eq!(call_i64(&mut runtime), 10);
-    write_package(
-        &root,
-        id.as_str(),
-        "app",
-        READ_WRITE_MANIFEST,
-        "pub fn main() -> i64 { return test::read() + test::write(); }",
-    );
+    std::fs::write(
+        root.join("src/main.vela"),
+        include_str!("../../../../tests/fixtures/packages/updates/native_write_expansion.vela"),
+    )
+    .expect("write capability expansion");
     let next = engine
         .load_package_workspace(root.join("vela.toml"))
         .expect("updated snapshot");

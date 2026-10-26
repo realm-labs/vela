@@ -19,27 +19,7 @@ fn runtime_state_decl_persists_vm_owned_value_and_rust_updates() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct ServerState {
-    level: i64,
-    name: String,
-}
-
-state state: ServerState = ServerState { level: 0, name: "" };
-
-fn make_state() {
-    return ServerState { level: 5, name: "boot" };
-}
-
-fn bump(amount) {
-    state.level += amount;
-    return state.level;
-}
-
-fn read_name() {
-    return state.name;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/persistent_record.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -126,36 +106,7 @@ fn runtime_state_nested_record_program_links() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct ServerStats {
-    handled_ticks: i64,
-}
-
-struct ServerState {
-    level: i64,
-    name: String,
-    total_gold: i64,
-    stats: ServerStats,
-}
-
-state state: ServerState = ServerState {
-    level: 0,
-    name: "",
-    total_gold: 0,
-    stats: ServerStats { handled_ticks: 0 },
-};
-
-fn handle_tick(level_gain, gold_gain) {
-    state.level += level_gain;
-    state.total_gold += gold_gain;
-    state.stats.handled_ticks += 1;
-    return state.level + state.total_gold + state.stats.handled_ticks;
-}
-
-fn projected_score(snapshot: ServerState, bonus) {
-    return snapshot.level + snapshot.total_gold + snapshot.stats.handled_ticks + bonus;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/nested_record.vela"),
         )
         .expect("program should compile");
 
@@ -170,27 +121,7 @@ fn shared_runtime_image_keeps_vm_states_isolated() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct ServerState {
-    level: i64,
-    name: String,
-}
-
-state state: ServerState = ServerState { level: 0, name: "" };
-
-fn make_state(level, name) {
-    return ServerState { level: level, name: name };
-}
-
-fn bump(amount) {
-    state.level += amount;
-    return state.level;
-}
-
-fn read_name() {
-    return state.name;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/shared_image_records.vela"),
         )
         .expect("program should compile");
     let shared_image = RuntimeImage::new_compiled(engine, program).into_shared();
@@ -352,35 +283,7 @@ fn runtime_set_state_accepts_and_rejects_recursive_contract_matrix() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Player {
-    level: i64,
-}
-
-enum Status {
-    Ready,
-    Waiting { code: i64 },
-}
-
-state array: Array<i64> = [1];
-state map: Map<String, i64> = { "score": 1 };
-state tuple: (i64, String) = (1, "ready");
-state option: Option<i64> = Option::Some(1);
-state result: Result<i64, String> = Result::Ok(1);
-state player: Player = Player { level: 1 };
-state status: Status = Status::Ready {};
-
-fn player_level() {
-    return player.level;
-}
-
-fn status_code() {
-    return match status {
-        Status::Ready {} => 1,
-        Status::Waiting { code } => code,
-    };
-}
-"#,
+            include_str!("../../../tests/fixtures/state/recursive_contracts.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -519,23 +422,7 @@ fn runtime_set_state_accepts_serde_struct_with_single_api() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct SerdeServerState {
-    level: i64,
-    name: String,
-}
-
-state state: SerdeServerState = SerdeServerState { level: 0, name: "" };
-
-fn bump(amount) {
-    state.level += amount;
-    return state.level;
-}
-
-fn read_name() {
-    return state.name;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/serde_record.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -699,22 +586,7 @@ fn runtime_set_state_accepts_runtime_managed_value_with_single_api() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct ServerState {
-    level: i64,
-    name: String,
-}
-
-state state: ServerState = ServerState { level: 0, name: "" };
-
-fn make_state() {
-    return ServerState { level: 11, name: "runtime" };
-}
-
-fn read_level() {
-    return state.level;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/managed_record.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -741,20 +613,7 @@ fn runtime_call_returns_runtime_managed_value_that_can_be_passed_back() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Reward {
-    gold: i64,
-    xp: i64,
-}
-
-fn make_reward() {
-    return Reward { gold: 7, xp: 3 };
-}
-
-fn reward_score(reward: Reward, bonus) {
-    return reward.gold + reward.xp + bonus;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/returned_record.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -793,22 +652,7 @@ fn retained_runtime_value_survives_state_collection() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-struct Reward {
-    gold: i64,
-    label: String,
-}
-
-state scratch: Reward = Reward { gold: 0, label: "" };
-
-fn make_reward(gold, label) {
-    return Reward { gold: gold, label: label };
-}
-
-fn reward_score(reward: Reward) {
-    return reward.gold;
-}
-"#,
+            include_str!("../../../tests/fixtures/state/retained_record.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");

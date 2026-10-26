@@ -1,0 +1,6 @@
+
+#[doc("Grant reward.")]
+#[event("reward")]
+pub fn grant(player, amount: i64 = 1) -> bool {
+    return true;
+}

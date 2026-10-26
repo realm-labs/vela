@@ -1,0 +1,8 @@
+
+fn main() {
+    let names: Array = ["gold", "xp"];
+    return names.first().unwrap_or("") == "gold"
+        && names.last().unwrap_or("") == "xp"
+        && names.get(1).unwrap_or("") == "xp"
+        && names.index_of("xp").unwrap_or(-1) == 1;
+}

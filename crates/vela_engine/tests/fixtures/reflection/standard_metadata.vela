@@ -1,0 +1,362 @@
+
+fn main() {
+    let math = reflect::module("math");
+    let option_module = reflect::module("option");
+    let result_module = reflect::module("result");
+    let set_module = reflect::module("set");
+    let bytes_module = reflect::module("bytes");
+    let string_type = reflect::type_info("string");
+    let bytes_type = reflect::type_info("bytes");
+    let char_type = reflect::type_info("char");
+    let array_type = reflect::type_info("array");
+    let option_type = reflect::type_info("Option");
+    let result_type = reflect::type_info("Result");
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let bool_value_type = reflect::type_of(true).unwrap_or(missing_type);
+    let i8_type = reflect::type_info("i8");
+    let i16_type = reflect::type_info("i16");
+    let i32_type = reflect::type_info("i32");
+    let int_value_type = reflect::type_of(42).unwrap_or(missing_type);
+    let u8_type = reflect::type_info("u8");
+    let u16_type = reflect::type_info("u16");
+    let u32_type = reflect::type_info("u32");
+    let u64_type = reflect::type_info("u64");
+    let f32_type = reflect::type_info("f32");
+    let float_value_type = reflect::type_of(1.5).unwrap_or(missing_type);
+    let string_value_type = reflect::type_of("quest").unwrap_or(missing_type);
+    let char_value_type = reflect::type_of('q').unwrap_or(missing_type);
+    let array_value_type = reflect::type_of(["quest"]).unwrap_or(missing_type);
+    let map_value_type = reflect::type_of({"quest": 1}).unwrap_or(missing_type);
+    let set_value_type = reflect::type_of(set::from_array(["quest"])).unwrap_or(missing_type);
+    let option_value_type = reflect::type_of(option::some(1)).unwrap_or(missing_type);
+    let result_value_type = reflect::type_of(result::ok(1)).unwrap_or(missing_type);
+    let range_value_type = reflect::type_of(1..3).unwrap_or(missing_type);
+    let option_variants = reflect::variants(option_type);
+    let result_variants = reflect::variants(result_type);
+    let string_methods = reflect::methods(string_type);
+    let bytes_methods = reflect::methods(bytes_type);
+    let char_methods = reflect::methods(char_type);
+    let array_methods = reflect::methods(array_type);
+    let option_methods = reflect::methods(option_type);
+    let result_methods = reflect::methods(result_type);
+    let map_type = reflect::type_info("map");
+    let set_type = reflect::type_info("set");
+    let range_type = reflect::type_info("range");
+    let iterator_type = reflect::type_info("iterator");
+    let map_methods = reflect::methods(map_type);
+    let set_methods = reflect::methods(set_type);
+    let range_methods = reflect::methods(range_type);
+    let iterator_methods = reflect::methods(iterator_type);
+    let trim = reflect::method(string_type, "trim");
+    let split_once = reflect::method(string_type, "split_once");
+    let parse_i64 = reflect::method(string_type, "parse_i64");
+    let parse_char = reflect::method(string_type, "parse_char");
+    let bytes_read_u32_le = reflect::method(bytes_type, "read_u32_le");
+    let bytes_to_hex = reflect::method(bytes_type, "to_hex");
+    let bytes_values = reflect::method(bytes_type, "values");
+    let char_to_string = reflect::method(char_type, "to_string");
+    let char_is_ascii_digit = reflect::method(char_type, "is_ascii_digit");
+    let array_push = reflect::method(array_type, "push");
+    let array_map = reflect::method(array_type, "map");
+    let array_index_of = reflect::method(array_type, "index_of");
+    let map_get = reflect::method(map_type, "get");
+    let set_union = reflect::method(set_type, "union");
+    let range_len = reflect::method(range_type, "len");
+    let range_is_empty = reflect::method(range_type, "is_empty");
+    let range_iter = reflect::method(range_type, "iter");
+    let iterator_next = reflect::method(iterator_type, "next");
+    let iterator_map = reflect::method(iterator_type, "map");
+    let iterator_fold = reflect::method(iterator_type, "fold");
+    let iterator_take = reflect::method(iterator_type, "take");
+    let iterator_collect_array = reflect::method(iterator_type, "collect_array");
+    let iterator_collect_set = reflect::method(iterator_type, "collect_set");
+    let iterator_collect_map = reflect::method(iterator_type, "collect_map");
+    let option_map = reflect::method(option_type, "map");
+    let option_ok_or = reflect::method(option_type, "ok_or");
+    let result_map_err = reflect::method(result_type, "map_err");
+    let result_to_error = reflect::method(result_type, "to_error_option");
+    let max = reflect::function("math::max");
+    let sqrt = reflect::function("math::sqrt");
+    let some = reflect::function("option::some");
+    let ok = reflect::function("result::ok");
+    let set_from_array = reflect::function("set::from_array");
+    let bytes_from_hex = reflect::function("bytes::from_hex");
+    let params = reflect::params(max);
+    let some_params = reflect::params(some);
+    let ok_params = reflect::params(ok);
+    let set_params = reflect::params(set_from_array);
+    let bytes_params = reflect::params(bytes_from_hex);
+    let math_exports = reflect::exports(math);
+    let option_exports = reflect::exports(option_module);
+    let result_exports = reflect::exports(result_module);
+    let set_exports = reflect::exports(set_module);
+    let bytes_exports = reflect::exports(bytes_module);
+    let type_of_checks = reflect::name(bool_value_type) == "bool"
+        && reflect::kind(bool_value_type) == "bool"
+        && reflect::name(i8_type) == "i8"
+        && reflect::kind(i8_type) == "i8"
+        && reflect::name(i16_type) == "i16"
+        && reflect::kind(i16_type) == "i16"
+        && reflect::name(i32_type) == "i32"
+        && reflect::kind(i32_type) == "i32"
+        && reflect::name(int_value_type) == "i64"
+        && reflect::kind(int_value_type) == "i64"
+        && reflect::name(u8_type) == "u8"
+        && reflect::kind(u8_type) == "u8"
+        && reflect::name(u16_type) == "u16"
+        && reflect::kind(u16_type) == "u16"
+        && reflect::name(u32_type) == "u32"
+        && reflect::kind(u32_type) == "u32"
+        && reflect::name(u64_type) == "u64"
+        && reflect::kind(u64_type) == "u64"
+        && reflect::name(f32_type) == "f32"
+        && reflect::kind(f32_type) == "f32"
+        && reflect::name(float_value_type) == "f64"
+        && reflect::kind(float_value_type) == "f64"
+        && reflect::name(char_value_type) == "char"
+        && reflect::kind(char_value_type) == "char"
+        && reflect::name(string_value_type) == "string"
+        && reflect::kind(string_value_type) == "string"
+        && reflect::name(array_value_type) == "array"
+        && reflect::kind(array_value_type) == "array"
+        && reflect::name(map_value_type) == "map"
+        && reflect::kind(map_value_type) == "map"
+        && reflect::name(set_value_type) == "set"
+        && reflect::kind(set_value_type) == "set"
+        && reflect::name(option_value_type) == "Option"
+        && reflect::kind(option_value_type) == "script_enum"
+        && reflect::name(result_value_type) == "Result"
+        && reflect::kind(result_value_type) == "script_enum"
+        && reflect::name(range_value_type) == "range"
+        && reflect::kind(range_value_type) == "range";
+    return reflect::has_function("math::max")
+        && reflect::has_function("math::sqrt")
+        && reflect::has_function("option::some")
+        && reflect::has_function("result::ok")
+        && reflect::has_function("set::from_array")
+        && reflect::has_function("bytes::from_hex")
+        && reflect::has_type("string")
+        && reflect::has_type("bytes")
+        && reflect::has_type("i8")
+        && reflect::has_type("i16")
+        && reflect::has_type("i32")
+        && reflect::has_type("i64")
+        && reflect::has_type("u8")
+        && reflect::has_type("u16")
+        && reflect::has_type("u32")
+        && reflect::has_type("u64")
+        && reflect::has_type("f32")
+        && reflect::has_type("f64")
+        && reflect::has_type("char")
+        && reflect::has_type("array")
+        && reflect::has_type("map")
+        && reflect::has_type("set")
+        && reflect::has_type("range")
+        && reflect::has_type("iterator")
+        && reflect::has_type("Option")
+        && reflect::has_type("Result")
+        && reflect::kind(string_type) == "string"
+        && reflect::kind(bytes_type) == "bytes"
+        && reflect::kind(char_type) == "char"
+        && reflect::kind(array_type) == "array"
+        && reflect::kind(map_type) == "map"
+        && reflect::kind(set_type) == "set"
+        && reflect::kind(range_type) == "range"
+        && reflect::kind(iterator_type) == "script_struct"
+        && reflect::kind(option_type) == "script_enum"
+        && reflect::kind(result_type) == "script_enum"
+        && type_of_checks
+        && reflect::docs(math).unwrap_or("") == "Deterministic math standard-library helpers."
+        && reflect::docs(option_module).unwrap_or("") == "Option standard-library propagation helpers."
+        && reflect::docs(result_module).unwrap_or("") == "Result standard-library propagation helpers."
+        && reflect::docs(set_module).unwrap_or("") == "Set standard-library construction helpers."
+        && reflect::docs(bytes_module).unwrap_or("") == "Bytes standard-library conversion helpers."
+        && reflect::attr(math, "stdlib").unwrap_or("") == "math"
+        && reflect::attr(option_module, "stdlib").unwrap_or("") == "option"
+        && reflect::attr(result_module, "stdlib").unwrap_or("") == "result"
+        && reflect::attr(set_module, "stdlib").unwrap_or("") == "set"
+        && reflect::attr(bytes_module, "stdlib").unwrap_or("") == "bytes"
+        && reflect::attr(string_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(bytes_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(char_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(option_type, "stdlib").unwrap_or("") == "option"
+        && reflect::attr(result_type, "stdlib").unwrap_or("") == "result"
+        && string_methods.len() >= 33
+        && bytes_methods.len() == 9
+        && char_methods.len() == 4
+        && reflect::has_method(string_type, "trim")
+        && reflect::has_method(string_type, "split_once")
+        && reflect::has_method(string_type, "parse_i64")
+        && reflect::has_method(string_type, "parse_char")
+        && reflect::has_method(bytes_type, "read_u32_le")
+        && reflect::has_method(bytes_type, "to_hex")
+        && reflect::has_method(bytes_type, "values")
+        && reflect::has_method(char_type, "to_string")
+        && reflect::has_method(char_type, "is_ascii_digit")
+        && trim.owner == "string"
+        && reflect::returns(trim).unwrap_or("") == "String"
+        && reflect::attr(trim, "stdlib").unwrap_or("") == "string"
+        && split_once.params.len() == 1
+        && split_once.params[0].name == "separator"
+        && split_once.params[0].type.unwrap_or("") == "String"
+        && reflect::returns(split_once).unwrap_or("") == "Option<(String, String)>"
+        && reflect::returns(parse_i64).unwrap_or("") == "Option<i64>"
+        && reflect::returns(parse_char).unwrap_or("") == "Option<char>"
+        && bytes_read_u32_le.params[0].type.unwrap_or("") == "i64"
+        && reflect::returns(bytes_read_u32_le).unwrap_or("") == "u32"
+        && reflect::attr(bytes_read_u32_le, "stdlib").unwrap_or("") == "bytes"
+        && reflect::returns(bytes_to_hex).unwrap_or("") == "String"
+        && reflect::attr(bytes_to_hex, "stdlib").unwrap_or("") == "bytes"
+        && reflect::returns(bytes_values).unwrap_or("") == "Iterator"
+        && reflect::returns(char_to_string).unwrap_or("") == "String"
+        && reflect::attr(char_to_string, "stdlib").unwrap_or("") == "char"
+        && reflect::returns(char_is_ascii_digit).unwrap_or("") == "bool"
+        && array_methods.len() >= 28
+        && map_methods.len() >= 19
+        && set_methods.len() >= 21
+        && range_methods.len() == 3
+        && iterator_methods.len() == 13
+        && option_methods.len() >= 9
+        && result_methods.len() >= 10
+        && reflect::has_method(array_type, "push")
+        && reflect::has_method(array_type, "map")
+        && reflect::has_method(array_type, "index_of")
+        && reflect::has_method(map_type, "get")
+        && reflect::has_method(map_type, "map_values")
+        && reflect::has_method(set_type, "union")
+        && reflect::has_method(set_type, "is_subset")
+        && reflect::has_method(range_type, "len")
+        && reflect::has_method(range_type, "is_empty")
+        && reflect::has_method(range_type, "iter")
+        && reflect::has_method(iterator_type, "next")
+        && reflect::has_method(iterator_type, "any")
+        && reflect::has_method(iterator_type, "all")
+        && reflect::has_method(iterator_type, "find")
+        && reflect::has_method(iterator_type, "map")
+        && reflect::has_method(iterator_type, "filter")
+        && reflect::has_method(iterator_type, "fold")
+        && reflect::has_method(iterator_type, "take")
+        && reflect::has_method(iterator_type, "skip")
+        && reflect::has_method(iterator_type, "collect_array")
+        && reflect::has_method(iterator_type, "collect_set")
+        && reflect::has_method(iterator_type, "collect_map")
+        && reflect::has_method(option_type, "map")
+        && reflect::has_method(option_type, "ok_or")
+        && reflect::has_method(result_type, "map_err")
+        && reflect::has_method(result_type, "to_error_option")
+        && array_push.params[0].name == "value"
+        && array_push.params[0].type.unwrap_or("") == "Any"
+        && reflect::returns(array_push).unwrap_or("") == "()"
+        && array_map.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(array_map).unwrap_or("") == "Array"
+        && reflect::returns(array_index_of).unwrap_or("") == "Option<i64>"
+        && map_get.params[0].name == "key"
+        && reflect::returns(map_get).unwrap_or("") == "Option<Any>"
+        && set_union.params[0].type.unwrap_or("") == "Set"
+        && reflect::returns(set_union).unwrap_or("") == "Set"
+        && range_len.params.is_empty()
+        && reflect::returns(range_len).unwrap_or("") == "i64"
+        && reflect::attr(range_len, "stdlib").unwrap_or("") == "range"
+        && range_is_empty.params.is_empty()
+        && reflect::returns(range_is_empty).unwrap_or("") == "bool"
+        && range_iter.params.is_empty()
+        && reflect::returns(range_iter).unwrap_or("") == "Iterator"
+        && iterator_next.params.is_empty()
+        && reflect::returns(iterator_next).unwrap_or("") == "Option<Any>"
+        && iterator_map.params[0].name == "callback"
+        && iterator_map.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(iterator_map).unwrap_or("") == "Iterator"
+        && iterator_fold.params[0].name == "initial"
+        && iterator_fold.params[0].type.unwrap_or("") == "Any"
+        && iterator_fold.params[1].name == "callback"
+        && iterator_fold.params[1].type.unwrap_or("") == "Function"
+        && reflect::returns(iterator_fold).unwrap_or("") == "Any"
+        && iterator_take.params[0].name == "count"
+        && iterator_take.params[0].type.unwrap_or("") == "i64"
+        && reflect::returns(iterator_take).unwrap_or("") == "Iterator"
+        && iterator_collect_array.params.is_empty()
+        && reflect::returns(iterator_collect_array).unwrap_or("") == "Array"
+        && iterator_collect_set.params.is_empty()
+        && reflect::returns(iterator_collect_set).unwrap_or("") == "Set"
+        && iterator_collect_map.params.is_empty()
+        && reflect::returns(iterator_collect_map).unwrap_or("") == "Map"
+        && option_map.params[0].name == "callback"
+        && option_map.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(option_map).unwrap_or("") == "Option<Any>"
+        && reflect::attr(option_map, "stdlib").unwrap_or("") == "option"
+        && option_ok_or.params[0].name == "error"
+        && reflect::returns(option_ok_or).unwrap_or("") == "Result<Any, Any>"
+        && result_map_err.params[0].name == "callback"
+        && result_map_err.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(result_map_err).unwrap_or("") == "Result<Any, Any>"
+        && reflect::attr(result_map_err, "stdlib").unwrap_or("") == "result"
+        && reflect::returns(result_to_error).unwrap_or("") == "Option<Any>"
+        && option_variants.len() == 2
+        && option_variants[0].name == "Some"
+        && reflect::docs(option_variants[0]).unwrap_or("") == "Carries a present Option payload."
+        && reflect::attr(option_variants[0], "stdlib").unwrap_or("") == "option"
+        && option_variants[0].fields[0].name == "0"
+        && option_variants[0].fields[0].type.unwrap_or("") == "Any"
+        && reflect::docs(option_variants[0].fields[0]).unwrap_or("") == "Dynamic Option::Some payload value."
+        && reflect::attr(option_variants[0].fields[0], "stdlib").unwrap_or("") == "option"
+        && option_variants[1].name == "None"
+        && reflect::docs(option_variants[1]).unwrap_or("") == "Represents expected absence without a payload."
+        && reflect::attr(option_variants[1], "stdlib").unwrap_or("") == "option"
+        && result_variants.len() == 2
+        && result_variants[0].name == "Ok"
+        && reflect::docs(result_variants[0]).unwrap_or("") == "Carries a successful Result payload."
+        && reflect::attr(result_variants[0], "stdlib").unwrap_or("") == "result"
+        && result_variants[0].fields[0].type.unwrap_or("") == "Any"
+        && reflect::docs(result_variants[0].fields[0]).unwrap_or("") == "Dynamic Result::Ok payload value."
+        && reflect::attr(result_variants[0].fields[0], "stdlib").unwrap_or("") == "result"
+        && result_variants[1].name == "Err"
+        && reflect::docs(result_variants[1]).unwrap_or("") == "Carries a recoverable Result error payload."
+        && reflect::attr(result_variants[1], "stdlib").unwrap_or("") == "result"
+        && result_variants[1].fields[0].type.unwrap_or("") == "Any"
+        && reflect::docs(result_variants[1].fields[0]).unwrap_or("") == "Dynamic Result::Err payload value."
+        && reflect::attr(result_variants[1].fields[0], "stdlib").unwrap_or("") == "result"
+        && !reflect::has_function("math::random")
+        && math_exports.len() == 14
+        && math_exports.contains("math::max")
+        && math_exports.contains("math::sqrt")
+        && option_exports.len() == 7
+        && option_exports.contains("option::some")
+        && option_exports.contains("option::unwrap_or")
+        && result_exports.len() == 8
+        && result_exports.contains("result::ok")
+        && result_exports.contains("result::to_option")
+        && set_exports.len() == 1
+        && set_exports.contains("set::from_array")
+        && bytes_exports.len() == 1
+        && bytes_exports.contains("bytes::from_hex")
+        && reflect::attr(max, "stdlib").unwrap_or("") == "math"
+        && reflect::attr(some, "stdlib").unwrap_or("") == "option"
+        && reflect::attr(ok, "stdlib").unwrap_or("") == "result"
+        && reflect::attr(set_from_array, "stdlib").unwrap_or("") == "set"
+        && reflect::attr(bytes_from_hex, "stdlib").unwrap_or("") == "bytes"
+        && reflect::docs(max).unwrap_or("") == "Returns the larger numeric value."
+        && reflect::docs(sqrt).unwrap_or("") == "Returns the square root as a float."
+        && reflect::docs(some).unwrap_or("") == "Wraps a value in Option::Some."
+        && reflect::docs(ok).unwrap_or("") == "Wraps a success value in Result::Ok."
+        && reflect::docs(set_from_array).unwrap_or("") == "Builds a set from array values."
+        && reflect::docs(bytes_from_hex).unwrap_or("") == "Decodes hexadecimal text to bytes or returns an error string."
+        && reflect::returns(max).unwrap_or("") == "Any"
+        && reflect::returns(sqrt).unwrap_or("") == "f64"
+        && reflect::returns(some).unwrap_or("") == "Any"
+        && reflect::returns(ok).unwrap_or("") == "Any"
+        && reflect::returns(set_from_array).unwrap_or("") == "Set"
+        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result<Bytes, String>"
+        && params.len() == 2
+        && params[0].name == "left"
+        && params[1].name == "right"
+        && some_params.len() == 1
+        && some_params[0].name == "value"
+        && ok_params.len() == 1
+        && ok_params[0].name == "value"
+        && set_params.len() == 1
+        && set_params[0].name == "values"
+        && set_params[0].type.unwrap_or("") == "Array"
+        && bytes_params.len() == 1
+        && bytes_params[0].name == "text"
+        && bytes_params[0].type.unwrap_or("") == "String";
+}

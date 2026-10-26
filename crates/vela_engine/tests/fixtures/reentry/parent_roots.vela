@@ -1,0 +1,13 @@
+
+struct Keep { text: String }
+
+fn collect_garbage() {
+    let garbage = ["one", "two", "three", "four"];
+    return garbage.len();
+}
+
+fn main() {
+    let keep = Keep { text: "alive" };
+    test::nested_gc();
+    return keep.text;
+}

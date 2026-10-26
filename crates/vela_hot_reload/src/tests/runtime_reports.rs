@@ -1188,23 +1188,15 @@ fn script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<Module
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
-        format!(
-            r#"
-trait BonusSource {{ fn bonus(self, amount) -> i64; }}
-struct Player {{ level: i64 }}
-
-impl BonusSource for Player {{
-    fn bonus(self, amount) -> i64 {{
-        return {bonus_expression};
-    }}
-}}
-
-fn main() {{
-    let player = Player {{ level: 7 }};
-    return player.bonus(5);
-}}
-"#,
-        ),
+        match bonus_expression {
+            "self.level + amount" => {
+                include_str!("../../tests/fixtures/modules/trait_method_v1.vela")
+            }
+            "self.level + amount + 1" => {
+                include_str!("../../tests/fixtures/modules/trait_method_v2.vela")
+            }
+            _ => panic!("unreviewed trait bonus fixture: {bonus_expression}"),
+        },
     )]
 }
 
@@ -1217,21 +1209,14 @@ fn inherent_script_method_module_sources_with_bonus(bonus_expression: &str) -> V
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
-        format!(
-            r#"
-struct Player {{ level: i64 }}
-
-impl Player {{
-    fn bonus(self, amount) -> i64 {{
-        return {bonus_expression};
-    }}
-}}
-
-fn main() {{
-    let player = Player {{ level: 7 }};
-    return player.bonus(5);
-}}
-"#,
-        ),
+        match bonus_expression {
+            "self.level + amount" => {
+                include_str!("../../tests/fixtures/modules/inherent_method_v1.vela")
+            }
+            "self.level + amount + 1" => {
+                include_str!("../../tests/fixtures/modules/inherent_method_v2.vela")
+            }
+            _ => panic!("unreviewed inherent bonus fixture: {bonus_expression}"),
+        },
     )]
 }

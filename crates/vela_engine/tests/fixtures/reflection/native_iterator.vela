@@ -1,0 +1,9 @@
+
+fn main() {
+    let scores = reflect::function("game::scores");
+    let total = 0;
+    for score in reflect::call(scores) {
+        total += score;
+    }
+    return reflect::returns(scores).unwrap_or("") == "Iterator" && total == 10;
+}

@@ -1,0 +1,34 @@
+
+fn main() {
+    let missing_desc = ReflectTypeHint {
+        display: "",
+        kind: "missing",
+        name: option::none(),
+        args: [],
+    };
+    let string_type = reflect::type_info("string");
+    let split_once = reflect::method(string_type, "split_once");
+    let return_desc = split_once.return_desc.unwrap_or(missing_desc);
+    let tuple_desc = return_desc.args[0];
+    let separator_desc = split_once.params[0].type_desc.unwrap_or(missing_desc);
+    let array_type = reflect::type_info("array");
+    let push = reflect::method(array_type, "push");
+    let unit_desc = push.return_desc.unwrap_or(missing_desc);
+    return return_desc.display == "Option<(String, String)>"
+        && return_desc.kind == "enum"
+        && return_desc.name.unwrap_or("") == "Option"
+        && return_desc.args.len() == 1
+        && tuple_desc.display == "(String, String)"
+        && tuple_desc.kind == "tuple"
+        && option::is_none(tuple_desc.name)
+        && tuple_desc.args.len() == 2
+        && tuple_desc.args[0].display == "String"
+        && tuple_desc.args[0].kind == "primitive"
+        && tuple_desc.args[0].name.unwrap_or("") == "String"
+        && tuple_desc.args[1].display == "String"
+        && separator_desc.display == "String"
+        && separator_desc.kind == "primitive"
+        && unit_desc.display == "()"
+        && unit_desc.kind == "unit"
+        && unit_desc.name.unwrap_or("") == "()";
+}

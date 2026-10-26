@@ -1,0 +1,5 @@
+
+fn helper() -> i64 { return 2; }
+fn build(callback = || helper()) -> Closure { return callback; }
+state callback: Closure = build();
+fn main() { return 0; }

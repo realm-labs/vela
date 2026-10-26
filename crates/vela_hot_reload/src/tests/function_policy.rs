@@ -184,48 +184,14 @@ fn main() {
 fn script_schema_stable_id_member_renames_are_accepted_during_compile_update() {
     let initial = compile_initial(
         SourceId::new(1),
-        r#"
-struct Reward {
-    #[id(101)]
-    item_id: String
-    #[id(102)]
-    count: i64
-}
-
-enum QuestProgress {
-    #[id(201)]
-    Active
-}
-
-fn main() {
-    return 1;
-}
-"#,
+        include_str!("../../../vela_engine/tests/fixtures/reload/stable_member_rename_v1.vela"),
     )
     .expect("initial script schema should compile");
 
     let update = compile_update(
         &initial,
         SourceId::new(2),
-        r#"
-struct Reward {
-    #[id(101)]
-    item: String
-    #[id(102)]
-    quantity: i64
-}
-
-enum QuestProgress {
-    #[id(201)]
-    Started
-    #[id(202)]
-    Finished
-}
-
-fn main() {
-    return 2;
-}
-"#,
+        include_str!("../../../vela_engine/tests/fixtures/reload/stable_member_rename_v2.vela"),
     )
     .expect("stable-id script schema renames should be accepted");
 

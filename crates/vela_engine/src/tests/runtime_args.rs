@@ -31,25 +31,7 @@ fn runtime_call_executes_program_image_code_view() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-
-fn add_bonus(value) {
-    return value + 5;
-}
-
-fn main() {
-    let player = Player { level: 7 };
-    return add_bonus(player.bonus(4));
-}
-"#,
+            include_str!("../../tests/fixtures/state/program_image.vela"),
         )
         .expect("compile runtime image code-view source");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -279,25 +261,7 @@ fn runtime_call_method_on_runtime_value_by_name_and_cached_method() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            r#"
-trait BonusSource {
-    fn score(self, amount, multiplier = 2) -> i64;
-}
-
-struct Reward {
-    gold: i64,
-}
-
-impl BonusSource for Reward {
-    fn score(self, amount, multiplier = 2) -> i64 {
-        return self.gold + amount * multiplier;
-    }
-}
-
-fn make_reward() {
-    return Reward { gold: 7 };
-}
-"#,
+            include_str!("../../tests/fixtures/state/cached_methods.vela"),
         )
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -352,25 +316,7 @@ fn make_reward() {
 #[test]
 fn runtime_cached_method_rejects_method_from_another_runtime() {
     let engine = Engine::builder().build().expect("engine should build");
-    let source = r#"
-trait BonusSource {
-    fn score(self, amount) -> i64;
-}
-
-struct Reward {
-    gold: i64,
-}
-
-impl BonusSource for Reward {
-    fn score(self, amount) -> i64 {
-        return self.gold + amount;
-    }
-}
-
-fn make_reward(gold) {
-    return Reward { gold: gold };
-}
-"#;
+    let source = include_str!("../../tests/fixtures/state/method_affinity.vela");
     let program_a = engine
         .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");

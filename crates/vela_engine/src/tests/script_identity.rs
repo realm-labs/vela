@@ -15,26 +15,7 @@ fn linked_and_reflected_script_schema_ids_share_canonical_identity() {
             SourceId::new(81),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
-            r#"
-#[id(101)]
-struct Reward {
-    #[id(102)]
-    count: i64,
-}
-
-enum Outcome {
-    #[id(201)]
-    Granted {
-        #[id(202)]
-        value: i64,
-    },
-}
-
-fn main() {
-    let reward = Reward { count: 1 };
-    return Outcome::Granted { value: reward.count };
-}
-"#,
+            include_str!("../../tests/fixtures/reflection/script_identity.vela"),
         )])
         .expect("script schemas should compile");
     let linked = Linker::new()
