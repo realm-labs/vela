@@ -8,7 +8,7 @@ const oracle = require("../../../scripts/lsp-matrix/workspace-symbol-oracle");
 const { workspaceSymbolResponses } = require("../../../scripts/lsp-matrix/workspace-symbol-trace");
 const { readTrace, workspaceReadiness } = require("./input/readiness");
 const { findLog } = require("./input/logs");
-const { metadataArtifact } = require("./symbol-schema");
+
 const specs = Object.fromEntries(["declarations", "ownership"].map(name =>
   [name, require(`../../../tests/lsp_matrix/fixtures/workspace-symbol-${name}.json`)]));
 const checkName = "workspace symbol provider preserves complete source and schema sets through Unicode dirty close restoration";
@@ -27,7 +27,7 @@ function materializeWorkspaceSymbols(root) {
       fs.mkdirSync(path.dirname(destination), { recursive: true }); fs.writeFileSync(destination, doc.text);
     }
     if (name === "ownership") fs.writeFileSync(path.join(family, "schema.json"),
-      JSON.stringify(metadataArtifact(spec.oracle.schema)));
+      JSON.stringify(oracle.metadataArtifact(spec.oracle.schema)));
   }
   const settings = { "vela.trace.server": "verbose", "vela.host.schema": "",
     "vela.workspace.roots": [path.join(familyFor(root, "declarations", false), "scripts")],
@@ -137,7 +137,7 @@ class WorkspaceSymbolSession {
     for (const [file, doc] of Object.entries(documents(spec, this.crlf)))
       assert.equal(fs.readFileSync(this.uri(file).fsPath, "utf8"), doc.text, `unchanged physical ${file}`);
     if (spec.oracle.schema) assert.deepEqual(JSON.parse(fs.readFileSync(path.join(this.family, "schema.json"), "utf8")),
-      metadataArtifact(spec.oracle.schema));
+      oracle.metadataArtifact(spec.oracle.schema));
     assert(!fs.existsSync(path.join(this.workspace, "vela.toml")), "no manifest overriding owned fallback roots");
     assert(!fs.existsSync(path.join(this.family, "vela.toml")));
   }

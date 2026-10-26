@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
 
 const root = path.resolve(__dirname, "../../..");
 const fixtures = path.join(root, "tests/lsp_matrix/fixtures");
@@ -85,7 +86,7 @@ test("async and task-only matrices are rejection contracts, never synchronous su
 test("removed spellings in selection sources are diagnosed nonexecuting recovery cases", () => {
   for (const name of ["selection-declarations", "selection-calls", "selection-types", "selection-literals"]) {
     for (const entry of load(name).oracle.cases) {
-      const source = entry.source.replace(/\[\[[^\]]+\]\]/g, "");
+      const source = parseMarkers(entry.source).text;
       if (/\basync\b|\.await|task::spawn_scoped/.test(source)) {
         assert.ok(entry.syntaxCodes.length > 0, `${name}/${entry.id}`);
         assert.ok(entry.syntaxCodes.every((code) => /^syntax::removed_(async|task)$/.test(code)));

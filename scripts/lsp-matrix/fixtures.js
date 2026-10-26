@@ -78,10 +78,37 @@ class FixtureWorkspace {
   materialize(root) {
     if (fs.existsSync(root)) throw new Error("fixture root must be new and isolated");
     fs.mkdirSync(root, { recursive: true });
+    this.appendTo(root);
+  }
+  appendTo(root) {
+    root = path.resolve(root); // A trailing separator would make lstat follow a directory symlink.
+    if (!fs.lstatSync(root).isDirectory()) throw new Error("fixture append requires an existing directory");
+    // Fixture roots are exclusively owned, with uniform filesystem naming rules.
+    // Probe the complete planned tree on that filesystem rather than guessing its
+    // case/Unicode equivalence. No destination files are written during preflight;
+    // this is not a transaction against concurrent mutation or later I/O failures.
+    const probeRoot = fs.realpathSync(fs.mkdtempSync(path.join(root, ".fixture-append-")));
+    try {
+      for (const file of this.disk.keys()) {
+        const parts = safeFile(file).split("/");
+        for (let i = 1; i <= parts.length; i++) {
+          const relative = parts.slice(0, i).join("/");
+          const target = path.join(root, relative);
+          const stat = fs.lstatSync(target, { throwIfNoEntry: false });
+          if (i === parts.length ? stat : this.disk.has(relative) ||
+              (stat && (!stat.isDirectory() || fs.realpathSync(target) === probeRoot))) {
+            throw new Error(`fixture append collision: ${file} at ${relative}`);
+          }
+        }
+        const probe = path.join(probeRoot, file);
+        fs.mkdirSync(path.dirname(probe), { recursive: true });
+        fs.writeFileSync(probe, "", { flag: "wx" });
+      }
+    } finally { fs.rmSync(probeRoot, { recursive: true, force: true }); }
     for (const [file, document] of this.disk) {
       const target = path.join(root, file);
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, document.text);
+      fs.writeFileSync(target, document.text, { flag: "wx" });
     }
   }
 }

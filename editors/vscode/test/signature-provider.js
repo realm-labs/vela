@@ -2,17 +2,12 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const path = require("node:path");
+
 const { FixtureWorkspace, parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
 const spec = require("../../../tests/lsp_matrix/fixtures/signature-editor.json");
 
 function materializeSignature(workspace) {
-  for (const [file, document] of new FixtureWorkspace(spec).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "signature fixture must not overwrite existing files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(spec).appendTo(workspace);
 }
 
 function result(help) {

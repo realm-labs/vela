@@ -84,6 +84,12 @@ TO07 replaces both example registration macros with rstest families covering all
 14 real bins, and organizes CLI/WASM route-specific cases. Exact/substring output
 contracts remain distinct; both feature modes, Clippy and wasm32 checking pass.
 
+TO08 consolidates existing fixture/schema transformations without changing matrix
+obligations or specialized runners. Final Node suites pass 335 checks; fresh
+installed VS Code partitions pass 27/27 with matching final-input provenance.
+The aggregate timeout and separate missing-observer native-input blocker remain
+recorded; provider proof is not physical Input/Render acceptance.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits

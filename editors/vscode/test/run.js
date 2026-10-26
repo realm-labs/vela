@@ -19,29 +19,17 @@ async function main() {
   for (const file of ["vela.toml", "scripts/main.vela", "scripts/helpers.vela"]) {
     fs.writeFileSync(path.join(workspace, file), fs.readFileSync(path.join(__dirname, "fixture", file)));
   }
-  const { parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
+  const { FixtureWorkspace, parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
   const shared = require("../../../tests/lsp_matrix/fixtures/shared-unicode-lifecycle.json");
   fs.writeFileSync(path.join(workspace, "scripts/helper.vela"), parseMarkers(shared.files["scripts/helper.vela"]).text);
   const navigation = require("../../../tests/lsp_matrix/fixtures/input-navigation.json");
-  for (const [file, source] of Object.entries(navigation.files)) {
-    const destination = path.join(workspace, file);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.writeFileSync(destination, parseMarkers(source).text);
-  }
+  new FixtureWorkspace(navigation).appendTo(workspace);
   for (const fixture of ["input-references.json", "input-rename.json"]) {
     const spec = require(`../../../tests/lsp_matrix/fixtures/${fixture}`);
-    for (const [file, source] of Object.entries(spec.files)) {
-      const destination = path.join(workspace, file);
-      fs.mkdirSync(path.dirname(destination), { recursive: true });
-      fs.writeFileSync(destination, parseMarkers(source).text);
-    }
+    new FixtureWorkspace(spec).appendTo(workspace);
   }
   const diagnosticAction = require("../../../tests/lsp_matrix/fixtures/diagnostic-action-method-typo.json");
-  for (const [file, source] of Object.entries(diagnosticAction.files)) {
-    const destination = path.join(workspace, file);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.writeFileSync(destination, parseMarkers(source).text);
-  }
+  new FixtureWorkspace(diagnosticAction).appendTo(workspace);
   require("./completion-fixture").materializeCompletion(workspace);
   require("./signature-provider").materializeSignature(workspace);
   require("./document-symbol-provider").materializeSymbols(resultRoot);

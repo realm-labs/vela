@@ -214,3 +214,63 @@ After: CLI 8, host WASM 14, examples 21 (14 real bins, six removal/trait tests a
 one package lifecycle test). All-feature Clippy, wasm32 release check, default
 CLI/WASM Clippy, discovery, eight exact selections and scoped formatting pass.
 Cross-compilation and host tests are not browser execution evidence.
+
+## TO08 — Non-Rust Consumers And Fixture Housekeeping
+
+Existing `FixtureWorkspace.appendTo` ownership consolidates repeated provider,
+native-input, completion and signature fixture copying. `materialize` still
+requires a new root; append requires an existing isolated directory. Preflight
+checks symlinks and destination collisions, then probes the complete planned tree
+on the destination filesystem to detect native case/Unicode/file-directory aliases.
+The probe is always removed; writes are exclusive. The documented contract assumes
+an exclusively owned stable root, not transactional recovery from arbitrary I/O
+failure or concurrent mutation. Regression tests reproduced and fixed trailing-slash
+symlink bypass and case-alias partial writes before acceptance.
+
+Marker stripping reuses `parseMarkers`. Both symbol providers reuse the existing
+metadata-only schema helper; the exact duplicate `symbol-schema.js` is deleted.
+Source-backed schemas, intentional manifest/schema updates and transformed outline
+text remain separate. Forty-two files across 16 fixture families and both symbol
+schema outputs matched their previous bytes. Session isolation, private profiles,
+short socket paths, cleanup and existing oracle/provenance checks remain intact.
+
+Node matrix/editor/Zed suites: 321 baseline, 335 final passes, zero skips.
+Focused independent review passed 32 checks and three native Unicode-alias probes.
+Site docs (7), syntax (36 scope + 36 token checks), Tree-sitter corpus (3), both
+package validators, syntax and whitespace checks pass. Site/Zed/grammar/fuzz and
+benchmarks need no structural conversion: their specialized runners, independent
+goldens, malformed seeds and measurement boundaries are retained. No demonstrated
+orphan warranted deletion. Matrix catalog/baseline/captures remain unchanged:
+1,327 semantic, 1,477 execution obligations and 27 declared installed checks.
+
+### Fresh Installed-Editor Proof And Limits
+
+The intermediate aggregate `npm --prefix editors/vscode test` timed out at 300
+seconds. Its 25/27 partial proof became stale when the helper fix changed inputs;
+it was not reused. Four fresh final-input partitions all exited zero:
+
+| Partition | Passes | Elapsed | Process bound |
+|---|---:|---:|---:|
+| Base | 24 | 113.059s | 300s |
+| Workspace symbols | 1 | 22.255s | 220s |
+| Selection syntax | 1 | 480.063s | 640s |
+| Selection lifecycle | 1 | 402.948s | 640s |
+
+Selection used the existing 600-second internal limits and isolated suite paths,
+not a longer retry of the aggregate. Existing `mergeEditorResults` verified
+identical provenance, passing statuses and exactly one of each of 27 declared
+checks. VS Code 1.137.0 on darwin/arm64; final fingerprints:
+
+```text
+inputsSha256: 2b7127e7ca4a8026882f94a38ef0b7a209bea2b682343c919a36eee9eaacee86
+serverSha256: 1320b927ccda25692a96788aa7cd95bdf040bf4b35d803e55cf1422e0c92570e
+```
+
+Raw results, traces, invocation harness and validated merge remain locally in
+`editors/vscode/test-results/run-T08f/`. The ignored invocation harness only calls
+existing suites/materializers/merge validation; it is not a repository test runner.
+No aggregate exit-zero, Windows, strict-matrix or physical Input/Render claim follows.
+`npm --prefix editors/vscode run test:input` failed before interaction because
+`observer.vsix` was missing during installation; logs remain in
+`editors/vscode/test-results/input-0KGG45/`. This unrelated packaging blocker was
+not patched or converted into passing evidence.

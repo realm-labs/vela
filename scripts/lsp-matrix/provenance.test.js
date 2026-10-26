@@ -24,7 +24,7 @@ test("installed editor evidence becomes stale when its shared oracle decoder or 
   const binary = path.join(root, "server"), baseline = provenance(root, binary);
   assert.deepEqual(provenance(root, binary), baseline);
   for (const file of ["scripts/lsp-matrix/semantic-token-oracle.js", "scripts/lsp-matrix/semantic-token-trace.js",
-    "tests/lsp_matrix/fixtures/tokens.json"]) {
+    "scripts/lsp-matrix/fixtures.js", "editors/vscode/test/provider.js", "tests/lsp_matrix/fixtures/tokens.json"]) {
     write(file, "changed");
     const changed = provenance(root, binary);
     assert.notEqual(changed.inputsSha256, baseline.inputsSha256, file);

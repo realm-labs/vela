@@ -61,101 +61,36 @@ async function run() {
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
   const workspaceSchema = require("../../../../tests/lsp_matrix/fixtures/input-workspace-schema.json");
-  for (const [file, document] of new FixtureWorkspace(workspaceSchema).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "schema fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(workspaceSchema).appendTo(workspace);
   const workspaceFiles = require("../../../../tests/lsp_matrix/fixtures/input-workspace-files.json");
-  for (const [file, document] of new FixtureWorkspace(workspaceFiles).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "workspace fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(workspaceFiles).appendTo(workspace);
   const workspaceRoots = require("../../../../tests/lsp_matrix/fixtures/input-workspace-roots.json");
-  for (const [file, document] of new FixtureWorkspace(workspaceRoots).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "roots fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(workspaceRoots).appendTo(workspace);
   const invalidConfig = require("../../../../tests/lsp_matrix/fixtures/input-invalid-config-schema.json");
-  for (const [file, document] of new FixtureWorkspace(invalidConfig).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "invalid configuration fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(invalidConfig).appendTo(workspace);
   const lifecycle = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
-  for (const [file, document] of new FixtureWorkspace(lifecycle).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "lifecycle fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(lifecycle).appendTo(workspace);
   const installation = require("../../../../tests/lsp_matrix/fixtures/input-installation.json");
-  for (const [file, document] of new FixtureWorkspace(installation).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "installation fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(installation).appendTo(workspace);
   const navigation = require("../../../../tests/lsp_matrix/fixtures/input-navigation.json");
-  for (const [file, document] of new FixtureWorkspace(navigation).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "navigation fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(navigation).appendTo(workspace);
   require("../completion-fixture").materializeCompletion(workspace);
   // Add an independent type to the already-configured static artifact without
   // changing completion facts. Accepted replacements use native editing below.
   const schemaModel = require("../../../../scripts/lsp-matrix/workspace-schema-contracts").workspaceSchemaModel();
   fs.writeFileSync(path.join(workspace, schemaModel.o.schema), schemaModel.original);
   const rename = require("../../../../tests/lsp_matrix/fixtures/input-rename.json");
-  for (const [file, document] of new FixtureWorkspace(rename).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "rename fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(rename).appendTo(workspace);
   const references = require("../../../../tests/lsp_matrix/fixtures/input-references.json");
-  for (const [file, document] of new FixtureWorkspace(references).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "references fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(references).appendTo(workspace);
   const diagnostics = require("../../../../tests/lsp_matrix/fixtures/input-diagnostics.json");
-  for (const [file, document] of new FixtureWorkspace(diagnostics).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "diagnostic fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(diagnostics).appendTo(workspace);
   const quickFix = require("../../../../tests/lsp_matrix/fixtures/diagnostic-action-method-typo.json");
-  for (const [file, document] of new FixtureWorkspace(quickFix).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "quick-fix fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(quickFix).appendTo(workspace);
   const tokens = require("../../../../tests/lsp_matrix/fixtures/input-semantic-tokens.json");
-  for (const [file, document] of new FixtureWorkspace(tokens).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "token fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(tokens).appendTo(workspace);
   const hoverSignature = require("../../../../tests/lsp_matrix/fixtures/input-hover-signature.json");
-  for (const [file, document] of new FixtureWorkspace(hoverSignature).disk) {
-    const target = path.join(workspace, file);
-    assert.ok(!fs.existsSync(target), "hover/signature fixture must not overwrite driver files");
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, document.text);
-  }
+  new FixtureWorkspace(hoverSignature).appendTo(workspace);
   const vsix = path.join(root, "vela.vsix");
   const outline = require("../../../../scripts/lsp-matrix/outline-contracts").outlineModel();
   for (const [file, text] of Object.entries(outline.files)) {

@@ -5,7 +5,7 @@ const path = require("node:path");
 const { safeFile } = require("../../../scripts/lsp-matrix/fixtures");
 const oracle = require("../../../scripts/lsp-matrix/document-symbol-oracle");
 const { SymbolSession } = require("./document-symbol-session");
-const { metadataArtifact } = require("./symbol-schema");
+
 
 const specs = Object.fromEntries(["declarations", "ownership", "recovery", "lifecycle"].map(name =>
   [name, require(`../../../tests/lsp_matrix/fixtures/document-symbol-${name}.json`)]));
@@ -23,7 +23,7 @@ function materializeSymbols(resultRoot) {
       fs.writeFileSync(path.join(root, "vela.toml"), `[package]\nid = 'dev.vela.symbol.${name}'\nname = 'symbol_${name}'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n`);
     }
     if (name === "ownership") {
-      fs.writeFileSync(path.join(root, "schema.json"), JSON.stringify(metadataArtifact(spec.oracle.schema)));
+      fs.writeFileSync(path.join(root, "schema.json"), JSON.stringify(oracle.metadataArtifact(spec.oracle.schema)));
       fs.writeFileSync(path.join(root, "scripts/schema_probe.vela"), "fn schema_probe(host: host::Box) { host.value; }\n");
     }
   }
